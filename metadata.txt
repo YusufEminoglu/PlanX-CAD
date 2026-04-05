@@ -19,7 +19,6 @@ tags=cad, sketcher, drawing, editing, urban planning, road, city planning
 
 homepage=https://github.com/YusufEminoglu/PlanX-CAD
 category=Vector
-icon=icon.png
 
 experimental=False
 deprecated=False
