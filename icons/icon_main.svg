@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+    <rect width="512" height="512" rx="100" fill="url(#grad1)"/>
+    
+    <!-- Outer sophisticated ring -->
+    <circle cx="256" cy="256" r="180" stroke="#f1c40f" stroke-width="8" stroke-dasharray="20 10"/>
+    <circle cx="256" cy="256" r="192" stroke="#ecf0f1" stroke-width="2" opacity="0.3"/>
+    
+    <!-- Abstract structural grid -->
+    <path d="M106 256h300M256 106v300 M150 150l212 212 M150 362l212-212" stroke="#fff" stroke-width="4" opacity="0.1"/>
+
+    <!-- Central CAD geometric structure -->
+    <polygon points="256,120 366,190 366,322 256,392 146,322 146,190" fill="rgba(255,255,255,0.05)" stroke="#3498db" stroke-width="12" stroke-linejoin="round"/>
+    
+    <!-- Central intersection dot -->
+    <circle cx="256" cy="256" r="24" fill="#e74c3c"/>
+    <circle cx="256" cy="256" r="12" fill="#fff"/>
+    
+    <!-- Corner emphasis -->
+    <circle cx="256" cy="120" r="12" fill="#2ecc71"/>
+    <circle cx="366" cy="322" r="12" fill="#2ecc71"/>
+    <circle cx="146" cy="322" r="12" fill="#2ecc71"/>
+
+    <defs>
+        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#2c3e50;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#1a252f;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+</svg>

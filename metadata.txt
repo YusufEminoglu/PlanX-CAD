@@ -1,0 +1,34 @@
+[general]
+name=PlanX CAD Toolset
+qgisMinimumVersion=3.28
+description=Lightweight and fast CAD toolset for urban planning processes in QGIS. Features include drawing, editing, transforming, measuring, and road platform design.
+version=1.1.0
+author=Yusuf Eminoglu
+email=yusuf.eminoglu@deu.edu.tr
+
+about=PlanX CAD Toolset is a lightweight, fast, and modular QGIS plugin explicitly designed for urban planning processes. 
+    It brings 18+ CAD-like features direct to QGIS including Line, Polyline, Rectangle, Polygon, Circle, Arc, Offset, Trim, Extend, Fillet, and more. 
+    It includes a modern dockable panel UI, native snapping support, and an interactive road platform creation tool.
+
+tracker=https://github.com/YusufEminoglu/PlanX-CAD/issues
+repository=https://github.com/YusufEminoglu/PlanX-CAD
+
+hasProcessingProvider=no
+
+tags=cad, sketcher, drawing, editing, urban planning, road, city planning
+
+homepage=https://github.com/YusufEminoglu/PlanX-CAD
+category=Vector
+icon=icons/icon_main.svg
+
+experimental=False
+deprecated=False
+
+changelog=
+    1.1.0 - Advanced Urban Planning, UX and Measurement Enhancements
+        - Fixed intersection topology (A-B road connection).
+        - Renewed block chamfering logic via EasyFillet integration.
+        - Custom 'O' cursor added.
+        - Improved distance and area measurements by selection.
+    1.0.0 - Initial release
+        - 18 CAD tools, dockable interface, interactive road platform
