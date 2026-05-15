@@ -23,11 +23,11 @@ experimental=False
 deprecated=False
 
 changelog=
-    1.1.1 - Metadata standardization, icon metadata alignment, DEU educational context note, stable Hub release refresh.
-    1.1.0 - Advanced Urban Planning, UX and Measurement Enhancements
+    PlanX CAD Toolset 1.1.1 - Standardized Plugin Hub metadata, aligned icon metadata, added DEU educational context, and refreshed the stable release package.
+    PlanX CAD Toolset 1.1.0 - Added advanced urban planning, UX, and measurement enhancements.
         - Fixed intersection topology (A-B road connection).
         - Renewed block chamfering logic via EasyFillet integration.
         - Custom 'O' cursor added.
         - Improved distance and area measurements by selection.
-    1.0.0 - Initial release
+    PlanX CAD Toolset 1.0.0 - Initial release.
         - 18 CAD tools, dockable interface, interactive road platform
