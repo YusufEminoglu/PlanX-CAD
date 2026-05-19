@@ -29,7 +29,7 @@ class sketcher_polygon(sketcher_base):
         super().activate()
         # Kenar sayısı sor
         n, ok = QInputDialog.getInt(
-            None, "Çokgen", "Kenar sayısı:", self.sides, 3, 100
+            self.iface.mainWindow(), "Çokgen", "Kenar sayısı:", self.sides, 3, 100
         )
         if ok:
             self.sides = n

@@ -22,7 +22,7 @@ class tool_offset(tool_base):
     def on_entity_selected(self, layer, feature, point):
         # Mesafe sor
         d, ok = QInputDialog.getDouble(
-            None, "Offset", "Offset mesafesi (m):",
+            self.iface.mainWindow(), "Offset", "Offset mesafesi (m):",
             self.distance, 0.01, 100000.0, 2
         )
         if ok:

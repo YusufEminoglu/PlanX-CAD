@@ -12,7 +12,8 @@ from qgis.PyQt.QtGui import QIcon, QFont, QColor
 from qgis.PyQt.QtWidgets import (
     QDockWidget, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QGroupBox, QGridLayout,
-    QFrame, QSizePolicy, QToolButton, QButtonGroup
+    QFrame, QSizePolicy, QToolButton, QButtonGroup,
+    QScrollArea
 )
 
 
@@ -103,6 +104,8 @@ class CADDockWidget(QDockWidget):
         self.setAllowedAreas(
             Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea
         )
+        # Dar ekranlarda panel sığsın diye minimum genişlik = en geniş satır + scroll
+        self.setMinimumWidth(180)
 
         self.buttons = {}
         # Tüm butonlar tek bir QButtonGroup'ta → kategoriler arası exclusive
@@ -129,8 +132,18 @@ class CADDockWidget(QDockWidget):
         self.tool_activated.emit(key)
 
     def _setup_ui(self):
+        # QDockWidget tek widget alır → QScrollArea içine bir içerik widget'ı koy.
+        # widgetResizable=True ile içerik dock genişliğine yatay sığar, dikey scroll çıkar.
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
         main_widget = QWidget()
-        self.setWidget(main_widget)
+        main_widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        scroll.setWidget(main_widget)
+        self.setWidget(scroll)
 
         layout = QVBoxLayout(main_widget)
         layout.setSpacing(6)

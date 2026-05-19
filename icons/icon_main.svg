@@ -1,29 +1,64 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-    <rect width="512" height="512" rx="100" fill="url(#grad1)"/>
-    
-    <!-- Outer sophisticated ring -->
-    <circle cx="256" cy="256" r="180" stroke="#f1c40f" stroke-width="8" stroke-dasharray="20 10"/>
-    <circle cx="256" cy="256" r="192" stroke="#ecf0f1" stroke-width="2" opacity="0.3"/>
-    
-    <!-- Abstract structural grid -->
-    <path d="M106 256h300M256 106v300 M150 150l212 212 M150 362l212-212" stroke="#fff" stroke-width="4" opacity="0.1"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none" shape-rendering="geometricPrecision">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a8a85"/>
+      <stop offset="1" stop-color="#0f3d3a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="30%" cy="25%" r="70%">
+      <stop offset="0" stop-color="#7fd9d2" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#7fd9d2" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.97"/>
+      <stop offset="1" stop-color="#dff2ef" stop-opacity="0.92"/>
+    </linearGradient>
+  </defs>
 
-    <!-- Central CAD geometric structure -->
-    <polygon points="256,120 366,190 366,322 256,392 146,322 146,190" fill="rgba(255,255,255,0.05)" stroke="#3498db" stroke-width="12" stroke-linejoin="round"/>
-    
-    <!-- Central intersection dot -->
-    <circle cx="256" cy="256" r="24" fill="#e74c3c"/>
-    <circle cx="256" cy="256" r="12" fill="#fff"/>
-    
-    <!-- Corner emphasis -->
-    <circle cx="256" cy="120" r="12" fill="#2ecc71"/>
-    <circle cx="366" cy="322" r="12" fill="#2ecc71"/>
-    <circle cx="146" cy="322" r="12" fill="#2ecc71"/>
+  <!-- Base rounded-square -->
+  <rect width="512" height="512" rx="104" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="104" fill="url(#glow)"/>
 
-    <defs>
-        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#2c3e50;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#1a252f;stop-opacity:1" />
-        </linearGradient>
-    </defs>
+  <!-- Blueprint grid: 64 px steps, very subtle -->
+  <g stroke="#b5ece6" stroke-opacity="0.10" stroke-width="1.5">
+    <path d="M64 64V448M128 64V448M192 64V448M256 64V448M320 64V448M384 64V448M448 64V448"/>
+    <path d="M64 64H448M64 128H448M64 192H448M64 256H448M64 320H448M64 384H448M64 448H448"/>
+  </g>
+
+  <!-- Major axis crosshair (dashed construction lines from origin) -->
+  <g stroke="#7fe6dc" stroke-opacity="0.45" stroke-width="3" stroke-dasharray="10 12" stroke-linecap="round">
+    <path d="M96 416H416"/>
+    <path d="M96 416V96"/>
+  </g>
+
+  <!-- Origin marker -->
+  <circle cx="96" cy="416" r="14" fill="#ff8a3d"/>
+  <circle cx="96" cy="416" r="6" fill="#0a3633"/>
+
+  <!-- Urban block silhouette with TRUE FILLET at the top-right corner.
+       This is the visual signature: a rectangle whose corner is replaced by a tangent arc. -->
+  <path d="M 144 384 L 144 192 L 320 192 A 64 64 0 0 1 384 256 L 384 384 Z"
+        fill="url(#plate)" stroke="#0a3633" stroke-width="8" stroke-linejoin="round"/>
+
+  <!-- Highlight on the filleted arc itself: signature orange accent -->
+  <path d="M 320 192 A 64 64 0 0 1 384 256" fill="none"
+        stroke="#ff8a3d" stroke-width="14" stroke-linecap="round"/>
+
+  <!-- Two tangent points (the fillet endpoints) -->
+  <circle cx="320" cy="192" r="9" fill="#0a3633"/>
+  <circle cx="320" cy="192" r="4" fill="#ff8a3d"/>
+  <circle cx="384" cy="256" r="9" fill="#0a3633"/>
+  <circle cx="384" cy="256" r="4" fill="#ff8a3d"/>
+
+  <!-- Drafting target inside the block -->
+  <g transform="translate(232 312)">
+    <circle r="30" fill="none" stroke="#0a3633" stroke-width="6"/>
+    <circle r="6" fill="#0a3633"/>
+    <path d="M-30 0H-12M12 0H30M0 -30V-12M0 12V30" stroke="#0a3633" stroke-width="6" stroke-linecap="round"/>
+  </g>
+
+  <!-- Radius indicator: dashed line from arc midpoint to its center -->
+  <g>
+    <path d="M 352 224 L 256 256" stroke="#0a3633" stroke-width="3" stroke-dasharray="4 5" stroke-linecap="round"/>
+    <circle cx="256" cy="256" r="5" fill="#0a3633"/>
+  </g>
 </svg>

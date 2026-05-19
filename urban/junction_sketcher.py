@@ -167,7 +167,9 @@ class JunctionSketcher(QgsMapTool):
             if not features_hit:
                 continue
 
-            if not layer.isEditable():
+            # Kullanıcı katmanı zaten edit moddaysa commit'i ona bırak.
+            layer_was_editing = layer.isEditable()
+            if not layer_was_editing:
                 layer.startEditing()
 
             for feat in features_hit:
@@ -225,7 +227,8 @@ class JunctionSketcher(QgsMapTool):
                         
                     trimmed_count += 1
 
-            layer.commitChanges()
+            if not layer_was_editing:
+                layer.commitChanges()
             layer.triggerRepaint()
 
         # Endpoint'leri bileşenlerine göre ayır (ep, yol_id) formatında

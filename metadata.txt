@@ -2,7 +2,7 @@
 name=PlanX CAD Toolset
 qgisMinimumVersion=3.28
 description=Lightweight and fast CAD toolset for urban planning processes in QGIS. Features include drawing, editing, transforming, measuring, and road platform design.
-version=1.1.1
+version=1.2.0
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
@@ -23,6 +23,16 @@ experimental=False
 deprecated=False
 
 changelog=
+    PlanX CAD Toolset 1.2.0 - UI scroll fix + correctness pass.
+        - Dock panel now scrolls; fits on small/narrow screens.
+        - Trim: splitGeometry tuple-unpack fix (QGIS 3.x).
+        - Fillet: shortest-arc selection (was forcing CCW long way around).
+        - Scale/Mirror: multipart-safe transform preserves holes and multi-rings.
+        - Extend: multipart-safe + closest intersection.
+        - add_feature_to_layer: no longer commits the user's open edits.
+        - Buffer: attributes set on feature before insert (order-safe).
+        - QInputDialog parented to main window.
+        - Removed broken helpers (trim_geometry_at_point, fillet_corner) and dead code in tool_fillet.
     PlanX CAD Toolset 1.1.1 - Standardized Plugin Hub metadata, aligned icon metadata, added DEU educational context, and refreshed the stable release package.
     PlanX CAD Toolset 1.1.0 - Added advanced urban planning, UX, and measurement enhancements.
         - Fixed intersection topology (A-B road connection).

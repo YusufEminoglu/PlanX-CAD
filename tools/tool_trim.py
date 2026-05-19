@@ -186,9 +186,10 @@ class tool_trim(tool_base):
         all_parts = []
 
         for sp in split_points:
-            result_code, new_geoms = geom.splitGeometry(
-                [sp], False
-            )
+            # QGIS 3.x returns (OperationResult, new_geoms, topo_pts).
+            # Older builds returned 2-tuple — handle both via *rest.
+            result = geom.splitGeometry([sp], False)
+            new_geoms = result[1] if len(result) > 1 else []
             if new_geoms:
                 all_parts.extend(new_geoms)
 

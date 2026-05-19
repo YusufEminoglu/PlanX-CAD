@@ -76,7 +76,10 @@ def add_feature_to_layer(layer, geometry, attributes=None):
     if layer is None or geometry is None:
         return None
 
-    layer.startEditing()
+    was_editing = layer.isEditable()
+    if not was_editing:
+        layer.startEditing()
+
     feat = QgsFeature(layer.fields())
     feat.setGeometry(geometry)
 
@@ -87,7 +90,10 @@ def add_feature_to_layer(layer, geometry, attributes=None):
                 feat.setAttribute(idx, value)
 
     layer.addFeature(feat)
-    layer.commitChanges()
+    # Only commit if we started the edit session; otherwise leave the user's
+    # in-progress edits intact.
+    if not was_editing:
+        layer.commitChanges()
     return feat
 
 

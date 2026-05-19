@@ -186,15 +186,17 @@ class AdaKirmaSketcher(QgsMapTool):
         self._safe_edit(layer1, feat1, trimmed_geom1)
         self._safe_edit(layer2, feat2, trimmed_geom2)
 
-        # 6. Bağlantıyı kaynak katmana ekle
+        # 6. Bağlantıyı kaynak katmana ekle (kullanıcının açık edit session'ını koru)
         target_layer = layer1
         if connection and not connection.isEmpty():
-            if not target_layer.isEditable():
+            was_editing = target_layer.isEditable()
+            if not was_editing:
                 target_layer.startEditing()
             new_feat = QgsFeature(target_layer.fields())
             new_feat.setGeometry(connection)
             target_layer.addFeature(new_feat)
-            target_layer.commitChanges()
+            if not was_editing:
+                target_layer.commitChanges()
             target_layer.triggerRepaint()
 
         # 7. Artık kısa parçaları temizle
@@ -424,11 +426,17 @@ class AdaKirmaSketcher(QgsMapTool):
 
 
     def _safe_edit(self, layer, feature, new_geom):
-        """Katmanı düzenleyerek geometriyi güncelle."""
-        if not layer.isEditable():
+        """Katmanı düzenleyerek geometriyi güncelle.
+
+        Kullanıcının başlattığı edit session'ı varsa commit'i ona bırakırız;
+        biz başlattıysak burada bitiririz.
+        """
+        was_editing = layer.isEditable()
+        if not was_editing:
             layer.startEditing()
         layer.changeGeometry(feature.id(), new_geom)
-        layer.commitChanges()
+        if not was_editing:
+            layer.commitChanges()
         layer.triggerRepaint()
 
     # ════════════════════════════════════════════════════════════════════════
@@ -469,12 +477,14 @@ class AdaKirmaSketcher(QgsMapTool):
                         to_delete.append(feat.id())
 
             if to_delete:
-                if not layer.isEditable():
+                was_editing = layer.isEditable()
+                if not was_editing:
                     layer.startEditing()
                 for fid in to_delete:
                     layer.deleteFeature(fid)
                     cleaned += 1
-                layer.commitChanges()
+                if not was_editing:
+                    layer.commitChanges()
                 layer.triggerRepaint()
 
         return cleaned

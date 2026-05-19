@@ -55,35 +55,6 @@ def buffer_geometry(geom, distance, segments=16):
     return None
 
 
-def trim_geometry_at_point(target_geom, cutting_geom, click_point):
-    """Kesme geometrisine göre hedef geometriyi kırpar.
-
-    Args:
-        target_geom: QgsGeometry — kesilecek çizgi
-        cutting_geom: QgsGeometry — kesme sınırı
-        click_point: QgsPointXY — hangi tarafın silinceceğini belirler
-
-    Returns:
-        QgsGeometry veya None
-    """
-    if target_geom is None or cutting_geom is None:
-        return None
-
-    intersection = target_geom.intersection(cutting_geom)
-    if intersection is None or intersection.isEmpty():
-        return None
-
-    # Kesişim noktalarını al
-    if intersection.type() == QgsWkbTypes.PointGeometry:
-        split_result = target_geom.splitGeometry(
-            [QgsPointXY(intersection.asPoint())], False
-        )
-    else:
-        return None
-
-    return target_geom
-
-
 def extend_geometry_to_boundary(target_geom, boundary_geom):
     """Hedef geometriyi sınır geometrisine kadar uzatır.
 
@@ -97,7 +68,14 @@ def extend_geometry_to_boundary(target_geom, boundary_geom):
     if target_geom is None or boundary_geom is None:
         return None
 
-    line = target_geom.asPolyline()
+    # Multi-part safe: take the first part if multi.
+    if target_geom.isMultipart():
+        parts = target_geom.asMultiPolyline()
+        if not parts or not parts[0]:
+            return None
+        line = list(parts[0])
+    else:
+        line = target_geom.asPolyline()
     if len(line) < 2:
         return None
 
@@ -120,38 +98,27 @@ def extend_geometry_to_boundary(target_geom, boundary_geom):
         line + [QgsPointXY(ex, ey)]
     )
 
-    # Kesişim noktasını bul
+    # Kesişim noktasını bul. Multi-intersection olursa segment ucuna en yakın olanı seç.
     intersection = extended_line.intersection(boundary_geom)
     if intersection is None or intersection.isEmpty():
         return None
 
-    if intersection.type() == QgsWkbTypes.PointGeometry:
-        int_pt = intersection.asPoint()
-        new_line = list(line) + [QgsPointXY(int_pt)]
-        return QgsGeometry.fromPolylineXY(new_line)
+    candidates = []
+    if intersection.isMultipart():
+        try:
+            candidates = [QgsPointXY(p) for p in intersection.asMultiPoint()]
+        except Exception:
+            candidates = []
+    elif intersection.type() == QgsWkbTypes.PointGeometry:
+        candidates = [QgsPointXY(intersection.asPoint())]
 
-    return None
-
-
-def fillet_corner(geom, vertex_index, radius):
-    """Köşeye fillet (yuvarlatma) uygular.
-
-    Args:
-        geom: QgsGeometry (LineString veya Polygon)
-        vertex_index: Yuvarlatılacak köşe indeksi
-        radius: Fillet yarıçapı
-
-    Returns:
-        QgsGeometry veya None
-    """
-    if geom is None or geom.isEmpty() or radius <= 0:
+    if not candidates:
         return None
 
-    # QGIS smooth fonksiyonunu kullan
-    result = geom.smooth(1, 0.25 + (radius / 100.0), -1.0, 180.0)
-    if result and not result.isEmpty():
-        return result
-    return None
+    end_geom = QgsGeometry.fromPointXY(p2)
+    best = min(candidates, key=lambda c: end_geom.distance(QgsGeometry.fromPointXY(c)))
+    new_line = list(line) + [best]
+    return QgsGeometry.fromPolylineXY(new_line)
 
 
 def measure_distance(point1, point2, crs=None):
@@ -215,78 +182,70 @@ def rotate_geometry(geom, center, angle_degrees):
     return result
 
 
-def scale_geometry(geom, center, factor):
-    """Geometriyi merkeze göre ölçekler.
+def _transform_vertices(geom, transform_fn):
+    """Apply transform_fn(QgsPointXY) -> QgsPointXY across all rings/parts.
 
-    Args:
-        geom: QgsGeometry
-        center: QgsPointXY — ölçek merkezi
-        factor: float — ölçek faktörü
-
-    Returns:
-        QgsGeometry
+    Preserves multipart, polygon holes, and single/multi distinction.
     """
     if geom is None or geom.isEmpty():
         return None
 
-    result = QgsGeometry(geom)
+    g_type = geom.type()
 
-    # Tüm noktaları ölçekle
-    vertices = []
-    for v in result.vertices():
-        nx = center.x() + (v.x() - center.x()) * factor
-        ny = center.y() + (v.y() - center.y()) * factor
-        vertices.append(QgsPointXY(nx, ny))
+    if g_type == QgsWkbTypes.PointGeometry:
+        if geom.isMultipart():
+            new_pts = [transform_fn(QgsPointXY(p)) for p in geom.asMultiPoint()]
+            return QgsGeometry.fromMultiPointXY(new_pts)
+        return QgsGeometry.fromPointXY(transform_fn(QgsPointXY(geom.asPoint())))
 
-    if geom.type() == QgsWkbTypes.LineGeometry:
-        return QgsGeometry.fromPolylineXY(vertices)
-    elif geom.type() == QgsWkbTypes.PolygonGeometry:
-        return QgsGeometry.fromPolygonXY([vertices])
-    elif geom.type() == QgsWkbTypes.PointGeometry:
-        if vertices:
-            return QgsGeometry.fromPointXY(vertices[0])
+    if g_type == QgsWkbTypes.LineGeometry:
+        if geom.isMultipart():
+            new_lines = [[transform_fn(QgsPointXY(p)) for p in line]
+                         for line in geom.asMultiPolyline()]
+            return QgsGeometry.fromMultiPolylineXY(new_lines)
+        return QgsGeometry.fromPolylineXY(
+            [transform_fn(QgsPointXY(p)) for p in geom.asPolyline()]
+        )
+
+    if g_type == QgsWkbTypes.PolygonGeometry:
+        if geom.isMultipart():
+            new_polys = [
+                [[transform_fn(QgsPointXY(p)) for p in ring] for ring in poly]
+                for poly in geom.asMultiPolygon()
+            ]
+            return QgsGeometry.fromMultiPolygonXY(new_polys)
+        return QgsGeometry.fromPolygonXY(
+            [[transform_fn(QgsPointXY(p)) for p in ring] for ring in geom.asPolygon()]
+        )
+
     return None
+
+
+def scale_geometry(geom, center, factor):
+    """Multipart-safe scale around `center` by `factor`."""
+    def fn(v):
+        return QgsPointXY(
+            center.x() + (v.x() - center.x()) * factor,
+            center.y() + (v.y() - center.y()) * factor,
+        )
+    return _transform_vertices(geom, fn)
 
 
 def mirror_geometry(geom, line_start, line_end):
-    """Geometriyi bir çizgiye göre aynalar.
-
-    Args:
-        geom: QgsGeometry
-        line_start: QgsPointXY — ayna çizgisi başlangıcı
-        line_end: QgsPointXY — ayna çizgisi bitişi
-
-    Returns:
-        QgsGeometry
-    """
-    if geom is None or geom.isEmpty():
-        return None
-
+    """Multipart-safe mirror across the line through line_start→line_end."""
     dx = line_end.x() - line_start.x()
     dy = line_end.y() - line_start.y()
     length_sq = dx * dx + dy * dy
-
     if length_sq == 0:
         return None
 
-    mirrored = []
-    for v in geom.vertices():
-        # Noktayı çizgiye göre aynala
+    def fn(v):
         t = ((v.x() - line_start.x()) * dx + (v.y() - line_start.y()) * dy) / length_sq
         proj_x = line_start.x() + t * dx
         proj_y = line_start.y() + t * dy
-        mx = 2 * proj_x - v.x()
-        my = 2 * proj_y - v.y()
-        mirrored.append(QgsPointXY(mx, my))
+        return QgsPointXY(2 * proj_x - v.x(), 2 * proj_y - v.y())
 
-    if geom.type() == QgsWkbTypes.LineGeometry:
-        return QgsGeometry.fromPolylineXY(mirrored)
-    elif geom.type() == QgsWkbTypes.PolygonGeometry:
-        return QgsGeometry.fromPolygonXY([mirrored])
-    elif geom.type() == QgsWkbTypes.PointGeometry:
-        if mirrored:
-            return QgsGeometry.fromPointXY(mirrored[0])
-    return None
+    return _transform_vertices(geom, fn)
 
 
 def point_distance(p1, p2):
@@ -435,12 +394,17 @@ def create_fillet_and_trims(geom1, geom2, radius):
     
     a1 = angle_of(tp1)
     a2 = angle_of(tp2)
-    if a2 < a1:
-        a2 += 2*math.pi
-        
+    # Pick the SHORTEST arc between tp1 and tp2 — previous version always
+    # forced CCW, producing the long way around for half the configurations.
+    diff = a2 - a1
+    while diff > math.pi:
+        diff -= 2 * math.pi
+    while diff <= -math.pi:
+        diff += 2 * math.pi
+
     segments = 20
-    arc_pts = [QgsPointXY(center.x() + radius*math.cos(a1 + (a2-a1)*i/segments),
-                          center.y() + radius*math.sin(a1 + (a2-a1)*i/segments))
+    arc_pts = [QgsPointXY(center.x() + radius*math.cos(a1 + diff*i/segments),
+                          center.y() + radius*math.sin(a1 + diff*i/segments))
                for i in range(segments+1)]
                
     arc_pts[0] = tp1

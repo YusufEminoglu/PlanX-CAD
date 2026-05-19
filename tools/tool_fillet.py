@@ -33,7 +33,7 @@ class tool_fillet(tool_base):
     def activate(self):
         super().activate()
         r, ok = QInputDialog.getDouble(
-            None, "Fillet", "Fillet yarıçapı (m):",
+            self.iface.mainWindow(), "Fillet", "Fillet yarıçapı (m):",
             self.radius, 0.01, 10000.0, 2
         )
         if ok:
@@ -115,54 +115,6 @@ class tool_fillet(tool_base):
                         arc_geom = fillet_result['arc']
                         self.preview_rb.setToGeometry(arc_geom, None)
                         self.preview_rb.show()
-
-    def _get_line_points(self, geom):
-        if geom.isMultipart():
-            lines = geom.asMultiPolyline()
-            if lines:
-                return [QgsPointXY(p) for p in lines[0]]
-        else:
-            return [QgsPointXY(p) for p in geom.asPolyline()]
-        return []
-
-    def _find_direction_from_intersection(self, pts, int_pt):
-        """Kesişim noktasından uzaklaşan yönü bul."""
-        min_dist = float('inf')
-        best_idx = 0
-        for i, p in enumerate(pts):
-            d = int_pt.distance(p)
-            if d < min_dist:
-                min_dist = d
-                best_idx = i
-
-        # Kesişim noktasından uzağa bakan yön
-        if best_idx == 0 and len(pts) > 1:
-            return math.atan2(pts[0].y() - int_pt.y(), pts[0].x() - int_pt.x())
-        elif best_idx == len(pts) - 1 and len(pts) > 1:
-            return math.atan2(pts[-1].y() - int_pt.y(), pts[-1].x() - int_pt.x())
-        else:
-            # Daha uzak uca bakan yön
-            d_start = int_pt.distance(pts[0])
-            d_end = int_pt.distance(pts[-1])
-            if d_start > d_end:
-                return math.atan2(pts[0].y() - int_pt.y(), pts[0].x() - int_pt.x())
-            else:
-                return math.atan2(pts[-1].y() - int_pt.y(), pts[-1].x() - int_pt.x())
-
-
-
-    def _trim_line_at_point(self, pts, int_pt, trim_pt):
-        """Çizgiyi kesişim noktasından trim noktasına kadar kes."""
-        # int_pt'ye en yakın ucu bul
-        d_start = int_pt.distance(pts[0])
-        d_end = int_pt.distance(pts[-1])
-
-        if d_start < d_end:
-            # Başlangıç kesişime yakın → başlangıcı trim_pt ile değiştir
-            return [trim_pt] + pts[1:]
-        else:
-            # Son kesişime yakın → sonu trim_pt ile değiştir
-            return pts[:-1] + [trim_pt]
 
     def _cleanup_fillet(self):
         self.first_layer = None

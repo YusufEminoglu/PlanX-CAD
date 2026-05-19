@@ -4,7 +4,7 @@ Dialog ile join style seçimi + otomatik katman oluşturma.
 """
 
 from qgis.PyQt.QtCore import Qt
-from qgis.core import QgsWkbTypes, QgsGeometry, Qgis
+from qgis.core import QgsWkbTypes, QgsGeometry, QgsFeature, Qgis
 from qgis.PyQt.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QDoubleSpinBox,
     QComboBox, QPushButton, QHBoxLayout, QLabel, QGroupBox
@@ -150,29 +150,26 @@ class tool_buffer(tool_base):
 
             if buffer_layer:
                 join_names = {1: "round", 2: "bevel", 3: "miter"}
-                self._add_feature(buffer_layer, buffered)
-
-                # Öznitelikleri güncelle
-                buffer_layer.startEditing()
-                last_feat = list(buffer_layer.getFeatures())
-                if last_feat:
-                    fid = last_feat[-1].id()
-                    buffer_layer.changeAttributeValue(
-                        fid,
-                        buffer_layer.fields().indexOf("kaynak_katman"),
-                        layer.name()
-                    )
-                    buffer_layer.changeAttributeValue(
-                        fid,
-                        buffer_layer.fields().indexOf("buffer_mesafe"),
-                        self.distance
-                    )
-                    buffer_layer.changeAttributeValue(
-                        fid,
-                        buffer_layer.fields().indexOf("join_stili"),
-                        join_names.get(self.join_style, "round")
-                    )
-                buffer_layer.commitChanges()
+                # Build feature with attributes inline (avoid race with "last by getFeatures()").
+                was_editing = buffer_layer.isEditable()
+                if not was_editing:
+                    buffer_layer.startEditing()
+                feat = QgsFeature(buffer_layer.fields())
+                feat.setGeometry(buffered)
+                feat.setAttribute(
+                    buffer_layer.fields().indexOf("kaynak_katman"), layer.name()
+                )
+                feat.setAttribute(
+                    buffer_layer.fields().indexOf("buffer_mesafe"), self.distance
+                )
+                feat.setAttribute(
+                    buffer_layer.fields().indexOf("join_stili"),
+                    join_names.get(self.join_style, "round"),
+                )
+                buffer_layer.addFeature(feat)
+                if not was_editing:
+                    buffer_layer.commitChanges()
+                buffer_layer.triggerRepaint()
 
                 self.tool_message.emit(
                     f"✅ Buffer ({self.distance}m) — planx_buffer katmanına eklendi"
