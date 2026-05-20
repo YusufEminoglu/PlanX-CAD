@@ -2,7 +2,7 @@
 name=PlanX CAD Toolset
 qgisMinimumVersion=3.28
 description=Lightweight and fast CAD toolset for urban planning processes in QGIS. Features include drawing, editing, transforming, measuring, and road platform design.
-version=1.2.0
+version=1.3.0
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
@@ -23,6 +23,10 @@ experimental=False
 deprecated=False
 
 changelog=
+    PlanX CAD Toolset 1.3.0 - Two new tools: Array and Linear Dimension.
+        - Array (rectangular + polar): pick a feature, choose rows/cols + dx/dy or count + sweep angle, optional polar center on canvas with live preview. Multipart-safe via the existing rotate_geometry helper.
+        - Linear Dimension: click two points (with snap), creates a permanent dimension line on an auto-created planx_dimensions layer with distance_m, label, and from/to coordinate attributes. Auto-enables label rendering on first use. Right-click resets, Esc cancels.
+        - New icons cad_array.svg and cad_dimension.svg in the dock; main_plugin dispatch updated; array added to the dialog-tool set so each invocation re-asks parameters.
     PlanX CAD Toolset 1.2.0 - UI scroll fix + correctness pass.
         - Dock panel now scrolls; fits on small/narrow screens.
         - Trim: splitGeometry tuple-unpack fix (QGIS 3.x).

@@ -3,6 +3,25 @@
 All notable changes to **PlanX CAD Toolset** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [1.3.0] - 2026-05-20
+
+Two new tools added to the dock.
+
+### Added
+- **Array tool** (`tools/tool_array.py`):
+  - Rectangular mode: rows × cols with independent Δx / Δy spacing
+  - Polar mode: count + sweep angle, with on-canvas center click and live preview of all rotated copies
+  - Copies inherit source attributes; uses `rotate_geometry` (multipart-safe)
+- **Linear Dimension tool** (`tools/tool_dimension.py`):
+  - Click two points (snap-aware); commits a dimension line on the auto-created `planx_dimensions` memory layer
+  - Attributes: `distance_m`, `label` (`12.34 m` or `1.234 km`), `from_x/y`, `to_x/y`
+  - Auto-enables labels showing the `label` field on first use
+  - Right-click resets between dimensions; Esc cancels current segment
+- New icons `cad_array.svg`, `cad_dimension.svg` in the dock (Edit and Measure groups respectively).
+
+### Changed
+- `main_plugin._create_tool` now dispatches `array` and `dimension`; `array` joins the dialog-tool set so each invocation re-asks parameters.
+
 ## [1.2.0] - 2026-05-19
 
 UI overhaul + correctness pass.

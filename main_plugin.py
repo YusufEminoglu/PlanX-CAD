@@ -144,7 +144,7 @@ class PlanXCADPlugin:
     # ═══════════════════════════════════════════════════════════════════════
 
     # Dialog açan araçlar — her seferinde yeni instance gerekir
-    _DIALOG_TOOLS = {"buffer", "fillet", "polygon", "road", "junction", "measure_area", "ada_kirma"}
+    _DIALOG_TOOLS = {"buffer", "fillet", "polygon", "road", "junction", "measure_area", "ada_kirma", "array"}
 
     def _activate_tool(self, tool_key):
         """Araç tuşuna basıldığında ilgili map tool'u aktifleştirir."""
@@ -230,6 +230,14 @@ class PlanXCADPlugin:
             elif key == "mirror":
                 from .tools.tool_mirror import tool_mirror
                 t = tool_mirror(canvas, self.iface)
+
+            # ── Yeni: Array & Dimension ─────────────────────────────────
+            elif key == "array":
+                from .tools.tool_array import tool_array
+                t = tool_array(canvas, self.iface)
+            elif key == "dimension":
+                from .tools.tool_dimension import tool_dimension
+                t = tool_dimension(canvas, self.iface)
 
             # ── Ölçüm ───────────────────────────────────────────────────
             elif key == "measure":

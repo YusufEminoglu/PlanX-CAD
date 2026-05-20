@@ -198,6 +198,7 @@ class CADDockWidget(QDockWidget):
             ("extend",  "cad_extend.svg",  "Extend"),
             ("fillet",  "cad_fillet.svg",  "Fillet"),
             ("buffer",  "cad_buffer.svg",  "Buffer"),
+            ("array",   "cad_array.svg",   "Array (rectangular / polar)"),
         ]
         edit_content = QWidget()
         edit_content.setLayout(edit_grid)
@@ -238,6 +239,7 @@ class CADDockWidget(QDockWidget):
 
         self._add_tool_button(measure_grid, 0, 0, "measure", "cad_measure.svg", "Mesafe Ölç")
         self._add_tool_button(measure_grid, 0, 1, "measure_area", "cad_measure_area.svg", "Alan Ölç")
+        self._add_tool_button(measure_grid, 0, 2, "dimension", "cad_dimension.svg", "Dimension (kalıcı etiket)")
         self._add_tool_button(measure_grid, 1, 0, "measure_select_line", "cad_measure_select_line.svg", "Seç ve Çizgi Ölç")
         self._add_tool_button(measure_grid, 1, 1, "measure_select_area", "cad_measure_select_area.svg", "Seç ve Alan Ölç")
 

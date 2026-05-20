@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="#1a237e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Dimension line with arrows -->
+  <path d="M6 16 H26"/>
+  <path d="M6 16 L10 13 M6 16 L10 19"/>
+  <path d="M26 16 L22 13 M26 16 L22 19"/>
+  <!-- Extension lines -->
+  <path d="M6 10 V22" stroke-opacity="0.5"/>
+  <path d="M26 10 V22" stroke-opacity="0.5"/>
+  <!-- Label box -->
+  <rect x="12" y="5" width="8" height="6" rx="1" fill="#ff6d00" stroke="#ff6d00"/>
+  <path d="M14 8 H18" stroke="white" stroke-width="1"/>
+</svg>
