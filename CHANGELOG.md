@@ -3,6 +3,25 @@
 All notable changes to **PlanX CAD Toolset** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [1.4.0] - 2026-05-20
+
+Keyboard shortcuts framework + tool history.
+
+### Added
+- **15 `Ctrl+Shift+<letter>` shortcuts** registered as `Qt.ApplicationShortcut` on the QGIS main window:
+  - Drawing: `L`ine, `P`olyline, `R`ectangle, polyGon (`G`), `C`ircle, `A`rc
+  - Editing: `O`ffset, `T`rim, `E`xtend, `F`illet, `B`uffer, arra`Y`
+  - Transform: `M`ove
+  - Measure: `D`imension, `I` (mesafe ölç)
+- **`Ctrl+Shift+Space`**: repeat the last activated tool (CAD convention).
+- Dock: new **"↻ Son aracı tekrarla"** button next to the status bar.
+- Tool-button tooltips now show their keyboard shortcut as a `[Ctrl+Shift+X]` suffix.
+
+### Changed
+- `main_plugin` tracks `self._last_tool_key` updated on every activation.
+- `_activate_tool` recognises an `__repeat__` sentinel emitted by the dock's repeat button and reroutes it through `_repeat_last_tool`.
+- Plugin owns the `QShortcut` instances; they are disabled and deleted on `unload`.
+
 ## [1.3.0] - 2026-05-20
 
 Two new tools added to the dock.

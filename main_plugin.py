@@ -7,8 +7,8 @@ planX CAD Araç Seti — Ana Plugin Sınıfı
 import os
 
 from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QMenu, QToolBar, QMessageBox
+from qgis.PyQt.QtGui import QIcon, QKeySequence
+from qgis.PyQt.QtWidgets import QAction, QMenu, QToolBar, QMessageBox, QShortcut
 
 
 class PlanXCADPlugin:
@@ -27,6 +27,11 @@ class PlanXCADPlugin:
 
         # Araç instance'ları (lazy loaded)
         self._tools = {}
+
+        # Tool history: most-recently activated key for "repeat last"
+        self._last_tool_key = None
+        # QShortcuts owned by the plugin (cleaned up in unload)
+        self._shortcuts = []
 
     # ═══════════════════════════════════════════════════════════════════════
     # QGIS Plugin Interface
@@ -65,6 +70,9 @@ class PlanXCADPlugin:
             status_tip="planX CAD Araç Seti hakkında"
         )
 
+        # ── Klavye kısayolları ─────────────────────────────────────────────
+        self._setup_shortcuts()
+
     def unload(self):
         """Plugin kaldırıldığında temizlik yap."""
         # Aktif aracı deaktive et
@@ -83,6 +91,12 @@ class PlanXCADPlugin:
             if tool:
                 del tool
         self._tools.clear()
+
+        # Klavye kısayolları
+        for sc in self._shortcuts:
+            sc.setEnabled(False)
+            sc.deleteLater()
+        self._shortcuts.clear()
 
         # Actions
         for action in self.actions:
@@ -146,14 +160,67 @@ class PlanXCADPlugin:
     # Dialog açan araçlar — her seferinde yeni instance gerekir
     _DIALOG_TOOLS = {"buffer", "fillet", "polygon", "road", "junction", "measure_area", "ada_kirma", "array"}
 
+    # ═══════════════════════════════════════════════════════════════════════
+    # Klavye kısayolları + tool history
+    # ═══════════════════════════════════════════════════════════════════════
+
+    # Tool-key -> shortcut spec. Ctrl+Shift+<letter> seçildi: QGIS'in built-in
+    # shortcut'larıyla çakışmıyor, kolay hatırlanır.
+    _SHORTCUTS = (
+        ("line",                  "Ctrl+Shift+L"),
+        ("polyline",              "Ctrl+Shift+P"),
+        ("rectangle",             "Ctrl+Shift+R"),
+        ("polygon",               "Ctrl+Shift+G"),
+        ("circle",                "Ctrl+Shift+C"),
+        ("arc",                   "Ctrl+Shift+A"),
+        ("offset",                "Ctrl+Shift+O"),
+        ("trim",                  "Ctrl+Shift+T"),
+        ("extend",                "Ctrl+Shift+E"),
+        ("fillet",                "Ctrl+Shift+F"),
+        ("buffer",                "Ctrl+Shift+B"),
+        ("move",                  "Ctrl+Shift+M"),
+        ("array",                 "Ctrl+Shift+Y"),
+        ("dimension",             "Ctrl+Shift+D"),
+        ("measure",               "Ctrl+Shift+I"),
+    )
+
+    def _setup_shortcuts(self):
+        """QShortcut'lar QGIS main window'a bağlanır (Qt.ApplicationShortcut
+        context). Plugin yüklü iken her yerden çalışırlar; unload'da temizlenir."""
+        parent = self.iface.mainWindow()
+        for key, seq in self._SHORTCUTS:
+            sc = QShortcut(QKeySequence(seq), parent)
+            sc.setContext(Qt.ApplicationShortcut)
+            sc.activated.connect(lambda k=key: self._activate_tool(k))
+            self._shortcuts.append(sc)
+        # Repeat last tool
+        repeat = QShortcut(QKeySequence("Ctrl+Shift+Space"), parent)
+        repeat.setContext(Qt.ApplicationShortcut)
+        repeat.activated.connect(self._repeat_last_tool)
+        self._shortcuts.append(repeat)
+
+    def _repeat_last_tool(self):
+        if self._last_tool_key:
+            self._activate_tool(self._last_tool_key)
+        elif self._dock:
+            self._dock.set_status("⚠️ No previous tool to repeat")
+
     def _activate_tool(self, tool_key):
         """Araç tuşuna basıldığında ilgili map tool'u aktifleştirir."""
+        # "Repeat last" button in dock emits the sentinel key.
+        if tool_key == "__repeat__":
+            self._repeat_last_tool()
+            return
+
         canvas = self.iface.mapCanvas()
 
         # Önceki aracı deaktive et
         if self._current_tool:
             canvas.unsetMapTool(self._current_tool)
             self._current_tool = None
+
+        # Tool history — used by Ctrl+Shift+Space ("repeat last tool")
+        self._last_tool_key = tool_key
 
         # Dialog tabanlı araçlar → her seferinde yeni instance
         if tool_key in self._DIALOG_TOOLS:

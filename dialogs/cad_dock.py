@@ -118,9 +118,30 @@ class CADDockWidget(QDockWidget):
         """İkon dosyasının yolunu döndür."""
         return os.path.join(self.icon_dir, name)
 
+    # tool key -> visible shortcut for tooltip badge. Mirrors main_plugin._SHORTCUTS.
+    _SHORTCUT_BADGES = {
+        "line":      "Ctrl+Shift+L",
+        "polyline":  "Ctrl+Shift+P",
+        "rectangle": "Ctrl+Shift+R",
+        "polygon":   "Ctrl+Shift+G",
+        "circle":    "Ctrl+Shift+C",
+        "arc":       "Ctrl+Shift+A",
+        "offset":    "Ctrl+Shift+O",
+        "trim":      "Ctrl+Shift+T",
+        "extend":    "Ctrl+Shift+E",
+        "fillet":    "Ctrl+Shift+F",
+        "buffer":    "Ctrl+Shift+B",
+        "move":      "Ctrl+Shift+M",
+        "array":     "Ctrl+Shift+Y",
+        "dimension": "Ctrl+Shift+D",
+        "measure":   "Ctrl+Shift+I",
+    }
+
     def _add_tool_button(self, grid, row, col, key, icon_file, tooltip):
         """Grid'e araç butonu ekle ve button group'a kaydet."""
-        btn = CadToolButton(self._icon(icon_file), tooltip)
+        shortcut = self._SHORTCUT_BADGES.get(key)
+        full_tip = f"{tooltip} [{shortcut}]" if shortcut else tooltip
+        btn = CadToolButton(self._icon(icon_file), full_tip)
         btn.clicked.connect(lambda checked, k=key: self._on_button_clicked(k))
         grid.addWidget(btn, row, col)
         self.buttons[key] = btn
@@ -322,8 +343,22 @@ class CADDockWidget(QDockWidget):
         sep.setFrameShadow(QFrame.Sunken)
         layout.addWidget(sep)
 
+        # ── Hızlı eylemler ───────────────────────────────────────────────
+        quick_row = QHBoxLayout()
+        repeat_btn = QPushButton("↻ Son aracı tekrarla")
+        repeat_btn.setToolTip("Son aktivasyon edilen aracı yeniden başlatır [Ctrl+Shift+Space]")
+        repeat_btn.setMinimumHeight(28)
+        repeat_btn.setStyleSheet(
+            "QPushButton { background: #e8eaf6; color: #1a237e; "
+            "border: 1px solid #c5cae9; border-radius: 5px; padding: 4px 8px; }"
+            "QPushButton:hover { background: #c5cae9; }"
+        )
+        repeat_btn.clicked.connect(lambda: self.tool_activated.emit("__repeat__"))
+        quick_row.addWidget(repeat_btn)
+        layout.addLayout(quick_row)
+
         # ── Durum Çubuğu ─────────────────────────────────────────────────
-        self.status_label = QLabel("Hazır")
+        self.status_label = QLabel("Hazır — kısayollar: Ctrl+Shift+<harf>")
         self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet(
             "color: #546e7a; font-size: 10px; padding: 4px; "
