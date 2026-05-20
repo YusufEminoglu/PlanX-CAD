@@ -160,7 +160,7 @@ class PlanXCADPlugin:
     # ═══════════════════════════════════════════════════════════════════════
 
     # Dialog açan araçlar — her seferinde yeni instance gerekir
-    _DIALOG_TOOLS = {"buffer", "fillet", "polygon", "road", "junction", "measure_area", "ada_kirma", "array", "divide", "multi_offset", "join"}
+    _DIALOG_TOOLS = {"buffer", "fillet", "polygon", "road", "junction", "measure_area", "ada_kirma", "array", "divide", "multi_offset", "join", "hatch"}
 
     # ═══════════════════════════════════════════════════════════════════════
     # Klavye kısayolları + tool history
@@ -183,6 +183,8 @@ class PlanXCADPlugin:
         ("move",                  "Ctrl+Shift+M"),
         ("array",                 "Ctrl+Shift+Y"),
         ("vertex_edit",           "Ctrl+Shift+V"),
+        ("hatch",                 "Ctrl+Shift+H"),
+        ("construction_inf",      "Ctrl+Shift+K"),
         ("dimension",             "Ctrl+Shift+D"),
         ("measure",               "Ctrl+Shift+I"),
         ("divide",                "Ctrl+Shift+U"),
@@ -311,6 +313,15 @@ class PlanXCADPlugin:
             elif key == "vertex_edit":
                 from .tools.tool_vertex_edit import tool_vertex_edit
                 t = tool_vertex_edit(canvas, self.iface)
+            elif key == "hatch":
+                from .tools.tool_hatch import tool_hatch
+                t = tool_hatch(canvas, self.iface)
+            elif key == "construction_inf":
+                from .tools.tool_construction_line import tool_construction_line
+                t = tool_construction_line(canvas, self.iface, mode=tool_construction_line.MODE_INFINITE)
+            elif key == "construction_ray":
+                from .tools.tool_construction_line import tool_construction_line
+                t = tool_construction_line(canvas, self.iface, mode=tool_construction_line.MODE_RAY)
             elif key == "dimension":
                 from .tools.tool_dimension import tool_dimension
                 t = tool_dimension(canvas, self.iface)

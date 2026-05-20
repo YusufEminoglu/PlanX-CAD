@@ -133,12 +133,14 @@ class CADDockWidget(QDockWidget):
         "buffer":       "Ctrl+Shift+B",
         "move":         "Ctrl+Shift+M",
         "array":        "Ctrl+Shift+Y",
-        "vertex_edit":  "Ctrl+Shift+V",
-        "dimension":    "Ctrl+Shift+D",
-        "measure":      "Ctrl+Shift+I",
-        "divide":       "Ctrl+Shift+U",
-        "multi_offset": "Ctrl+Shift+X",
-        "join":         "Ctrl+Shift+J",
+        "vertex_edit":      "Ctrl+Shift+V",
+        "hatch":            "Ctrl+Shift+H",
+        "construction_inf": "Ctrl+Shift+K",
+        "dimension":        "Ctrl+Shift+D",
+        "measure":          "Ctrl+Shift+I",
+        "divide":           "Ctrl+Shift+U",
+        "multi_offset":     "Ctrl+Shift+X",
+        "join":             "Ctrl+Shift+J",
     }
 
     def _add_tool_button(self, grid, row, col, key, icon_file, tooltip):
@@ -226,10 +228,12 @@ class CADDockWidget(QDockWidget):
             ("fillet",       "cad_fillet.svg",       "Fillet / Köşe Yuvarlama"),
             ("buffer",       "cad_buffer.svg",       "Buffer / Tampon"),
             ("array",        "cad_array.svg",        "Array / Çoklu Kopyalama"),
-            ("vertex_edit",  "cad_vertex_edit.svg",  "Vertex Edit / Köşe Düzenleme"),
-            ("divide",       "cad_divide.svg",       "Divide / Eşit Parçaya Böl"),
-            ("multi_offset", "cad_multi_offset.svg", "Multi-Offset / Çoklu Öteleme"),
-            ("join",         "cad_join.svg",         "Join / Çizgileri Birleştir"),
+            ("vertex_edit",      "cad_vertex_edit.svg",      "Vertex Edit / Köşe Düzenleme"),
+            ("divide",           "cad_divide.svg",           "Divide / Eşit Parçaya Böl"),
+            ("multi_offset",     "cad_multi_offset.svg",     "Multi-Offset / Çoklu Öteleme"),
+            ("join",             "cad_join.svg",             "Join / Çizgileri Birleştir"),
+            ("hatch",            "cad_hatch.svg",            "Hatch / Pattern Fill"),
+            ("construction_inf", "cad_construction.svg",     "Construction line / Sonsuz referans"),
         ]
         edit_content = QWidget()
         edit_content.setLayout(edit_grid)

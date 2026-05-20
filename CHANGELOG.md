@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.7.0] - 2026-05-20
+
+Hatch / Pattern Fill + Construction Lines.
+
+### Added
+- **Hatch tool** (`tools/tool_hatch.py`): pick a closed polygon, configure pattern (parallel, cross, diagonal up/down), spacing (m), angle (°) and colour. Hatch lines are computed by sweeping the polygon's bounding box and clipping each line to the polygon, then written to the auto-created `planx_hatch` layer with attributes `source_layer`, `pattern`, `spacing_m`, `angle_deg`, `color`. Multipart-safe (multi-line intersections are split per part).
+- **Construction Line tool** (`tools/tool_construction_line.py`): 2-click reference line with three dispatch modes:
+  - `construction_inf` — extends `_INF_EXTEND_FACTOR × canvas diagonal` past both reference points (infinite reference).
+  - `construction_ray` — extends only past the second point.
+  - `construction_seg` — bounded segment.
+  Writes to the auto-created `planx_construction` layer; the dashed cyan style is applied on first use.
+- New icons `cad_hatch.svg` and `cad_construction.svg` registered in the dock's Edit group.
+- Shortcuts: Hatch = `Ctrl+Shift+H`, Construction (infinite) = `Ctrl+Shift+K`.
+
 ## [1.6.0] - 2026-05-20
 
 - Add Join, Divide, Multi-Offset tools and make UI bilingual/compact

@@ -2,7 +2,7 @@
 name=PlanX CAD Toolset
 qgisMinimumVersion=3.28
 description=Lightweight and fast CAD toolset for urban planning processes in QGIS. Features include drawing, editing, transforming, measuring, and road platform design.
-version=1.6.0
+version=1.7.0
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
@@ -23,6 +23,12 @@ experimental=False
 deprecated=False
 
 changelog=
+    PlanX CAD Toolset 1.7.0 - Hatch / Pattern Fill + Construction Lines.
+        - Hatch tool: pick a closed polygon, choose pattern (parallel / cross / diag up / diag down), spacing, angle and colour. Hatch lines are clipped to the polygon and written to the auto-created planx_hatch layer with full attribute metadata (source layer, pattern, spacing, angle, colour) so they survive export to other GIS/CAD formats.
+        - Construction Line tool: 2-click reference line on the auto-created planx_construction layer with a dashed cyan style. Three modes registered via the dispatcher (infinite reference / ray / segment) — the dock exposes the infinite mode; ray and segment are reachable through the construction_ray / construction_seg dispatch keys.
+        - Shortcuts: Hatch = Ctrl+Shift+H, Construction (infinite) = Ctrl+Shift+K.
+        - New icons cad_hatch.svg and cad_construction.svg.
+    PlanX CAD Toolset 1.6.0 - Join, Divide, Multi-Offset and a bilingual/compact UI pass.
     PlanX CAD Toolset 1.5.0 - Vertex Edit + Live coordinate read-out.
         - New Vertex Edit tool: click a feature to render every vertex as a handle; drag a handle to MOVE, click on the line to INSERT a vertex at the click point, right-click a handle to DELETE. Refuses deletes that would invalidate the ring.
         - New Live coordinate widget in the dock: real-time cursor X/Y, current CRS auth-id, and scale denominator. Updates from the canvas xyCoordinates/scaleChanged signals.
