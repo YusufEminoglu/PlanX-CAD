@@ -2,7 +2,7 @@
 name=PlanX CAD Toolset
 qgisMinimumVersion=3.28
 description=Lightweight and fast CAD toolset for urban planning processes in QGIS. Features include drawing, editing, transforming, measuring, and road platform design.
-version=1.4.0
+version=1.5.0
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
@@ -23,6 +23,10 @@ experimental=False
 deprecated=False
 
 changelog=
+    PlanX CAD Toolset 1.5.0 - Vertex Edit + Live coordinate read-out.
+        - New Vertex Edit tool: click a feature to render every vertex as a handle; drag a handle to MOVE, click on the line to INSERT a vertex at the click point, right-click a handle to DELETE. Refuses deletes that would invalidate the ring.
+        - New Live coordinate widget in the dock: real-time cursor X/Y, current CRS auth-id, and scale denominator. Updates from the canvas xyCoordinates/scaleChanged signals.
+        - Vertex Edit shortcut Ctrl+Shift+V; new cad_vertex_edit.svg icon in the Edit group.
     PlanX CAD Toolset 1.4.0 - Keyboard shortcuts framework + tool history.
         - 15 Ctrl+Shift+<letter> shortcuts (Line=L, Polyline=P, Rectangle=R, Polygon=G, Circle=C, Arc=A, Offset=O, Trim=T, Extend=E, Fillet=F, Buffer=B, Move=M, Array=Y, Dimension=D, Measure=I) registered as ApplicationShortcut on the QGIS main window.
         - Ctrl+Shift+Space: repeat the last activated tool (CAD convention).

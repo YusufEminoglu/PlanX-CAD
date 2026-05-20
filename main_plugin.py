@@ -180,6 +180,7 @@ class PlanXCADPlugin:
         ("buffer",                "Ctrl+Shift+B"),
         ("move",                  "Ctrl+Shift+M"),
         ("array",                 "Ctrl+Shift+Y"),
+        ("vertex_edit",           "Ctrl+Shift+V"),
         ("dimension",             "Ctrl+Shift+D"),
         ("measure",               "Ctrl+Shift+I"),
     )
@@ -302,6 +303,9 @@ class PlanXCADPlugin:
             elif key == "array":
                 from .tools.tool_array import tool_array
                 t = tool_array(canvas, self.iface)
+            elif key == "vertex_edit":
+                from .tools.tool_vertex_edit import tool_vertex_edit
+                t = tool_vertex_edit(canvas, self.iface)
             elif key == "dimension":
                 from .tools.tool_dimension import tool_dimension
                 t = tool_dimension(canvas, self.iface)

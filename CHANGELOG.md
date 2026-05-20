@@ -3,6 +3,24 @@
 All notable changes to **PlanX CAD Toolset** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [1.5.0] - 2026-05-20
+
+Vertex Edit + Live coordinate read-out.
+
+### Added
+- **Vertex Edit tool** (`tools/tool_vertex_edit.py`):
+  - Click a line or polygon feature to render every vertex as an orange handle.
+  - Drag a handle to **move** a vertex; release to commit.
+  - Click anywhere on the line itself (within ~8 px) to **insert** a new vertex at the click position.
+  - Right-click a handle to **delete** that vertex; deletions are refused if they would invalidate the ring (line < 2 vertices or polygon ring < 4).
+  - Multipart-safe via per-part vertex IDs.
+- **Live coordinate widget** (`dialogs/coord_widget.py`) inside the dock:
+  - Real-time cursor X / Y from the canvas' `xyCoordinates` signal.
+  - Current CRS auth-id and scale denominator from `mapSettings()` and `scaleChanged`.
+  - Compact monospace read-out styled to the dock palette.
+- Vertex Edit keyboard shortcut: `Ctrl+Shift+V`.
+- New icon `cad_vertex_edit.svg` in the Edit group.
+
 ## [1.4.0] - 2026-05-20
 
 Keyboard shortcuts framework + tool history.

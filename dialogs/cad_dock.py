@@ -132,9 +132,10 @@ class CADDockWidget(QDockWidget):
         "fillet":    "Ctrl+Shift+F",
         "buffer":    "Ctrl+Shift+B",
         "move":      "Ctrl+Shift+M",
-        "array":     "Ctrl+Shift+Y",
-        "dimension": "Ctrl+Shift+D",
-        "measure":   "Ctrl+Shift+I",
+        "array":       "Ctrl+Shift+Y",
+        "vertex_edit": "Ctrl+Shift+V",
+        "dimension":   "Ctrl+Shift+D",
+        "measure":     "Ctrl+Shift+I",
     }
 
     def _add_tool_button(self, grid, row, col, key, icon_file, tooltip):
@@ -214,12 +215,13 @@ class CADDockWidget(QDockWidget):
         edit_grid.setSpacing(4)
 
         edit_tools = [
-            ("offset",  "cad_offset.svg",  "Offset"),
-            ("trim",    "cad_trim.svg",    "Trim"),
-            ("extend",  "cad_extend.svg",  "Extend"),
-            ("fillet",  "cad_fillet.svg",  "Fillet"),
-            ("buffer",  "cad_buffer.svg",  "Buffer"),
-            ("array",   "cad_array.svg",   "Array (rectangular / polar)"),
+            ("offset",       "cad_offset.svg",       "Offset"),
+            ("trim",         "cad_trim.svg",         "Trim"),
+            ("extend",       "cad_extend.svg",       "Extend"),
+            ("fillet",       "cad_fillet.svg",       "Fillet"),
+            ("buffer",       "cad_buffer.svg",       "Buffer"),
+            ("array",        "cad_array.svg",        "Array (rectangular / polar)"),
+            ("vertex_edit",  "cad_vertex_edit.svg",  "Vertex Edit (insert / move / delete)"),
         ]
         edit_content = QWidget()
         edit_content.setLayout(edit_grid)
