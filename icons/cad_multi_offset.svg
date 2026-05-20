@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="#1a237e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Center Main Line -->
+  <line x1="4" y1="16" x2="28" y2="16"/>
+  <!-- Offset Line Left 1 -->
+  <line x1="4" y1="9" x2="28" y2="9" stroke="#ff6d00" stroke-width="1.5" stroke-dasharray="2 2"/>
+  <!-- Offset Line Left 2 -->
+  <line x1="4" y1="4" x2="28" y2="4" stroke="#ff6d00" stroke-width="1" stroke-dasharray="1 1"/>
+  <!-- Offset Line Right 1 -->
+  <line x1="4" y1="23" x2="28" y2="23" stroke="#ff6d00" stroke-width="1.5" stroke-dasharray="2 2"/>
+  <!-- Offset Line Right 2 -->
+  <line x1="4" y1="28" x2="28" y2="28" stroke="#ff6d00" stroke-width="1" stroke-dasharray="1 1"/>
+</svg>

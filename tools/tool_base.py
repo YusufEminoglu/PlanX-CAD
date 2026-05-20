@@ -49,14 +49,14 @@ class tool_base(QgsMapTool):
         # Görsel geri bildirimler (Snap Marker ve Obje Vurgusu)
         self.snap_marker = QgsVertexMarker(self.canvas)
         self.snap_marker.setIconType(QgsVertexMarker.ICON_CIRCLE)
-        self.snap_marker.setColor(QColor(255, 109, 0))
+        self.snap_marker.setColor(QColor(13, 148, 136))
         self.snap_marker.setIconSize(12)
         self.snap_marker.setPenWidth(2)
         self.snap_marker.hide()
 
         self.highlight_rb = QgsRubberBand(self.canvas, QgsWkbTypes.LineGeometry)
         self.highlight_rb.setWidth(4)
-        self.highlight_rb.setColor(QColor(255, 109, 0, 150))
+        self.highlight_rb.setColor(QColor(13, 148, 136, 160))
 
         self._set_cursor()
 
@@ -103,7 +103,7 @@ class tool_base(QgsMapTool):
         if getattr(self, 'snap_marker', None) is None:
             self.snap_marker = QgsVertexMarker(self.canvas)
             self.snap_marker.setIconType(QgsVertexMarker.ICON_CIRCLE)
-            self.snap_marker.setColor(QColor(255, 109, 0))
+            self.snap_marker.setColor(QColor(13, 148, 136))
             self.snap_marker.setIconSize(12)
             self.snap_marker.setPenWidth(2)
             self.snap_marker.hide()
@@ -111,7 +111,7 @@ class tool_base(QgsMapTool):
         if getattr(self, 'highlight_rb', None) is None:
             self.highlight_rb = QgsRubberBand(self.canvas, QgsWkbTypes.LineGeometry)
             self.highlight_rb.setWidth(4)
-            self.highlight_rb.setColor(QColor(255, 109, 0, 150))
+            self.highlight_rb.setColor(QColor(13, 148, 136, 160))
             
         self._set_cursor()
 

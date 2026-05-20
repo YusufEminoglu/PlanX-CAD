@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-planX CAD — Ana Dockable Panel
-Türkçe arayüzlü, kategorize edilmiş araç butonları.
-QButtonGroup ile tüm kategoriler arası tek seçim garanti.
+planX CAD — Main Dockable Panel
+Bilingual: English (Primary) and Turkish (Secondary).
+Highly compact, space-optimized layout with the official PlanX Teal/Slate theme.
 """
+from __future__ import annotations
 
 import os
 
@@ -18,39 +19,39 @@ from qgis.PyQt.QtWidgets import (
 
 
 class CadToolButton(QToolButton):
-    """Özelleştirilmiş CAD araç butonu."""
+    """Custom compact CAD tool button styled with PlanX Teal accents."""
 
     def __init__(self, icon_path, tooltip, parent=None):
         super().__init__(parent)
         if os.path.exists(icon_path):
             self.setIcon(QIcon(icon_path))
         self.setToolTip(tooltip)
-        self.setIconSize(QSize(28, 28))
-        self.setFixedSize(44, 44)
+        self.setIconSize(QSize(22, 22))
+        self.setFixedSize(34, 34)
         self.setCheckable(True)
         self.setStyleSheet("""
             QToolButton {
                 border: 1px solid transparent;
-                border-radius: 6px;
+                border-radius: 4px;
                 background: transparent;
-                padding: 4px;
+                padding: 2px;
             }
             QToolButton:hover {
-                background: #e8eaf6;
-                border: 1px solid #c5cae9;
+                background: #eef6f4;
+                border: 1px solid #bfe8dc;
             }
             QToolButton:checked {
-                background: #c5cae9;
-                border: 1px solid #7986cb;
+                background: #bfe8dc;
+                border: 1px solid #0f766e;
             }
             QToolButton:pressed {
-                background: #9fa8da;
+                background: #99f6e4;
             }
         """)
 
 
 class CollapsibleGroupBox(QGroupBox):
-    """Katlanabilir grup kutusu."""
+    """Collapsible group box with custom PlanX compact header styling."""
 
     def __init__(self, title, parent=None):
         super().__init__(title, parent)
@@ -62,23 +63,24 @@ class CollapsibleGroupBox(QGroupBox):
         self.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                font-size: 11px;
-                color: #1a237e;
-                border: 1px solid #c5cae9;
-                border-radius: 6px;
-                margin-top: 8px;
-                padding-top: 14px;
+                font-size: 10px;
+                color: #0f766e;
+                border: 1px solid #d8e0ea;
+                border-radius: 4px;
+                margin-top: 5px;
+                padding-top: 10px;
+                background: white;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
-                padding: 2px 8px;
-                background: #e8eaf6;
-                border-radius: 4px;
+                padding: 1px 6px;
+                background: #eef6f4;
+                border-radius: 3px;
             }
             QGroupBox::indicator {
-                width: 13px;
-                height: 13px;
+                width: 11px;
+                height: 11px;
             }
         """)
 
@@ -91,55 +93,56 @@ class CollapsibleGroupBox(QGroupBox):
 
 
 class CADDockWidget(QDockWidget):
-    """planX CAD ana dockable panel."""
+    """planX CAD main dockable panel."""
 
-    # Araç aktive edildiğinde emit edilir: (araç_adı,)
+    # Emitted when a tool is activated: (tool_key,)
     tool_activated = pyqtSignal(str)
 
     def __init__(self, iface, icon_dir, parent=None):
-        super().__init__("planX CAD Araç Seti", parent)
+        super().__init__("planX CAD Toolset / planX CAD Araç Seti", parent)
         self.iface = iface
         self.icon_dir = icon_dir
 
         self.setAllowedAreas(
             Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea
         )
-        # Dar ekranlarda panel sığsın diye minimum genişlik = en geniş satır + scroll
-        self.setMinimumWidth(180)
+        self.setMinimumWidth(160)
 
         self.buttons = {}
-        # Tüm butonlar tek bir QButtonGroup'ta → kategoriler arası exclusive
         self.button_group = QButtonGroup(self)
         self.button_group.setExclusive(True)
 
         self._setup_ui()
 
     def _icon(self, name):
-        """İkon dosyasının yolunu döndür."""
+        """Get icon file absolute path."""
         return os.path.join(self.icon_dir, name)
 
-    # tool key -> visible shortcut for tooltip badge. Mirrors main_plugin._SHORTCUTS.
+    # Tool key -> visible shortcut for tooltip badge. Mirrors main_plugin._SHORTCUTS.
     _SHORTCUT_BADGES = {
-        "line":      "Ctrl+Shift+L",
-        "polyline":  "Ctrl+Shift+P",
-        "rectangle": "Ctrl+Shift+R",
-        "polygon":   "Ctrl+Shift+G",
-        "circle":    "Ctrl+Shift+C",
-        "arc":       "Ctrl+Shift+A",
-        "offset":    "Ctrl+Shift+O",
-        "trim":      "Ctrl+Shift+T",
-        "extend":    "Ctrl+Shift+E",
-        "fillet":    "Ctrl+Shift+F",
-        "buffer":    "Ctrl+Shift+B",
-        "move":      "Ctrl+Shift+M",
-        "array":       "Ctrl+Shift+Y",
-        "vertex_edit": "Ctrl+Shift+V",
-        "dimension":   "Ctrl+Shift+D",
-        "measure":     "Ctrl+Shift+I",
+        "line":         "Ctrl+Shift+L",
+        "polyline":     "Ctrl+Shift+P",
+        "rectangle":    "Ctrl+Shift+R",
+        "polygon":      "Ctrl+Shift+G",
+        "circle":       "Ctrl+Shift+C",
+        "arc":          "Ctrl+Shift+A",
+        "offset":       "Ctrl+Shift+O",
+        "trim":         "Ctrl+Shift+T",
+        "extend":       "Ctrl+Shift+E",
+        "fillet":       "Ctrl+Shift+F",
+        "buffer":       "Ctrl+Shift+B",
+        "move":         "Ctrl+Shift+M",
+        "array":        "Ctrl+Shift+Y",
+        "vertex_edit":  "Ctrl+Shift+V",
+        "dimension":    "Ctrl+Shift+D",
+        "measure":      "Ctrl+Shift+I",
+        "divide":       "Ctrl+Shift+U",
+        "multi_offset": "Ctrl+Shift+X",
+        "join":         "Ctrl+Shift+J",
     }
 
     def _add_tool_button(self, grid, row, col, key, icon_file, tooltip):
-        """Grid'e araç butonu ekle ve button group'a kaydet."""
+        """Add tool button to grid and register it in button group."""
         shortcut = self._SHORTCUT_BADGES.get(key)
         full_tip = f"{tooltip} [{shortcut}]" if shortcut else tooltip
         btn = CadToolButton(self._icon(icon_file), full_tip)
@@ -150,12 +153,9 @@ class CADDockWidget(QDockWidget):
         return btn
 
     def _on_button_clicked(self, key):
-        """Buton tıklandığında önce tüm butonları unchecked yap, sonra emit et."""
         self.tool_activated.emit(key)
 
     def _setup_ui(self):
-        # QDockWidget tek widget alır → QScrollArea içine bir içerik widget'ı koy.
-        # widgetResizable=True ile içerik dock genişliğine yatay sığar, dikey scroll çıkar.
         scroll = QScrollArea(self)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
@@ -168,215 +168,253 @@ class CADDockWidget(QDockWidget):
         self.setWidget(scroll)
 
         layout = QVBoxLayout(main_widget)
-        layout.setSpacing(6)
-        layout.setContentsMargins(6, 6, 6, 6)
+        layout.setSpacing(4)
+        layout.setContentsMargins(4, 4, 4, 4)
 
-        # ── Başlık ───────────────────────────────────────────────────────
-        header = QLabel("🔧 planX CAD Araç Seti")
+        # ── Header / Başlık ───────────────────────────────────────────────
+        header = QLabel("🔧 planX CAD Toolset / Araç Seti")
         header_font = QFont()
-        header_font.setPointSize(11)
+        header_font.setPointSize(9)
         header_font.setBold(True)
         header.setFont(header_font)
         header.setAlignment(Qt.AlignCenter)
         header.setStyleSheet(
-            "color: #1a237e; padding: 8px; "
+            "color: #12343b; padding: 4px 6px; "
             "background: qlineargradient(x1:0,y1:0,x2:1,y2:0,"
-            "stop:0 #e8eaf6, stop:1 #c5cae9); "
-            "border-radius: 6px;"
+            "stop:0 #eef6f4, stop:1 #dce9ed); "
+            "border-radius: 4px;"
         )
         layout.addWidget(header)
 
-        # ── Çizim Araçları ───────────────────────────────────────────────
-        draw_group = CollapsibleGroupBox("✏️ Çizim")
+        # ── Drawing Tools / Çizim Araçları ─────────────────────────────────
+        draw_group = CollapsibleGroupBox("✏️ Drawing / Çizim")
         draw_grid = QGridLayout()
-        draw_grid.setSpacing(4)
+        draw_grid.setSpacing(3)
+        draw_grid.setContentsMargins(2, 2, 2, 2)
 
         draw_tools = [
-            ("line",      "cad_line.svg",      "Çizgi"),
-            ("polyline",  "cad_polyline.svg",  "Polyline"),
-            ("rectangle", "cad_rectangle.svg", "Dikdörtgen"),
-            ("polygon",   "cad_polygon.svg",   "Çokgen"),
-            ("circle",    "cad_circle.svg",    "Daire"),
-            ("arc",       "cad_arc.svg",       "Ark"),
+            ("line",      "cad_line.svg",      "Line / Çizgi"),
+            ("polyline",  "cad_polyline.svg",  "Polyline / Çoklu Çizgi"),
+            ("rectangle", "cad_rectangle.svg", "Rectangle / Dikdörtgen"),
+            ("polygon",   "cad_polygon.svg",   "Polygon / Çokgen"),
+            ("circle",    "cad_circle.svg",    "Circle / Daire"),
+            ("arc",       "cad_arc.svg",       "Arc / Yay"),
         ]
         draw_content = QWidget()
         draw_content.setLayout(draw_grid)
         for i, (key, icon, tip) in enumerate(draw_tools):
             self._add_tool_button(draw_grid, i // 3, i % 3, key, icon, tip)
 
-        draw_group.setLayout(QVBoxLayout())
-        draw_group.layout().addWidget(draw_content)
+        draw_layout = QVBoxLayout()
+        draw_layout.setContentsMargins(4, 4, 4, 4)
+        draw_layout.setSpacing(0)
+        draw_layout.addWidget(draw_content)
+        draw_group.setLayout(draw_layout)
         draw_group.set_content_widget(draw_content)
         layout.addWidget(draw_group)
 
-        # ── Düzenleme Araçları ───────────────────────────────────────────
-        edit_group = CollapsibleGroupBox("🔨 Düzenleme")
+        # ── Editing Tools / Düzenleme Araçları ──────────────────────────────
+        edit_group = CollapsibleGroupBox("🔨 Editing / Düzenleme")
         edit_grid = QGridLayout()
-        edit_grid.setSpacing(4)
+        edit_grid.setSpacing(3)
+        edit_grid.setContentsMargins(2, 2, 2, 2)
 
         edit_tools = [
-            ("offset",       "cad_offset.svg",       "Offset"),
-            ("trim",         "cad_trim.svg",         "Trim"),
-            ("extend",       "cad_extend.svg",       "Extend"),
-            ("fillet",       "cad_fillet.svg",       "Fillet"),
-            ("buffer",       "cad_buffer.svg",       "Buffer"),
-            ("array",        "cad_array.svg",        "Array (rectangular / polar)"),
-            ("vertex_edit",  "cad_vertex_edit.svg",  "Vertex Edit (insert / move / delete)"),
+            ("offset",       "cad_offset.svg",       "Offset / Öteleme"),
+            ("trim",         "cad_trim.svg",         "Trim / Budama"),
+            ("extend",       "cad_extend.svg",       "Extend / Uzatma"),
+            ("fillet",       "cad_fillet.svg",       "Fillet / Köşe Yuvarlama"),
+            ("buffer",       "cad_buffer.svg",       "Buffer / Tampon"),
+            ("array",        "cad_array.svg",        "Array / Çoklu Kopyalama"),
+            ("vertex_edit",  "cad_vertex_edit.svg",  "Vertex Edit / Köşe Düzenleme"),
+            ("divide",       "cad_divide.svg",       "Divide / Eşit Parçaya Böl"),
+            ("multi_offset", "cad_multi_offset.svg", "Multi-Offset / Çoklu Öteleme"),
+            ("join",         "cad_join.svg",         "Join / Çizgileri Birleştir"),
         ]
         edit_content = QWidget()
         edit_content.setLayout(edit_grid)
         for i, (key, icon, tip) in enumerate(edit_tools):
             self._add_tool_button(edit_grid, i // 3, i % 3, key, icon, tip)
 
-        edit_group.setLayout(QVBoxLayout())
-        edit_group.layout().addWidget(edit_content)
+        edit_layout = QVBoxLayout()
+        edit_layout.setContentsMargins(4, 4, 4, 4)
+        edit_layout.setSpacing(0)
+        edit_layout.addWidget(edit_content)
+        edit_group.setLayout(edit_layout)
         edit_group.set_content_widget(edit_content)
         layout.addWidget(edit_group)
 
-        # ── Dönüşüm Araçları ────────────────────────────────────────────
-        transform_group = CollapsibleGroupBox("🔄 Dönüşüm")
+        # ── Transform Tools / Dönüşüm Araçları ──────────────────────────────
+        transform_group = CollapsibleGroupBox("🔄 Transform / Dönüşüm")
         transform_grid = QGridLayout()
-        transform_grid.setSpacing(4)
+        transform_grid.setSpacing(3)
+        transform_grid.setContentsMargins(2, 2, 2, 2)
 
         transform_tools = [
-            ("move",    "cad_move.svg",    "Taşı"),
-            ("copy",    "cad_copy.svg",    "Kopyala"),
-            ("rotate",  "cad_rotate.svg",  "Döndür (Ctrl: 90°)"),
-            ("scale",   "cad_scale.svg",   "Ölçekle"),
-            ("mirror",  "cad_mirror.svg",  "Aynala"),
+            ("move",    "cad_move.svg",    "Move / Taşı"),
+            ("copy",    "cad_copy.svg",    "Copy / Kopyala"),
+            ("rotate",  "cad_rotate.svg",  "Rotate / Döndür (Ctrl: 90°)"),
+            ("scale",   "cad_scale.svg",   "Scale / Ölçekle"),
+            ("mirror",  "cad_mirror.svg",  "Mirror / Aynala"),
         ]
         transform_content = QWidget()
         transform_content.setLayout(transform_grid)
         for i, (key, icon, tip) in enumerate(transform_tools):
             self._add_tool_button(transform_grid, i // 3, i % 3, key, icon, tip)
 
-        transform_group.setLayout(QVBoxLayout())
-        transform_group.layout().addWidget(transform_content)
+        transform_layout = QVBoxLayout()
+        transform_layout.setContentsMargins(4, 4, 4, 4)
+        transform_layout.setSpacing(0)
+        transform_layout.addWidget(transform_content)
+        transform_group.setLayout(transform_layout)
         transform_group.set_content_widget(transform_content)
         layout.addWidget(transform_group)
 
-        # ── Ölçüm Araçları ──────────────────────────────────────────────
-        measure_group = CollapsibleGroupBox("📐 Ölçüm")
+        # ── Measurement Tools / Ölçüm Araçları ──────────────────────────────
+        measure_group = CollapsibleGroupBox("📐 Measurement / Ölçüm")
         measure_grid = QGridLayout()
-        measure_grid.setSpacing(4)
+        measure_grid.setSpacing(3)
+        measure_grid.setContentsMargins(2, 2, 2, 2)
 
-        self._add_tool_button(measure_grid, 0, 0, "measure", "cad_measure.svg", "Mesafe Ölç")
-        self._add_tool_button(measure_grid, 0, 1, "measure_area", "cad_measure_area.svg", "Alan Ölç")
-        self._add_tool_button(measure_grid, 0, 2, "dimension", "cad_dimension.svg", "Dimension (kalıcı etiket)")
-        self._add_tool_button(measure_grid, 1, 0, "measure_select_line", "cad_measure_select_line.svg", "Seç ve Çizgi Ölç")
-        self._add_tool_button(measure_grid, 1, 1, "measure_select_area", "cad_measure_select_area.svg", "Seç ve Alan Ölç")
+        self._add_tool_button(measure_grid, 0, 0, "measure", "cad_measure.svg", "Measure Distance / Mesafe Ölç")
+        self._add_tool_button(measure_grid, 0, 1, "measure_area", "cad_measure_area.svg", "Measure Area / Alan Ölç")
+        self._add_tool_button(measure_grid, 0, 2, "dimension", "cad_dimension.svg", "Dimension / Kalıcı Etiket")
+        self._add_tool_button(measure_grid, 1, 0, "measure_select_line", "cad_measure_select_line.svg", "Select and Measure Line / Seç ve Çizgi Ölç")
+        self._add_tool_button(measure_grid, 1, 1, "measure_select_area", "cad_measure_select_area.svg", "Select and Measure Area / Seç ve Alan Ölç")
 
         measure_content = QWidget()
         measure_content.setLayout(measure_grid)
-        measure_group.setLayout(QVBoxLayout())
-        measure_group.layout().addWidget(measure_content)
+        
+        measure_layout = QVBoxLayout()
+        measure_layout.setContentsMargins(4, 4, 4, 4)
+        measure_layout.setSpacing(0)
+        measure_layout.addWidget(measure_content)
+        measure_group.setLayout(measure_layout)
         measure_group.set_content_widget(measure_content)
         layout.addWidget(measure_group)
 
-        # ── Şehir Planlama Araçları ──────────────────────────────────────
-        urban_group = CollapsibleGroupBox("🏙️ Şehir Planlama")
+        # ── Urban Planning Tools / Şehir Planlama Araçları ────────────────────
+        urban_group = CollapsibleGroupBox("🏙️ Urban Planning / Şehir Planlama")
         urban_grid = QGridLayout()
-        urban_grid.setSpacing(4)
+        urban_grid.setSpacing(3)
+        urban_grid.setContentsMargins(2, 2, 2, 2)
 
-        # Yol Çiz butonu
-        road_btn = QPushButton("🛣️ Yol Çiz")
-        road_btn.setMinimumHeight(38)
+        # Draw Road button
+        road_btn = QPushButton("🛣️ Draw Road / Yol Çiz")
+        road_btn.setMinimumHeight(26)
         road_btn.setCheckable(True)
         road_btn.setStyleSheet("""
             QPushButton {
-                font-weight: bold; font-size: 11px;
-                color: #1a237e; background: #e8eaf6;
-                border: 1px solid #c5cae9; border-radius: 6px; padding: 6px;
+                font-weight: bold; font-size: 10px;
+                color: #0f766e; background: #eef6f4;
+                border: 1px solid #bfe8dc; border-radius: 4px; padding: 4px;
             }
-            QPushButton:hover { background: #c5cae9; }
-            QPushButton:checked { background: #7986cb; color: white; }
+            QPushButton:hover { background: #dce9ed; border-color: #0f766e; }
+            QPushButton:checked { background: #0f766e; color: white; border-color: #0f766e; }
         """)
         road_btn.clicked.connect(lambda: self._on_button_clicked("road"))
         urban_grid.addWidget(road_btn, 0, 0)
         self.buttons["road"] = road_btn
         self.button_group.addButton(road_btn)
 
-        # Kavşak butonu
-        junction_btn = QPushButton("🔵 Kavşak")
-        junction_btn.setMinimumHeight(38)
+        # Junction button
+        junction_btn = QPushButton("🔵 Junction / Kavşak")
+        junction_btn.setMinimumHeight(26)
         junction_btn.setCheckable(True)
         junction_btn.setStyleSheet("""
             QPushButton {
-                font-weight: bold; font-size: 11px;
-                color: #1a237e; background: #e8eaf6;
-                border: 1px solid #c5cae9; border-radius: 6px; padding: 6px;
+                font-weight: bold; font-size: 10px;
+                color: #0f766e; background: #eef6f4;
+                border: 1px solid #bfe8dc; border-radius: 4px; padding: 4px;
             }
-            QPushButton:hover { background: #c5cae9; }
-            QPushButton:checked { background: #7986cb; color: white; }
+            QPushButton:hover { background: #dce9ed; border-color: #0f766e; }
+            QPushButton:checked { background: #0f766e; color: white; border-color: #0f766e; }
         """)
         junction_btn.clicked.connect(lambda: self._on_button_clicked("junction"))
         urban_grid.addWidget(junction_btn, 0, 1)
         self.buttons["junction"] = junction_btn
         self.button_group.addButton(junction_btn)
 
-        # Ada Kırma butonu
-        ada_btn = QPushButton("🔶 Ada Kırma")
-        ada_btn.setMinimumHeight(38)
+        # Block Chamfer button
+        ada_btn = QPushButton("🔶 Block Chamfer / Ada Kırma")
+        ada_btn.setMinimumHeight(26)
         ada_btn.setCheckable(True)
         ada_btn.setStyleSheet("""
             QPushButton {
-                font-weight: bold; font-size: 11px;
-                color: #e65100; background: #fff3e0;
-                border: 1px solid #ffcc80; border-radius: 6px; padding: 6px;
+                font-weight: bold; font-size: 10px;
+                color: #b45309; background: #fef3c7;
+                border: 1px solid #fde68a; border-radius: 4px; padding: 4px;
             }
-            QPushButton:hover { background: #ffe0b2; }
-            QPushButton:checked { background: #ff9800; color: white; }
+            QPushButton:hover { background: #fde68a; border-color: #b45309; }
+            QPushButton:checked { background: #b45309; color: white; border-color: #b45309; }
         """)
         ada_btn.clicked.connect(lambda: self._on_button_clicked("ada_kirma"))
-        urban_grid.addWidget(ada_btn, 1, 0, 1, 2)  # 2. satır, tam genişlik
+        urban_grid.addWidget(ada_btn, 1, 0, 1, 2)
         self.buttons["ada_kirma"] = ada_btn
         self.button_group.addButton(ada_btn)
 
         urban_content = QWidget()
         urban_content.setLayout(urban_grid)
-        urban_group.setLayout(QVBoxLayout())
-        urban_group.layout().addWidget(urban_content)
+        
+        urban_layout = QVBoxLayout()
+        urban_layout.setContentsMargins(4, 4, 4, 4)
+        urban_layout.setSpacing(0)
+        urban_layout.addWidget(urban_content)
+        urban_group.setLayout(urban_layout)
         urban_group.set_content_widget(urban_content)
         layout.addWidget(urban_group)
 
-        # ── Ayırıcı ─────────────────────────────────────────────────────
+        # ── Separator ─────────────────────────────────────────────────────
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
         sep.setFrameShadow(QFrame.Sunken)
         layout.addWidget(sep)
 
-        # ── Hızlı eylemler ───────────────────────────────────────────────
+        # ── Quick Actions ──────────────────────────────────────────────────
         quick_row = QHBoxLayout()
-        repeat_btn = QPushButton("↻ Son aracı tekrarla")
-        repeat_btn.setToolTip("Son aktivasyon edilen aracı yeniden başlatır [Ctrl+Shift+Space]")
-        repeat_btn.setMinimumHeight(28)
+        repeat_btn = QPushButton("↻ Repeat Last Tool / Son aracı tekrarla")
+        repeat_btn.setToolTip("Restart last activated tool [Ctrl+Shift+Space] / Son aktif aracı tekrar başlatır")
+        repeat_btn.setMinimumHeight(24)
         repeat_btn.setStyleSheet(
-            "QPushButton { background: #e8eaf6; color: #1a237e; "
-            "border: 1px solid #c5cae9; border-radius: 5px; padding: 4px 8px; }"
-            "QPushButton:hover { background: #c5cae9; }"
+            "QPushButton { background: #eef6f4; color: #0f766e; font-size: 9px;"
+            "border: 1px solid #bfe8dc; border-radius: 4px; padding: 2px 6px; }"
+            "QPushButton:hover { background: #dce9ed; border-color: #0f766e; }"
         )
         repeat_btn.clicked.connect(lambda: self.tool_activated.emit("__repeat__"))
         quick_row.addWidget(repeat_btn)
         layout.addLayout(quick_row)
 
-        # ── Durum Çubuğu ─────────────────────────────────────────────────
-        self.status_label = QLabel("Hazır — kısayollar: Ctrl+Shift+<harf>")
+        # ── Live Coordinates Widget ──────────────────────────────────────
+        try:
+            from .coord_widget import LiveCoordWidget
+            self.coord_widget = LiveCoordWidget(self.iface, self)
+            layout.addWidget(self.coord_widget)
+        except Exception as e:
+            print(f"[planX-CAD] LiveCoordWidget load error: {e}")
+            self.coord_widget = None
+
+        # ── Status Bar / Durum Çubuğu ──────────────────────────────────────
+        self.status_label = QLabel("Ready — shortcuts: Ctrl+Shift+<letter> / Hazır — kısayollar: Ctrl+Shift+<harf>")
         self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet(
-            "color: #546e7a; font-size: 10px; padding: 4px; "
-            "background: #f5f5f5; border-radius: 4px;"
+            "color: #64748b; font-size: 9px; padding: 2px 4px; "
+            "background: #f1f5f9; border-radius: 3px;"
         )
         layout.addWidget(self.status_label)
 
-        # Boşluk
         layout.addStretch()
 
+    def unload(self):
+        if hasattr(self, 'coord_widget') and self.coord_widget:
+            try:
+                self.coord_widget.unload()
+            except Exception:
+                pass
+
     def set_status(self, message):
-        """Durum mesajını güncelle."""
         self.status_label.setText(message)
 
     def uncheck_all(self):
-        """Tüm butonları kaldır."""
         checked = self.button_group.checkedButton()
         if checked:
             self.button_group.setExclusive(False)

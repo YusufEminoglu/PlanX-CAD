@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.6.0] - 2026-05-20
+
+- Add Join, Divide, Multi-Offset tools and make UI bilingual/compact
+
 All notable changes to **PlanX CAD Toolset** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 

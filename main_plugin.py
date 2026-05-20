@@ -40,7 +40,7 @@ class PlanXCADPlugin:
     def initGui(self):
         """QGIS GUI'ye menü, toolbar ve dock widget ekle."""
         # ── Menü ─────────────────────────────────────────────────────────
-        self.menu = QMenu("&planX CAD Araç Seti")
+        self.menu = QMenu("&planX CAD Toolset / Araç Seti")
         self.iface.mainWindow().menuBar().addMenu(self.menu)
 
         # ── Toolbar ──────────────────────────────────────────────────────
@@ -52,10 +52,10 @@ class PlanXCADPlugin:
         main_icon = os.path.join(self.icon_dir, "icon_main.svg")
         self.panel_action = self._add_action(
             main_icon,
-            "planX CAD Paneli",
+            "planX CAD Panel / Paneli",
             self._toggle_dock,
             checkable=True,
-            status_tip="planX CAD Araç Panelini aç/kapat"
+            status_tip="Open/close planX CAD panel / planX CAD panelini aç/kapat"
         )
 
         # ── Menü Separator ───────────────────────────────────────────────
@@ -64,10 +64,10 @@ class PlanXCADPlugin:
         # ── Hakkında ─────────────────────────────────────────────────────
         self._add_action(
             ":/images/themes/default/mActionHelpContents.svg",
-            "Hakkında",
+            "About / Hakkında",
             self._show_about,
             add_to_toolbar=False,
-            status_tip="planX CAD Araç Seti hakkında"
+            status_tip="About planX CAD Toolset / planX CAD Araç Seti hakkında"
         )
 
         # ── Klavye kısayolları ─────────────────────────────────────────────
@@ -82,6 +82,8 @@ class PlanXCADPlugin:
 
         # Dock widget
         if self._dock:
+            if hasattr(self._dock, 'unload'):
+                self._dock.unload()
             self.iface.removeDockWidget(self._dock)
             self._dock.deleteLater()
             self._dock = None
@@ -137,8 +139,8 @@ class PlanXCADPlugin:
             except Exception as e:
                 QMessageBox.critical(
                     self.iface.mainWindow(),
-                    "Hata",
-                    f"Panel oluşturulamadı:\n{str(e)}"
+                    "Error / Hata",
+                    f"Failed to create panel / Panel oluşturulamadı:\n{str(e)}"
                 )
                 self.panel_action.setChecked(False)
                 return
@@ -158,7 +160,7 @@ class PlanXCADPlugin:
     # ═══════════════════════════════════════════════════════════════════════
 
     # Dialog açan araçlar — her seferinde yeni instance gerekir
-    _DIALOG_TOOLS = {"buffer", "fillet", "polygon", "road", "junction", "measure_area", "ada_kirma", "array"}
+    _DIALOG_TOOLS = {"buffer", "fillet", "polygon", "road", "junction", "measure_area", "ada_kirma", "array", "divide", "multi_offset", "join"}
 
     # ═══════════════════════════════════════════════════════════════════════
     # Klavye kısayolları + tool history
@@ -183,6 +185,9 @@ class PlanXCADPlugin:
         ("vertex_edit",           "Ctrl+Shift+V"),
         ("dimension",             "Ctrl+Shift+D"),
         ("measure",               "Ctrl+Shift+I"),
+        ("divide",                "Ctrl+Shift+U"),
+        ("multi_offset",          "Ctrl+Shift+X"),
+        ("join",                  "Ctrl+Shift+J"),
     )
 
     def _setup_shortcuts(self):
@@ -204,7 +209,7 @@ class PlanXCADPlugin:
         if self._last_tool_key:
             self._activate_tool(self._last_tool_key)
         elif self._dock:
-            self._dock.set_status("⚠️ No previous tool to repeat")
+            self._dock.set_status("⚠️ No previous tool to repeat / Tekrarlanacak eski bir araç yok")
 
     def _activate_tool(self, tool_key):
         """Araç tuşuna basıldığında ilgili map tool'u aktifleştirir."""
@@ -234,7 +239,7 @@ class PlanXCADPlugin:
 
         if tool is None:
             if self._dock:
-                self._dock.set_status(f"⚠️ '{tool_key}' aracı yüklenemedi")
+                self._dock.set_status(f"⚠️ Failed to load tool '{tool_key}' / '{tool_key}' aracı yüklenemedi")
             return
 
         self._current_tool = tool
@@ -309,6 +314,15 @@ class PlanXCADPlugin:
             elif key == "dimension":
                 from .tools.tool_dimension import tool_dimension
                 t = tool_dimension(canvas, self.iface)
+            elif key == "divide":
+                from .tools.tool_divide import tool_divide
+                t = tool_divide(canvas, self.iface)
+            elif key == "multi_offset":
+                from .tools.tool_multi_offset import tool_multi_offset
+                t = tool_multi_offset(canvas, self.iface)
+            elif key == "join":
+                from .tools.tool_join import tool_join
+                t = tool_join(canvas, self.iface)
 
             # ── Ölçüm ───────────────────────────────────────────────────
             elif key == "measure":
@@ -347,11 +361,11 @@ class PlanXCADPlugin:
             # Bitış sinyali
             if hasattr(t, 'sketcher_finished') and self._dock:
                 t.sketcher_finished.connect(
-                    lambda: self._dock.set_status("Hazır")
+                    lambda: self._dock.set_status("Ready / Hazır")
                 )
             if hasattr(t, 'tool_finished') and self._dock:
                 t.tool_finished.connect(
-                    lambda: self._dock.set_status("Hazır")
+                    lambda: self._dock.set_status("Ready / Hazır")
                 )
 
             return t
@@ -402,21 +416,21 @@ class PlanXCADPlugin:
 
         QMessageBox.about(
             self.iface.mainWindow(),
-            "planX CAD Araç Seti Hakkında",
+            "About planX CAD Toolset / planX CAD Araç Seti Hakkında",
             f"""
-<h2>planX CAD Araç Seti</h2>
-<p>Versiyon: {version}</p>
+<h2>planX CAD Toolset / Araç Seti</h2>
+<p>Version / Versiyon: {version}</p>
 
-<h3>Özellikler:</h3>
+<h3>Features / Özellikler:</h3>
 <ul>
-<li><b>6 Çizim Aracı:</b> Çizgi, Polyline, Dikdörtgen, Çokgen, Daire, Ark</li>
-<li><b>5 Düzenleme Aracı:</b> Offset, Trim, Extend, Fillet, Buffer</li>
-<li><b>5 Dönüşüm Aracı:</b> Taşı, Kopyala, Döndür (Ctrl:90°), Ölçekle, Aynala</li>
-<li><b>2 Ölçüm Aracı:</b> Mesafe ölçümü + Alan ölçümü</li>
-<li><b>3 Şehir Planlama Aracı:</b> Yol Çiz + Kavşak Oluştur + Ada Kırma</li>
+<li><b>6 Drawing Tools / Çizim Aracı:</b> Line, Polyline, Rectangle, Polygon, Circle, Arc</li>
+<li><b>7 Editing Tools / Düzenleme Aracı:</b> Offset, Trim, Extend, Fillet, Buffer, Divide, Join</li>
+<li><b>5 Transform Tools / Dönüşüm Aracı:</b> Move, Copy, Rotate, Scale, Mirror</li>
+<li><b>5 Measurement Tools / Ölçüm Aracı:</b> Distance, Area, Dimension, Select Line, Select Area</li>
+<li><b>3 Urban Planning Tools / Şehir Planlama Aracı:</b> Road, Junction, Block Chamfer</li>
 </ul>
 
-<p>Şehir planlama süreçleri için tasarlanmıştır.</p>
-<p><i>QGIS native snap desteği ile çalışır.</i></p>
+<p>Designed for urban planning workflows / Şehir planlama süreçleri için tasarlanmıştır.</p>
+<p><i>Integrates with QGIS snapping / QGIS native snap desteği ile çalışır.</i></p>
 """
         )

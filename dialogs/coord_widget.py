@@ -34,9 +34,9 @@ class LiveCoordWidget(QWidget):
         box = QFrame(self)
         box.setFrameShape(QFrame.StyledPanel)
         box.setStyleSheet(
-            "QFrame { background: #f3f6fb; border: 1px solid #c5cae9;"
-            " border-radius: 6px; padding: 4px 8px; }"
-            "QLabel { color: #1a237e; font-family: 'Consolas','Courier New', monospace; }"
+            "QFrame { background: #f4f7fb; border: 1px solid #d8e0ea;"
+            " border-radius: 4px; padding: 2px 4px; }"
+            "QLabel { color: #0f766e; font-family: 'Consolas','Courier New', monospace; }"
         )
         box_layout = QVBoxLayout(box)
         box_layout.setContentsMargins(0, 0, 0, 0)
@@ -44,7 +44,7 @@ class LiveCoordWidget(QWidget):
 
         self.lbl_xy = QLabel("X: —   Y: —")
         xy_font = QFont()
-        xy_font.setPointSize(10)
+        xy_font.setPointSize(9)
         xy_font.setBold(True)
         self.lbl_xy.setFont(xy_font)
         self.lbl_xy.setAlignment(Qt.AlignCenter)
@@ -52,7 +52,7 @@ class LiveCoordWidget(QWidget):
 
         self.lbl_meta = QLabel("CRS: —    1: —")
         meta_font = QFont()
-        meta_font.setPointSize(8)
+        meta_font.setPointSize(7.5)
         self.lbl_meta.setFont(meta_font)
         self.lbl_meta.setAlignment(Qt.AlignCenter)
         self.lbl_meta.setStyleSheet("color: #546e7a;")
