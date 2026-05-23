@@ -91,6 +91,7 @@ class ShortcutHelpDialog(QDialog):
             {"en": "open_docs", "tr": "komut_kilavuzu", "shortcut": "Ctrl+Alt+H", "category": "System"},
             {"en": "command_palette", "tr": "komut_paleti", "shortcut": "Ctrl+Alt+P", "category": "System"},
             {"en": "cancel_active_tool", "tr": "aktif_araci_iptal", "shortcut": "Ctrl+Alt+C", "category": "System"},
+            {"en": "toggle_layer_editing", "tr": "katman_duzenleme_ac_kapat", "shortcut": "Ctrl+Alt+E", "category": "System"},
         ])
 
         self._render_rows(self._rows)

@@ -98,6 +98,7 @@ class CADDockWidget(QDockWidget):
     # Emitted when a tool is activated: (tool_key,)
     tool_activated = pyqtSignal(str)
     cancel_requested = pyqtSignal()
+    edit_toggle_requested = pyqtSignal()
     docs_requested = pyqtSignal()
     shortcuts_requested = pyqtSignal()
 
@@ -440,6 +441,16 @@ class CADDockWidget(QDockWidget):
         )
         cancel_btn.clicked.connect(lambda: self.cancel_requested.emit())
         quick_row.addWidget(cancel_btn)
+        edit_btn = QPushButton("Edit ON/OFF")
+        edit_btn.setToolTip("Toggle active layer editing / Aktif katman duzenlemeyi ac-kapat")
+        edit_btn.setMinimumHeight(24)
+        edit_btn.setStyleSheet(
+            "QPushButton { background: #eff6ff; color: #1d4ed8; font-size: 9px;"
+            "border: 1px solid #bfdbfe; border-radius: 4px; padding: 2px 6px; }"
+            "QPushButton:hover { background: #dbeafe; border-color: #1d4ed8; }"
+        )
+        edit_btn.clicked.connect(lambda: self.edit_toggle_requested.emit())
+        quick_row.addWidget(edit_btn)
         docs_btn = QPushButton("Docs")
         docs_btn.setToolTip("Open detailed command reference")
         docs_btn.setMinimumHeight(24)
@@ -471,6 +482,16 @@ class CADDockWidget(QDockWidget):
         )
         reset_btn.clicked.connect(self.reset_filter)
         quick_row.addWidget(reset_btn)
+        preflight_btn = QPushButton("Preflight")
+        preflight_btn.setToolTip("Run quick setup checks / Hizli kurulum kontrolu")
+        preflight_btn.setMinimumHeight(24)
+        preflight_btn.setStyleSheet(
+            "QPushButton { background: #ecfeff; color: #0f766e; font-size: 9px;"
+            "border: 1px solid #99f6e4; border-radius: 4px; padding: 2px 6px; }"
+            "QPushButton:hover { background: #ccfbf1; border-color: #0f766e; }"
+        )
+        preflight_btn.clicked.connect(self.run_preflight)
+        quick_row.addWidget(preflight_btn)
         layout.addLayout(quick_row)
 
         recent_row = QHBoxLayout()
@@ -650,3 +671,18 @@ class CADDockWidget(QDockWidget):
         state = "editable" if editable else "read-only"
         state_tr = "duzenlenebilir" if editable else "salt-okunur"
         self.layer_state_label.setText(f"Layer: {name} ({state}) / Katman: {name} ({state_tr})")
+
+    def run_preflight(self):
+        layer = self.iface.activeLayer()
+        if layer is None:
+            self.set_status("Preflight: no active layer / aktif katman yok")
+            return
+        is_vector = hasattr(layer, "geometryType")
+        editable = getattr(layer, "isEditable", lambda: False)()
+        if not is_vector:
+            self.set_status("Preflight: active layer is not vector / aktif katman vektor degil")
+            return
+        if not editable:
+            self.set_status("Preflight: layer is read-only (use Edit ON/OFF) / katman salt-okunur")
+            return
+        self.set_status("Preflight: OK (vector + editable) / tamam (vektor + duzenlenebilir)")

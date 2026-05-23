@@ -150,8 +150,13 @@ class PlanXCADPlugin:
                 self._dock.visibilityChanged.connect(self._on_dock_visibility)
                 self._dock.tool_activated.connect(self._activate_tool)
                 self._dock.cancel_requested.connect(self._cancel_active_tool)
+                self._dock.edit_toggle_requested.connect(self._toggle_active_layer_editing)
                 self._dock.docs_requested.connect(self._show_command_reference)
                 self._dock.shortcuts_requested.connect(self._show_shortcut_guide)
+                try:
+                    self.iface.currentLayerChanged.connect(self._on_current_layer_changed)
+                except Exception:
+                    pass
 
                 self.iface.addDockWidget(
                     Qt.LeftDockWidgetArea, self._dock
@@ -254,6 +259,10 @@ class PlanXCADPlugin:
         cancel_tool.setContext(Qt.ApplicationShortcut)
         cancel_tool.activated.connect(self._cancel_active_tool)
         self._shortcuts.append(cancel_tool)
+        edit_toggle = QShortcut(QKeySequence("Ctrl+Alt+E"), parent)
+        edit_toggle.setContext(Qt.ApplicationShortcut)
+        edit_toggle.activated.connect(self._toggle_active_layer_editing)
+        self._shortcuts.append(edit_toggle)
 
     def _repeat_last_tool(self):
         if self._last_tool_key:
@@ -277,6 +286,36 @@ class PlanXCADPlugin:
             self._dock.set_status("Active tool cancelled / Aktif arac iptal edildi")
             if hasattr(self._dock, "refresh_layer_state"):
                 self._dock.refresh_layer_state()
+
+    def _toggle_active_layer_editing(self):
+        layer = self.iface.activeLayer()
+        if layer is None:
+            if self._dock:
+                self._dock.set_status("No active layer / Aktif katman yok")
+            return
+        if not hasattr(layer, "isEditable"):
+            if self._dock:
+                self._dock.set_status("Layer does not support editing / Katman duzenleme desteklemiyor")
+            return
+
+        try:
+            if layer.isEditable():
+                layer.commitChanges()
+                msg = "Editing OFF / Duzenleme KAPALI"
+            else:
+                layer.startEditing()
+                msg = "Editing ON / Duzenleme ACIK"
+            if self._dock:
+                self._dock.set_status(msg)
+                if hasattr(self._dock, "refresh_layer_state"):
+                    self._dock.refresh_layer_state()
+        except Exception as e:
+            if self._dock:
+                self._dock.set_status(f"Editing toggle failed / Duzenleme degistirilemedi: {e}")
+
+    def _on_current_layer_changed(self, _layer):
+        if self._dock and hasattr(self._dock, "refresh_layer_state"):
+            self._dock.refresh_layer_state()
 
     def _activate_tool(self, tool_key):
         """Araç tuşuna basıldığında ilgili map tool'u aktifleştirir."""
