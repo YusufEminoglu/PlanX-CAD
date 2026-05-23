@@ -69,6 +69,13 @@ class PlanXCADPlugin:
             add_to_toolbar=False,
             status_tip="About planX CAD Toolset / planX CAD Araç Seti hakkında"
         )
+        self._add_action(
+            ":/images/themes/default/mActionHelpContents.svg",
+            "Shortcut Guide / Kisayol Rehberi",
+            self._show_shortcut_guide,
+            add_to_toolbar=False,
+            status_tip="Shortcut and workflow guide / Kisayol ve is akisi rehberi"
+        )
 
         # ── Klavye kısayolları ─────────────────────────────────────────────
         self._setup_shortcuts()
@@ -185,6 +192,8 @@ class PlanXCADPlugin:
         ("vertex_edit",           "Ctrl+Shift+V"),
         ("hatch",                 "Ctrl+Shift+H"),
         ("construction_inf",      "Ctrl+Shift+K"),
+        ("construction_ray",      "Ctrl+Alt+K"),
+        ("construction_seg",      "Ctrl+Alt+L"),
         ("dimension",             "Ctrl+Shift+D"),
         ("measure",               "Ctrl+Shift+I"),
         ("divide",                "Ctrl+Shift+U"),
@@ -206,12 +215,28 @@ class PlanXCADPlugin:
         repeat.setContext(Qt.ApplicationShortcut)
         repeat.activated.connect(self._repeat_last_tool)
         self._shortcuts.append(repeat)
+        # Focus dock search
+        focus_search = QShortcut(QKeySequence("Ctrl+Shift+S"), parent)
+        focus_search.setContext(Qt.ApplicationShortcut)
+        focus_search.activated.connect(self._focus_dock_search)
+        self._shortcuts.append(focus_search)
+        # Shortcut guide
+        shortcut_help = QShortcut(QKeySequence("Ctrl+Shift+/"), parent)
+        shortcut_help.setContext(Qt.ApplicationShortcut)
+        shortcut_help.activated.connect(self._show_shortcut_guide)
+        self._shortcuts.append(shortcut_help)
 
     def _repeat_last_tool(self):
         if self._last_tool_key:
             self._activate_tool(self._last_tool_key)
         elif self._dock:
             self._dock.set_status("⚠️ No previous tool to repeat / Tekrarlanacak eski bir araç yok")
+
+    def _focus_dock_search(self):
+        if self._dock is None:
+            self._toggle_dock()
+        if self._dock and hasattr(self._dock, "focus_search"):
+            self._dock.focus_search()
 
     def _activate_tool(self, tool_key):
         """Araç tuşuna basıldığında ilgili map tool'u aktifleştirir."""
@@ -246,6 +271,8 @@ class PlanXCADPlugin:
 
         self._current_tool = tool
         canvas.setMapTool(tool)
+        if self._dock and hasattr(self._dock, "register_tool_activation"):
+            self._dock.register_tool_activation(tool_key)
 
     def _create_tool(self, key):
         """Araç instance'ı oluşturur."""
@@ -322,6 +349,9 @@ class PlanXCADPlugin:
             elif key == "construction_ray":
                 from .tools.tool_construction_line import tool_construction_line
                 t = tool_construction_line(canvas, self.iface, mode=tool_construction_line.MODE_RAY)
+            elif key == "construction_seg":
+                from .tools.tool_construction_line import tool_construction_line
+                t = tool_construction_line(canvas, self.iface, mode=tool_construction_line.MODE_SEGMENT)
             elif key == "dimension":
                 from .tools.tool_dimension import tool_dimension
                 t = tool_dimension(canvas, self.iface)
@@ -445,3 +475,15 @@ class PlanXCADPlugin:
 <p><i>Integrates with QGIS snapping / QGIS native snap desteği ile çalışır.</i></p>
 """
         )
+
+    def _show_shortcut_guide(self):
+        try:
+            from .dialogs.shortcut_help_dialog import ShortcutHelpDialog
+            dlg = ShortcutHelpDialog(self._SHORTCUTS, self.iface.mainWindow())
+            dlg.exec_()
+        except Exception as e:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Shortcut Guide",
+                f"Shortcut guide could not be opened:\n{e}"
+            )

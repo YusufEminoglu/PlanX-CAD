@@ -14,7 +14,7 @@ from qgis.PyQt.QtWidgets import (
     QDockWidget, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QGroupBox, QGridLayout,
     QFrame, QSizePolicy, QToolButton, QButtonGroup,
-    QScrollArea
+    QScrollArea, QLineEdit
 )
 
 
@@ -111,6 +111,9 @@ class CADDockWidget(QDockWidget):
         self.buttons = {}
         self.button_group = QButtonGroup(self)
         self.button_group.setExclusive(True)
+        self._tool_search_terms = {}
+        self._recent_tools = []
+        self._recent_buttons = []
 
         self._setup_ui()
 
@@ -136,6 +139,8 @@ class CADDockWidget(QDockWidget):
         "vertex_edit":      "Ctrl+Shift+V",
         "hatch":            "Ctrl+Shift+H",
         "construction_inf": "Ctrl+Shift+K",
+        "construction_ray": "Ctrl+Alt+K",
+        "construction_seg": "Ctrl+Alt+L",
         "dimension":        "Ctrl+Shift+D",
         "measure":          "Ctrl+Shift+I",
         "divide":           "Ctrl+Shift+U",
@@ -152,7 +157,14 @@ class CADDockWidget(QDockWidget):
         grid.addWidget(btn, row, col)
         self.buttons[key] = btn
         self.button_group.addButton(btn)
+        self._register_tool_terms(key, tooltip)
         return btn
+
+    def _register_tool_terms(self, key, tooltip):
+        terms = [key.lower()]
+        for part in tooltip.replace("/", " ").replace("-", " ").split():
+            terms.append(part.strip().lower())
+        self._tool_search_terms[key] = " ".join(terms)
 
     def _on_button_clicked(self, key):
         self.tool_activated.emit(key)
@@ -187,6 +199,18 @@ class CADDockWidget(QDockWidget):
             "border-radius: 4px;"
         )
         layout.addWidget(header)
+
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Find tool / Araç ara (Enter)")
+        self.search_input.setClearButtonEnabled(True)
+        self.search_input.setStyleSheet(
+            "QLineEdit { border: 1px solid #d8e0ea; border-radius: 4px; padding: 4px 6px; "
+            "font-size: 10px; background: white; color: #12343b; }"
+            "QLineEdit:focus { border: 1px solid #0f766e; }"
+        )
+        self.search_input.textChanged.connect(self._apply_tool_filter)
+        self.search_input.returnPressed.connect(self._activate_first_match)
+        layout.addWidget(self.search_input)
 
         # ── Drawing Tools / Çizim Araçları ─────────────────────────────────
         draw_group = CollapsibleGroupBox("✏️ Drawing / Çizim")
@@ -234,6 +258,8 @@ class CADDockWidget(QDockWidget):
             ("join",             "cad_join.svg",             "Join / Çizgileri Birleştir"),
             ("hatch",            "cad_hatch.svg",            "Hatch / Pattern Fill"),
             ("construction_inf", "cad_construction.svg",     "Construction line / Sonsuz referans"),
+            ("construction_ray", "cad_construction.svg",     "Construction ray / Isin referans"),
+            ("construction_seg", "cad_construction.svg",     "Construction segment / Segment referans"),
         ]
         edit_content = QWidget()
         edit_content.setLayout(edit_grid)
@@ -320,6 +346,7 @@ class CADDockWidget(QDockWidget):
         urban_grid.addWidget(road_btn, 0, 0)
         self.buttons["road"] = road_btn
         self.button_group.addButton(road_btn)
+        self._register_tool_terms("road", "Draw Road / Yol Ciz")
 
         # Junction button
         junction_btn = QPushButton("🔵 Junction / Kavşak")
@@ -338,6 +365,7 @@ class CADDockWidget(QDockWidget):
         urban_grid.addWidget(junction_btn, 0, 1)
         self.buttons["junction"] = junction_btn
         self.button_group.addButton(junction_btn)
+        self._register_tool_terms("junction", "Junction / Kavsak")
 
         # Block Chamfer button
         ada_btn = QPushButton("🔶 Block Chamfer / Ada Kırma")
@@ -356,6 +384,7 @@ class CADDockWidget(QDockWidget):
         urban_grid.addWidget(ada_btn, 1, 0, 1, 2)
         self.buttons["ada_kirma"] = ada_btn
         self.button_group.addButton(ada_btn)
+        self._register_tool_terms("ada_kirma", "Block Chamfer / Ada Kirma")
 
         urban_content = QWidget()
         urban_content.setLayout(urban_grid)
@@ -388,6 +417,24 @@ class CADDockWidget(QDockWidget):
         quick_row.addWidget(repeat_btn)
         layout.addLayout(quick_row)
 
+        recent_row = QHBoxLayout()
+        recent_label = QLabel("Recent:")
+        recent_label.setStyleSheet("color: #64748b; font-size: 9px;")
+        recent_row.addWidget(recent_label)
+        for _ in range(3):
+            b = QPushButton("—")
+            b.setEnabled(False)
+            b.setMinimumHeight(22)
+            b.setStyleSheet(
+                "QPushButton { background: #f8fafc; color: #334155; font-size: 9px;"
+                "border: 1px solid #d8e0ea; border-radius: 4px; padding: 1px 4px; }"
+                "QPushButton:enabled:hover { background: #eef6f4; border-color: #0f766e; }"
+            )
+            b.clicked.connect(lambda checked=False, btn=b: self._emit_recent(btn))
+            self._recent_buttons.append(b)
+            recent_row.addWidget(b)
+        layout.addLayout(recent_row)
+
         # ── Live Coordinates Widget ──────────────────────────────────────
         try:
             from .coord_widget import LiveCoordWidget
@@ -418,9 +465,71 @@ class CADDockWidget(QDockWidget):
     def set_status(self, message):
         self.status_label.setText(message)
 
+    def register_tool_activation(self, key):
+        if key not in self.buttons:
+            return
+
+        btn = self.buttons.get(key)
+        if btn:
+            self.button_group.setExclusive(False)
+            for b in self.buttons.values():
+                b.setChecked(False)
+            btn.setChecked(True)
+            self.button_group.setExclusive(True)
+
+        if key in self._recent_tools:
+            self._recent_tools.remove(key)
+        self._recent_tools.insert(0, key)
+        self._recent_tools = self._recent_tools[:3]
+        self._refresh_recent_buttons()
+
+    def _refresh_recent_buttons(self):
+        for idx, btn in enumerate(self._recent_buttons):
+            if idx < len(self._recent_tools):
+                key = self._recent_tools[idx]
+                label = key.replace("_", " ")
+                if len(label) > 12:
+                    label = label[:11] + "…"
+                btn.setText(label)
+                btn.setToolTip(f"Activate {key}")
+                btn.setEnabled(True)
+                btn.setProperty("tool_key", key)
+            else:
+                btn.setText("—")
+                btn.setToolTip("")
+                btn.setEnabled(False)
+                btn.setProperty("tool_key", None)
+
+    def _emit_recent(self, button):
+        key = button.property("tool_key")
+        if key:
+            self.tool_activated.emit(key)
+
+    def _apply_tool_filter(self, text):
+        query = (text or "").strip().lower()
+        for key, btn in self.buttons.items():
+            terms = self._tool_search_terms.get(key, key)
+            visible = (not query) or (query in terms)
+            btn.setVisible(visible)
+
+    def _activate_first_match(self):
+        query = (self.search_input.text() or "").strip().lower()
+        if not query:
+            return
+        for key in self.buttons.keys():
+            terms = self._tool_search_terms.get(key, key)
+            if query in terms:
+                self.tool_activated.emit(key)
+                return
+
     def uncheck_all(self):
         checked = self.button_group.checkedButton()
         if checked:
             self.button_group.setExclusive(False)
             checked.setChecked(False)
             self.button_group.setExclusive(True)
+
+    def focus_search(self):
+        if hasattr(self, "search_input"):
+            self.search_input.setFocus()
+            self.search_input.selectAll()

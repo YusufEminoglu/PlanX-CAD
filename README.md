@@ -1,8 +1,8 @@
-# PlanX CAD Toolset
+﻿# PlanX CAD Toolset
 
-**A lightweight, fast CAD toolset for urban planning in QGIS — part of the PlanX suite**
+**A lightweight, fast CAD toolset for urban planning in QGIS - part of the PlanX suite**
 
-PlanX CAD Toolset brings 18+ CAD-like drawing and editing operations directly into QGIS through a modern dockable panel. Designed specifically for urban planners and GIS professionals who need drafting-grade tools without leaving QGIS.
+PlanX CAD Toolset brings 18+ CAD-like drawing and editing operations directly into QGIS through a modern dockable panel. Designed for urban planners and GIS professionals who need drafting-grade tools without leaving QGIS.
 
 ---
 
@@ -12,25 +12,32 @@ PlanX CAD Toolset brings 18+ CAD-like drawing and editing operations directly in
 - Line, Polyline, Rectangle, Polygon, Circle, Arc
 
 ### Editing Tools
-- Offset, Trim, Extend, Fillet, Mirror, Move, Copy, Rotate, Scale, Buffer
+- Offset, Trim, Extend, Fillet, Buffer, Hatch, Construction Line, Divide, Join, Multi-Offset, Vertex Edit
+
+### Transform Tools
+- Move, Copy, Rotate, Scale, Mirror, Array
 
 ### Measurement Tools
 - Distance and area measurement (standalone and selection-based)
+- Persistent linear dimensions with label attributes
 
 ### Urban Planning Tools
-- **Road Platform Generator** — interactive road cross-section design with lane configuration
-- **Block Chamfering** — EasyFillet-powered corner rounding for urban blocks
-- **Junction Topology Fixer** — clean A-B road intersection connections
+- **Road Platform Generator** - interactive road cross-section design with lane configuration
+- **Block Chamfering** - EasyFillet-powered corner rounding for urban blocks
+- **Junction Topology Fixer** - clean A-B road intersection connections
 
-### UI
+### UI and Productivity
 - Modern dockable panel with icon-based toolbar
-- Native QGIS snapping support
-- Custom 'O' cursor for precision placement
+- Native QGIS snapping support and custom precision cursor
+- Quick tool search (`Find tool / Arac ara`) with Enter-to-activate
+- Last-3 recent tools strip for rapid tool switching
+- Ctrl+Shift keyboard workflow with repeat-last-tool action
+- Dedicated construction modes in dock (infinite/ray/segment) and built-in shortcut guide dialog
 
 ## Installation
 
 1. Download the latest `.zip` from [Releases](https://github.com/YusufEminoglu/PlanX-CAD/releases).
-2. In QGIS: **Plugins → Manage and Install Plugins → Install from ZIP**.
+2. In QGIS: **Plugins -> Manage and Install Plugins -> Install from ZIP**.
 3. Activate **PlanX CAD Toolset** from the plugin list.
 
 ## Compatibility
@@ -42,11 +49,13 @@ PlanX CAD Toolset brings 18+ CAD-like drawing and editing operations directly in
 
 ## Changelog
 
-- **1.1.0** — Fixed intersection topology, EasyFillet integration, custom cursor, improved measurements
-- **1.0.0** — Initial release: 18 CAD tools, dockable interface, road platform tool
+- **1.9.0** - Beta hardening: construction mode buttons, advanced shortcuts, shortcut guide dialog
+- **1.8.0** - Beta completion candidate: quick tool search, recent tools strip, dock/shortcut activation sync
+- **1.7.0** - Hatch and construction line tools
+- **1.6.0** - Join, divide, multi-offset and compact bilingual UI pass
 
 ## Author
 
-**Yusuf Eminoglu** — [GitHub](https://github.com/YusufEminoglu) | yusuf.eminoglu@deu.edu.tr
+**Yusuf Eminoglu** - [GitHub](https://github.com/YusufEminoglu) | yusuf.eminoglu@deu.edu.tr
 
 Part of the **[PlanX](https://github.com/YusufEminoglu/PlanX)** urban planning plugin suite.

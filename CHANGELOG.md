@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.9.0] - 2026-05-23
+
+- Beta hardening: construction mode access, advanced shortcuts, shortcut guide
+
+## [1.9.0] - 2026-05-23
+
+Beta completion hardening pass for CAD accessibility and operator speed.
+
+### Added
+- **Construction mode direct access in dock**: `construction_ray` and `construction_seg` are now visible as dedicated buttons next to infinite construction lines.
+- **Advanced shortcut layer**:
+  - `Ctrl+Alt+K` -> Construction Ray
+  - `Ctrl+Alt+L` -> Construction Segment
+  - `Ctrl+Shift+S` -> Focus dock tool search
+  - `Ctrl+Shift+/` -> Open shortcut guide
+- **Shortcut guide dialog** (`dialogs/shortcut_help_dialog.py`) for discoverability and onboarding.
+
+## [1.8.0] - 2026-05-23
+
+Beta completion release candidate for high-speed CAD workflows.
+
+### Added
+- **Dock quick search**: type tool names/aliases in the new `Find tool / Arac ara` box and press Enter to launch the first match.
+- **Recent tools strip**: last 3 activated tools are pinned in the dock for one-click reactivation.
+- **Activation sync**: tools launched from keyboard shortcuts now sync back to dock button state and recent history.
+
 ## [1.7.0] - 2026-05-20
 
 Hatch / Pattern Fill + Construction Lines.
