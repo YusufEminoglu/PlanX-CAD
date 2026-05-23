@@ -105,6 +105,10 @@ class PlanXCADPlugin:
         if self._dock:
             if hasattr(self._dock, 'unload'):
                 self._dock.unload()
+            try:
+                self.iface.currentLayerChanged.disconnect(self._on_current_layer_changed)
+            except Exception:
+                pass
             self.iface.removeDockWidget(self._dock)
             self._dock.deleteLater()
             self._dock = None
@@ -263,6 +267,10 @@ class PlanXCADPlugin:
         edit_toggle.setContext(Qt.ApplicationShortcut)
         edit_toggle.activated.connect(self._toggle_active_layer_editing)
         self._shortcuts.append(edit_toggle)
+        preflight = QShortcut(QKeySequence("Ctrl+Alt+F"), parent)
+        preflight.setContext(Qt.ApplicationShortcut)
+        preflight.activated.connect(self._run_dock_preflight)
+        self._shortcuts.append(preflight)
 
     def _repeat_last_tool(self):
         if self._last_tool_key:
@@ -316,6 +324,10 @@ class PlanXCADPlugin:
     def _on_current_layer_changed(self, _layer):
         if self._dock and hasattr(self._dock, "refresh_layer_state"):
             self._dock.refresh_layer_state()
+
+    def _run_dock_preflight(self):
+        if self._dock and hasattr(self._dock, "run_preflight"):
+            self._dock.run_preflight()
 
     def _activate_tool(self, tool_key):
         """Araç tuşuna basıldığında ilgili map tool'u aktifleştirir."""

@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.15.0] - 2026-05-23
+
+- Edit ON/OFF controls, preflight shortcut, layer-state lifecycle refresh
+
+## [1.15.0] - 2026-05-23
+
+Session control and readiness pass for daily production use.
+
+### Added
+- **Dock editing controls**: `Edit ON/OFF` and `Preflight` quick actions.
+- **System shortcuts**:
+  - `Ctrl+Alt+E` toggle active-layer editing
+  - `Ctrl+Alt+F` run preflight checks
+- **Current-layer auto refresh** in plugin lifecycle (including safe disconnect on unload).
+
 ## [1.14.0] - 2026-05-23
 
 - Layer editing toggle, preflight checks, auto layer-state refresh
