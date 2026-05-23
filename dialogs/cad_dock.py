@@ -97,6 +97,8 @@ class CADDockWidget(QDockWidget):
 
     # Emitted when a tool is activated: (tool_key,)
     tool_activated = pyqtSignal(str)
+    docs_requested = pyqtSignal()
+    shortcuts_requested = pyqtSignal()
 
     def __init__(self, iface, icon_dir, parent=None):
         super().__init__("planX CAD Toolset / planX CAD Araç Seti", parent)
@@ -415,6 +417,27 @@ class CADDockWidget(QDockWidget):
         )
         repeat_btn.clicked.connect(lambda: self.tool_activated.emit("__repeat__"))
         quick_row.addWidget(repeat_btn)
+        docs_btn = QPushButton("Docs")
+        docs_btn.setToolTip("Open detailed command reference")
+        docs_btn.setMinimumHeight(24)
+        docs_btn.setStyleSheet(
+            "QPushButton { background: #f8fafc; color: #0f766e; font-size: 9px;"
+            "border: 1px solid #bfe8dc; border-radius: 4px; padding: 2px 6px; }"
+            "QPushButton:hover { background: #eef6f4; border-color: #0f766e; }"
+        )
+        docs_btn.clicked.connect(lambda: self.docs_requested.emit())
+        quick_row.addWidget(docs_btn)
+
+        keys_btn = QPushButton("Keys")
+        keys_btn.setToolTip("Open shortcut guide")
+        keys_btn.setMinimumHeight(24)
+        keys_btn.setStyleSheet(
+            "QPushButton { background: #f8fafc; color: #0f766e; font-size: 9px;"
+            "border: 1px solid #bfe8dc; border-radius: 4px; padding: 2px 6px; }"
+            "QPushButton:hover { background: #eef6f4; border-color: #0f766e; }"
+        )
+        keys_btn.clicked.connect(lambda: self.shortcuts_requested.emit())
+        quick_row.addWidget(keys_btn)
         layout.addLayout(quick_row)
 
         recent_row = QHBoxLayout()

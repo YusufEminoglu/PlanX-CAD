@@ -1,8 +1,19 @@
 # Changelog
 
-## [1.9.0] - 2026-05-23
+## [1.10.0] - 2026-05-23
 
-- Beta hardening: construction mode access, advanced shortcuts, shortcut guide
+- HTML command reference, shortcuts page, Docs/Keys dock integration
+
+## [1.10.0] - 2026-05-23
+
+HTML documentation and in-dock help integration for command mastery.
+
+### Added
+- New in-plugin HTML docs dialog (`dialogs/docs_dialog.py`) with two tabs:
+  - `docs/command_reference.html` (detailed command usage and workflow tips)
+  - `docs/shortcuts.html` (full keyboard map)
+- Dock quick actions now include `Docs` and `Keys` buttons for one-click help access.
+- New menu entry: `Command Reference / Komut Kilavuzu`.
 
 ## [1.9.0] - 2026-05-23
 

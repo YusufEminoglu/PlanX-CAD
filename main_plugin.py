@@ -76,6 +76,13 @@ class PlanXCADPlugin:
             add_to_toolbar=False,
             status_tip="Shortcut and workflow guide / Kisayol ve is akisi rehberi"
         )
+        self._add_action(
+            ":/images/themes/default/mActionHelpContents.svg",
+            "Command Reference / Komut Kilavuzu",
+            self._show_command_reference,
+            add_to_toolbar=False,
+            status_tip="Detailed command documentation / Detayli komut dokumani"
+        )
 
         # ── Klavye kısayolları ─────────────────────────────────────────────
         self._setup_shortcuts()
@@ -135,6 +142,8 @@ class PlanXCADPlugin:
                 self._dock.setObjectName("PlanXCADDock")
                 self._dock.visibilityChanged.connect(self._on_dock_visibility)
                 self._dock.tool_activated.connect(self._activate_tool)
+                self._dock.docs_requested.connect(self._show_command_reference)
+                self._dock.shortcuts_requested.connect(self._show_shortcut_guide)
 
                 self.iface.addDockWidget(
                     Qt.LeftDockWidgetArea, self._dock
@@ -486,4 +495,16 @@ class PlanXCADPlugin:
                 self.iface.mainWindow(),
                 "Shortcut Guide",
                 f"Shortcut guide could not be opened:\n{e}"
+            )
+
+    def _show_command_reference(self):
+        try:
+            from .dialogs.docs_dialog import DocsDialog
+            dlg = DocsDialog(self.plugin_dir, self.iface.mainWindow())
+            dlg.exec_()
+        except Exception as e:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Command Reference",
+                f"Command reference could not be opened:\n{e}"
             )

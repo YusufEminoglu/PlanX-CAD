@@ -33,6 +33,7 @@ PlanX CAD Toolset brings 18+ CAD-like drawing and editing operations directly in
 - Last-3 recent tools strip for rapid tool switching
 - Ctrl+Shift keyboard workflow with repeat-last-tool action
 - Dedicated construction modes in dock (infinite/ray/segment) and built-in shortcut guide dialog
+- Built-in HTML command manual and separate shortcut reference page (open via Docs/Keys buttons)
 
 ## Installation
 
@@ -49,6 +50,7 @@ PlanX CAD Toolset brings 18+ CAD-like drawing and editing operations directly in
 
 ## Changelog
 
+- **1.10.0** - HTML command reference, HTML shortcut map, Docs/Keys quick buttons, command-reference menu action
 - **1.9.0** - Beta hardening: construction mode buttons, advanced shortcuts, shortcut guide dialog
 - **1.8.0** - Beta completion candidate: quick tool search, recent tools strip, dock/shortcut activation sync
 - **1.7.0** - Hatch and construction line tools
