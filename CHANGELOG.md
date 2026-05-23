@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.13.0] - 2026-05-23
+
+- Cancel active tool, layer state indicator, dock sync
+
+## [1.13.0] - 2026-05-23
+
+Operational control and safety pass for production drafting sessions.
+
+### Added
+- **Cancel Active Tool** action (dock button + `Ctrl+Alt+C`) for immediate safe exit from current tool.
+- **Layer edit-state indicator** in dock showing active layer name + editable/read-only status.
+- Dock status sync enhancements after cancel/activate to reduce ambiguous tool state.
+
 ## [1.12.0] - 2026-05-23
 
 - Command palette, dock reset controls, shortcut sync

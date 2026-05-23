@@ -149,6 +149,7 @@ class PlanXCADPlugin:
                 self._dock.setObjectName("PlanXCADDock")
                 self._dock.visibilityChanged.connect(self._on_dock_visibility)
                 self._dock.tool_activated.connect(self._activate_tool)
+                self._dock.cancel_requested.connect(self._cancel_active_tool)
                 self._dock.docs_requested.connect(self._show_command_reference)
                 self._dock.shortcuts_requested.connect(self._show_shortcut_guide)
 
@@ -249,6 +250,10 @@ class PlanXCADPlugin:
         palette.setContext(Qt.ApplicationShortcut)
         palette.activated.connect(self._show_command_palette)
         self._shortcuts.append(palette)
+        cancel_tool = QShortcut(QKeySequence("Ctrl+Alt+C"), parent)
+        cancel_tool.setContext(Qt.ApplicationShortcut)
+        cancel_tool.activated.connect(self._cancel_active_tool)
+        self._shortcuts.append(cancel_tool)
 
     def _repeat_last_tool(self):
         if self._last_tool_key:
@@ -261,6 +266,17 @@ class PlanXCADPlugin:
             self._toggle_dock()
         if self._dock and hasattr(self._dock, "focus_search"):
             self._dock.focus_search()
+
+    def _cancel_active_tool(self):
+        canvas = self.iface.mapCanvas()
+        if self._current_tool:
+            canvas.unsetMapTool(self._current_tool)
+            self._current_tool = None
+        if self._dock:
+            self._dock.uncheck_all()
+            self._dock.set_status("Active tool cancelled / Aktif arac iptal edildi")
+            if hasattr(self._dock, "refresh_layer_state"):
+                self._dock.refresh_layer_state()
 
     def _activate_tool(self, tool_key):
         """Araç tuşuna basıldığında ilgili map tool'u aktifleştirir."""

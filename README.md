@@ -39,6 +39,8 @@ PlanX CAD Toolset brings 18+ CAD-like drawing and editing operations directly in
 - Live per-tool workflow hints in dock and global docs shortcut (`Ctrl+Alt+H`)
 - Global command palette (`Ctrl+Alt+P`) for type-to-activate command access
 - Dock quick reset controls (Reset filter + Clear recent)
+- Cancel active tool action (`Ctrl+Alt+C`) for immediate safe exit
+- Active-layer editability indicator in dock (editable/read-only awareness)
 
 ## Installation
 
@@ -55,6 +57,7 @@ PlanX CAD Toolset brings 18+ CAD-like drawing and editing operations directly in
 
 ## Changelog
 
+- **1.13.0** - Cancel active tool, layer edit-state indicator, dock state sync improvements
 - **1.12.0** - Global command palette, dock reset controls, shortcut reference sync
 - **1.11.0** - English-first docs, searchable shortcut center, live dock workflow hints, global docs shortcut
 - **1.10.0** - HTML command reference, HTML shortcut map, Docs/Keys quick buttons, command-reference menu action

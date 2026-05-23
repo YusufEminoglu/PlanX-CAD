@@ -97,6 +97,7 @@ class CADDockWidget(QDockWidget):
 
     # Emitted when a tool is activated: (tool_key,)
     tool_activated = pyqtSignal(str)
+    cancel_requested = pyqtSignal()
     docs_requested = pyqtSignal()
     shortcuts_requested = pyqtSignal()
 
@@ -429,6 +430,16 @@ class CADDockWidget(QDockWidget):
         )
         repeat_btn.clicked.connect(lambda: self.tool_activated.emit("__repeat__"))
         quick_row.addWidget(repeat_btn)
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setToolTip("Cancel active tool / Aktif araci iptal et")
+        cancel_btn.setMinimumHeight(24)
+        cancel_btn.setStyleSheet(
+            "QPushButton { background: #fff1f2; color: #9f1239; font-size: 9px;"
+            "border: 1px solid #fecdd3; border-radius: 4px; padding: 2px 6px; }"
+            "QPushButton:hover { background: #ffe4e6; border-color: #be123c; }"
+        )
+        cancel_btn.clicked.connect(lambda: self.cancel_requested.emit())
+        quick_row.addWidget(cancel_btn)
         docs_btn = QPushButton("Docs")
         docs_btn.setToolTip("Open detailed command reference")
         docs_btn.setMinimumHeight(24)
@@ -502,6 +513,14 @@ class CADDockWidget(QDockWidget):
         hint_layout.addWidget(self.hint_label)
         layout.addWidget(hint_box)
 
+        self.layer_state_label = QLabel("Layer: unknown / Katman: bilinmiyor")
+        self.layer_state_label.setWordWrap(True)
+        self.layer_state_label.setStyleSheet(
+            "color: #475569; font-size: 9px; padding: 2px 4px; "
+            "background: #f8fafc; border: 1px solid #d8e0ea; border-radius: 3px;"
+        )
+        layout.addWidget(self.layer_state_label)
+
         # ── Live Coordinates Widget ──────────────────────────────────────
         try:
             from .coord_widget import LiveCoordWidget
@@ -521,6 +540,7 @@ class CADDockWidget(QDockWidget):
         layout.addWidget(self.status_label)
 
         layout.addStretch()
+        self.refresh_layer_state()
 
     def unload(self):
         if hasattr(self, 'coord_widget') and self.coord_widget:
@@ -550,6 +570,7 @@ class CADDockWidget(QDockWidget):
         self._recent_tools = self._recent_tools[:3]
         self._refresh_recent_buttons()
         self._update_hint(key)
+        self.refresh_layer_state()
 
     def _update_hint(self, key):
         hint = self._TOOL_HINTS.get(
@@ -618,3 +639,14 @@ class CADDockWidget(QDockWidget):
         self._recent_tools = []
         self._refresh_recent_buttons()
         self.set_status("Recent tools cleared / Son araclar temizlendi")
+
+    def refresh_layer_state(self):
+        layer = self.iface.activeLayer()
+        if layer is None:
+            self.layer_state_label.setText("Layer: none selected / Katman: secili degil")
+            return
+        name = getattr(layer, "name", lambda: "unknown")()
+        editable = getattr(layer, "isEditable", lambda: False)()
+        state = "editable" if editable else "read-only"
+        state_tr = "duzenlenebilir" if editable else "salt-okunur"
+        self.layer_state_label.setText(f"Layer: {name} ({state}) / Katman: {name} ({state_tr})")
