@@ -89,6 +89,7 @@ class ShortcutHelpDialog(QDialog):
             {"en": "focus_search", "tr": "arama_odagi", "shortcut": "Ctrl+Shift+S", "category": "System"},
             {"en": "open_shortcuts", "tr": "kisayol_rehberi", "shortcut": "Ctrl+Shift+/", "category": "System"},
             {"en": "open_docs", "tr": "komut_kilavuzu", "shortcut": "Ctrl+Alt+H", "category": "System"},
+            {"en": "command_palette", "tr": "komut_paleti", "shortcut": "Ctrl+Alt+P", "category": "System"},
         ])
 
         self._render_rows(self._rows)

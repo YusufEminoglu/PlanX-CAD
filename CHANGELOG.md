@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.12.0] - 2026-05-23
+
+- Command palette, dock reset controls, shortcut sync
+
+## [1.12.0] - 2026-05-23
+
+Beta acceleration pass with command access and workflow reset controls.
+
+### Added
+- **Global Command Palette** (`Ctrl+Alt+P`) for fast command activation by typing.
+- **Dock quick controls**:
+  - `Reset` button clears active tool filter
+  - `Clear` button clears recent-tools strip
+- Shortcut references updated with command palette entry in dialog and HTML docs.
+
 ## [1.11.0] - 2026-05-23
 
 - English-first docs, searchable shortcut center, live dock hints

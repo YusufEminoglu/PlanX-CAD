@@ -450,6 +450,16 @@ class CADDockWidget(QDockWidget):
         )
         keys_btn.clicked.connect(lambda: self.shortcuts_requested.emit())
         quick_row.addWidget(keys_btn)
+        reset_btn = QPushButton("Reset")
+        reset_btn.setToolTip("Reset tool filter / Arac filtresini sifirla")
+        reset_btn.setMinimumHeight(24)
+        reset_btn.setStyleSheet(
+            "QPushButton { background: #f8fafc; color: #0f766e; font-size: 9px;"
+            "border: 1px solid #bfe8dc; border-radius: 4px; padding: 2px 6px; }"
+            "QPushButton:hover { background: #eef6f4; border-color: #0f766e; }"
+        )
+        reset_btn.clicked.connect(self.reset_filter)
+        quick_row.addWidget(reset_btn)
         layout.addLayout(quick_row)
 
         recent_row = QHBoxLayout()
@@ -468,6 +478,16 @@ class CADDockWidget(QDockWidget):
             b.clicked.connect(lambda checked=False, btn=b: self._emit_recent(btn))
             self._recent_buttons.append(b)
             recent_row.addWidget(b)
+        clear_recent_btn = QPushButton("Clear")
+        clear_recent_btn.setToolTip("Clear recent tools / Son araclari temizle")
+        clear_recent_btn.setMinimumHeight(22)
+        clear_recent_btn.setStyleSheet(
+            "QPushButton { background: #f8fafc; color: #0f766e; font-size: 9px;"
+            "border: 1px solid #d8e0ea; border-radius: 4px; padding: 1px 6px; }"
+            "QPushButton:hover { background: #eef6f4; border-color: #0f766e; }"
+        )
+        clear_recent_btn.clicked.connect(self.clear_recent)
+        recent_row.addWidget(clear_recent_btn)
         layout.addLayout(recent_row)
 
         hint_box = QFrame()
@@ -588,3 +608,13 @@ class CADDockWidget(QDockWidget):
         if hasattr(self, "search_input"):
             self.search_input.setFocus()
             self.search_input.selectAll()
+
+    def reset_filter(self):
+        self.search_input.clear()
+        self._apply_tool_filter("")
+        self.set_status("Filter reset / Filtre sifirlandi")
+
+    def clear_recent(self):
+        self._recent_tools = []
+        self._refresh_recent_buttons()
+        self.set_status("Recent tools cleared / Son araclar temizlendi")

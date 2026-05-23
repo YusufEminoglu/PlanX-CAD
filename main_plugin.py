@@ -83,6 +83,13 @@ class PlanXCADPlugin:
             add_to_toolbar=False,
             status_tip="Detailed command documentation / Detayli komut dokumani"
         )
+        self._add_action(
+            ":/images/themes/default/mIconExpression.svg",
+            "Command Palette / Komut Paleti",
+            self._show_command_palette,
+            add_to_toolbar=False,
+            status_tip="Fast command activation / Hizli komut aktivasyonu"
+        )
 
         # ── Klavye kısayolları ─────────────────────────────────────────────
         self._setup_shortcuts()
@@ -238,6 +245,10 @@ class PlanXCADPlugin:
         docs_help.setContext(Qt.ApplicationShortcut)
         docs_help.activated.connect(self._show_command_reference)
         self._shortcuts.append(docs_help)
+        palette = QShortcut(QKeySequence("Ctrl+Alt+P"), parent)
+        palette.setContext(Qt.ApplicationShortcut)
+        palette.activated.connect(self._show_command_palette)
+        self._shortcuts.append(palette)
 
     def _repeat_last_tool(self):
         if self._last_tool_key:
@@ -511,4 +522,17 @@ class PlanXCADPlugin:
                 self.iface.mainWindow(),
                 "Command Reference",
                 f"Command reference could not be opened:\n{e}"
+            )
+
+    def _show_command_palette(self):
+        try:
+            from .dialogs.command_palette_dialog import CommandPaletteDialog
+            dlg = CommandPaletteDialog(self._SHORTCUTS, self.iface.mainWindow())
+            dlg.tool_selected.connect(self._activate_tool)
+            dlg.exec_()
+        except Exception as e:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Command Palette",
+                f"Command palette could not be opened:\n{e}"
             )
