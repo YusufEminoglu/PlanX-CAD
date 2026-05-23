@@ -99,6 +99,7 @@ class CADDockWidget(QDockWidget):
     tool_activated = pyqtSignal(str)
     cancel_requested = pyqtSignal()
     edit_toggle_requested = pyqtSignal()
+    quick_start_requested = pyqtSignal()
     docs_requested = pyqtSignal()
     shortcuts_requested = pyqtSignal()
 
@@ -118,6 +119,7 @@ class CADDockWidget(QDockWidget):
         self._tool_search_terms = {}
         self._recent_tools = []
         self._recent_buttons = []
+        self._activation_count = 0
 
         self._setup_ui()
 
@@ -441,6 +443,16 @@ class CADDockWidget(QDockWidget):
         )
         cancel_btn.clicked.connect(lambda: self.cancel_requested.emit())
         quick_row.addWidget(cancel_btn)
+        start_btn = QPushButton("Start")
+        start_btn.setToolTip("Open quick start / Hizli baslangic")
+        start_btn.setMinimumHeight(24)
+        start_btn.setStyleSheet(
+            "QPushButton { background: #fef9c3; color: #854d0e; font-size: 9px;"
+            "border: 1px solid #fde68a; border-radius: 4px; padding: 2px 6px; }"
+            "QPushButton:hover { background: #fef08a; border-color: #854d0e; }"
+        )
+        start_btn.clicked.connect(lambda: self.quick_start_requested.emit())
+        quick_row.addWidget(start_btn)
         edit_btn = QPushButton("Edit ON/OFF")
         edit_btn.setToolTip("Toggle active layer editing / Aktif katman duzenlemeyi ac-kapat")
         edit_btn.setMinimumHeight(24)
@@ -541,6 +553,13 @@ class CADDockWidget(QDockWidget):
             "background: #f8fafc; border: 1px solid #d8e0ea; border-radius: 3px;"
         )
         layout.addWidget(self.layer_state_label)
+        self.usage_label = QLabel("Usage: 0 activations / Kullanim: 0 aktivasyon")
+        self.usage_label.setWordWrap(True)
+        self.usage_label.setStyleSheet(
+            "color: #0f766e; font-size: 9px; padding: 2px 4px; "
+            "background: #ecfeff; border: 1px solid #99f6e4; border-radius: 3px;"
+        )
+        layout.addWidget(self.usage_label)
 
         # ── Live Coordinates Widget ──────────────────────────────────────
         try:
@@ -592,6 +611,10 @@ class CADDockWidget(QDockWidget):
         self._refresh_recent_buttons()
         self._update_hint(key)
         self.refresh_layer_state()
+        self._activation_count += 1
+        self.usage_label.setText(
+            f"Usage: {self._activation_count} activations / Kullanim: {self._activation_count} aktivasyon"
+        )
 
     def _update_hint(self, key):
         hint = self._TOOL_HINTS.get(

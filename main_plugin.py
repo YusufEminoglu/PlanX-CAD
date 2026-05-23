@@ -90,6 +90,13 @@ class PlanXCADPlugin:
             add_to_toolbar=False,
             status_tip="Fast command activation / Hizli komut aktivasyonu"
         )
+        self._add_action(
+            ":/images/themes/default/mActionHelpContents.svg",
+            "Quick Start / Hizli Baslangic",
+            self._show_quick_start,
+            add_to_toolbar=False,
+            status_tip="Open onboarding guide / Baslangic rehberini ac"
+        )
 
         # ── Klavye kısayolları ─────────────────────────────────────────────
         self._setup_shortcuts()
@@ -155,6 +162,7 @@ class PlanXCADPlugin:
                 self._dock.tool_activated.connect(self._activate_tool)
                 self._dock.cancel_requested.connect(self._cancel_active_tool)
                 self._dock.edit_toggle_requested.connect(self._toggle_active_layer_editing)
+                self._dock.quick_start_requested.connect(self._show_quick_start)
                 self._dock.docs_requested.connect(self._show_command_reference)
                 self._dock.shortcuts_requested.connect(self._show_shortcut_guide)
                 try:
@@ -271,6 +279,10 @@ class PlanXCADPlugin:
         preflight.setContext(Qt.ApplicationShortcut)
         preflight.activated.connect(self._run_dock_preflight)
         self._shortcuts.append(preflight)
+        quick_start = QShortcut(QKeySequence("Ctrl+Alt+Q"), parent)
+        quick_start.setContext(Qt.ApplicationShortcut)
+        quick_start.activated.connect(self._show_quick_start)
+        self._shortcuts.append(quick_start)
 
     def _repeat_last_tool(self):
         if self._last_tool_key:
@@ -602,4 +614,16 @@ class PlanXCADPlugin:
                 self.iface.mainWindow(),
                 "Command Palette",
                 f"Command palette could not be opened:\n{e}"
+            )
+
+    def _show_quick_start(self):
+        try:
+            from .dialogs.quick_start_dialog import QuickStartDialog
+            dlg = QuickStartDialog(self.iface.mainWindow())
+            dlg.exec_()
+        except Exception as e:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Quick Start",
+                f"Quick Start could not be opened:\n{e}"
             )

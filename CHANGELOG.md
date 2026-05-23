@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.16.0] - 2026-05-23
+
+- Quick Start onboarding, usage metrics, Ctrl+Alt+Q
+
+## [1.16.0] - 2026-05-23
+
+Onboarding and operational visibility pass.
+
+### Added
+- **Quick Start dialog** (menu, dock Start button, and `Ctrl+Alt+Q` shortcut).
+- **Live usage counter** in dock to track session tool-activation volume.
+- Shortcut references updated for quick-start access.
+
 ## [1.15.0] - 2026-05-23
 
 - Edit ON/OFF controls, preflight shortcut, layer-state lifecycle refresh

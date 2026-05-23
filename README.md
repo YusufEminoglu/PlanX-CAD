@@ -72,3 +72,4 @@ PlanX CAD Toolset brings 18+ CAD-like drawing and editing operations directly in
 
 Part of the **[PlanX](https://github.com/YusufEminoglu/PlanX)** urban planning plugin suite.
 
+
