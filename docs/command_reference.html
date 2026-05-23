@@ -18,7 +18,7 @@
   <p>Primary language is English; Turkish notes are provided as secondary guidance.</p>
   <p class="tr">Birincil dil Ingilizce; Turkce notlar ikincil yonlendirme olarak verilir.</p>
 
-  <h2>1. Drawing Commands</h2>
+  <h2 id="drawing">1. Drawing Commands</h2>
   <div class="card">
     <strong>Line / Polyline / Arc / Circle</strong>
     <ul>
@@ -29,7 +29,7 @@
     <p class="tr">Komutu acin, snap acik olsun; ilk noktayi dikkatli secin, ikinci noktada snap ile temiz kapanis alin.</p>
   </div>
 
-  <h2>2. Editing Commands</h2>
+  <h2 id="editing">2. Editing Commands</h2>
   <div class="card">
     <strong>Trim / Extend / Fillet</strong>
     <ul>
@@ -55,7 +55,7 @@
     <p class="tr">Hatch icin kapali poligon kullanin; construction modlarini amaca gore secin (sonsuz/isin/segment).</p>
   </div>
 
-  <h2>3. Transform Commands</h2>
+  <h2 id="transform">3. Transform Commands</h2>
   <div class="card">
     <strong>Move / Copy / Rotate / Scale / Mirror / Array</strong>
     <ul>
@@ -66,7 +66,7 @@
     <p class="tr">Temel nokta secimi donusum kalitesini dogrudan etkiler; tekrarli duzenlerde Array tercih edin.</p>
   </div>
 
-  <h2>4. Measurement and Annotation</h2>
+  <h2 id="measurement">4. Measurement and Annotation</h2>
   <div class="card">
     <strong>Measure / Dimension</strong>
     <ul>
@@ -76,13 +76,24 @@
     <p class="tr">Dimension kalici kayit olusturur; secime dayali olcumde once filtrelemek hata riskini azaltir.</p>
   </div>
 
-  <h2>5. Productivity Workflow</h2>
+  <h2 id="urban">5. Urban Workflow Notes</h2>
+  <div class="card">
+    <strong>Urban Commands</strong>
+    <ul>
+      <li>Road/Junction/Block Chamfer tools should start from a clean centerline and editable target layer.</li>
+      <li>Run preflight before generating complex road platform geometry.</li>
+    </ul>
+    <p class="tr">Yol/Kavsak/Ada Kirma komutlarina temiz aks ve duzenlenebilir katmanla baslayin; karmasik uretim oncesi preflight calistirin.</p>
+  </div>
+  <h2 id="workflow">6. Productivity Workflow</h2>
   <div class="card">
     <ul>
       <li><span class="k">Ctrl+Shift+S</span>: focus search and launch by typing command name.</li>
       <li><span class="k">Ctrl+Shift+Space</span>: repeat last tool instantly.</li>
       <li>Use the <strong>Recent</strong> row and live <strong>Tip / Ipucu</strong> panel in dock.</li>
       <li>Use <strong>Docs</strong> and <strong>Keys</strong> buttons for in-context help.</li>
+      <li>Use <strong>Help Tool</strong> to jump directly to the most relevant command section.</li>
+      <li>Use <strong>Stats</strong> and <strong>Diag</strong> for support-readiness and operational checks.</li>
     </ul>
     <p class="tr">Dock icindeki Son Araclar ve Ipucu paneli hizli calisma akisinda temel yardim katmanidir.</p>
   </div>

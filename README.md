@@ -31,6 +31,7 @@ PlanX CAD Toolset brings 18+ CAD-like drawing and editing operations directly in
 - Native QGIS snapping support and custom precision cursor
 - Quick tool search (`Find tool / Arac ara`) with Enter-to-activate
 - Last-3 recent tools strip for rapid tool switching
+- Favorites row with `Pin Last` for persistent one-click access
 - Ctrl+Shift keyboard workflow with repeat-last-tool action
 - Dedicated construction modes in dock (infinite/ray/segment) and built-in shortcut guide dialog
 - Built-in HTML command manual and separate shortcut reference page (open via Docs/Keys buttons)
@@ -38,9 +39,27 @@ PlanX CAD Toolset brings 18+ CAD-like drawing and editing operations directly in
 - Searchable shortcut center with category filtering
 - Live per-tool workflow hints in dock and global docs shortcut (`Ctrl+Alt+H`)
 - Global command palette (`Ctrl+Alt+P`) for type-to-activate command access
-- Dock quick reset controls (Reset filter + Clear recent)`r`n- Active-layer editing toggle action (Ctrl+Alt+E + Edit ON/OFF button)`r`n- Dock preflight checks for vector/editable readiness
+- Dock quick reset controls (Reset filter + Clear recent)
+- Active-layer editing toggle action (`Ctrl+Alt+E` + Edit ON/OFF button)
+- Dock preflight checks for vector/editable readiness (`Ctrl+Alt+F`)
 - Cancel active tool action (`Ctrl+Alt+C`) for immediate safe exit
+- Quick Start onboarding dialog (`Ctrl+Alt+Q`) and dock Start button
+- Runtime diagnostics dialog (`Ctrl+Alt+D`) with copyable support report
+- Workspace state reset (`Ctrl+Alt+R`) to clear search/recent/favorites/usage in one step
+- Usage analytics dialog (`Ctrl+Alt+T`) with per-tool session distribution
+- Context help jump (`Help Tool`) that opens the relevant command-reference section
+- Runtime health check (`Ctrl+Alt+W`) for layer/edit/snap/workflow readiness
+- Shortcut audit (`Ctrl+Alt+Y`) for conflict visibility and safer keymap evolution
+- Activation guardrails that block invalid starts (no layer/non-vector/read-only) with guided status messages
+- Session checklist (`Ctrl+Alt+G`) to run beta-start controls from one window
+- Command palette upgraded with category filter, TR aliases, and usage-priority sorting
+- Built-in QGIS smoke test checklist tab in docs for release-candidate verification
+- Direct smoke-test opener (`Ctrl+Alt+M`) for one-click QGIS RC validation flow
+- Issue template dialog (`Ctrl+Alt+N`) with diagnostics payload for consistent bug reports
+- Release readiness dashboard (`Ctrl+Alt+V`) for beta acceptance checks in one view
+- Live usage counter in dock for session activity tracking
 - Active-layer editability indicator in dock (editable/read-only awareness)
+- Dock state persistence between sessions (search/recent/favorites/usage)
 
 ## Installation
 
@@ -57,19 +76,14 @@ PlanX CAD Toolset brings 18+ CAD-like drawing and editing operations directly in
 
 ## Changelog
 
+- **1.16.0** - Quick Start onboarding, usage metrics panel, Ctrl+Alt+Q shortcut
+- **1.15.0** - Edit ON/OFF + Preflight controls, Ctrl+Alt+F shortcut, layer-state lifecycle hardening
+- **1.14.0** - Layer editing toggle, preflight checks, auto layer-state refresh
 - **1.13.0** - Cancel active tool, layer edit-state indicator, dock state sync improvements
 - **1.12.0** - Global command palette, dock reset controls, shortcut reference sync
-- **1.11.0** - English-first docs, searchable shortcut center, live dock workflow hints, global docs shortcut
-- **1.10.0** - HTML command reference, HTML shortcut map, Docs/Keys quick buttons, command-reference menu action
-- **1.9.0** - Beta hardening: construction mode buttons, advanced shortcuts, shortcut guide dialog
-- **1.8.0** - Beta completion candidate: quick tool search, recent tools strip, dock/shortcut activation sync
-- **1.7.0** - Hatch and construction line tools
-- **1.6.0** - Join, divide, multi-offset and compact bilingual UI pass
 
 ## Author
 
 **Yusuf Eminoglu** - [GitHub](https://github.com/YusufEminoglu) | yusuf.eminoglu@deu.edu.tr
 
 Part of the **[PlanX](https://github.com/YusufEminoglu/PlanX)** urban planning plugin suite.
-
-

@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.17.0] - 2026-05-23
+
+- Beta completion release: readiness, diagnostics, smoke test, issue template, UX and shortcuts
+
+## [Unreleased]
+
+### Added
+- Dock favorites flow (`Pin Last` + Favorites row) for persistent one-click tool access.
+- Dock state persistence across sessions (search text, recent tools, favorites, usage counter).
+- Diagnostics report dialog (dock `Diag` button + `Ctrl+Alt+D`) with copy-ready support text.
+- Workspace state reset flow (`Reset WS` button + `Ctrl+Alt+R`) for rapid clean-session recovery.
+- Usage statistics dialog (`Stats` button + `Ctrl+Alt+T`) with per-tool activation share.
+- Contextual help jump (`Help Tool`) that opens command docs at relevant sections.
+- Health check panel (`Health` button + `Ctrl+Alt+W`) for runtime readiness validation.
+- Shortcut audit report (`Key Audit` button + `Ctrl+Alt+Y`) to detect keymap conflicts.
+- Tool activation guardrails to prevent invalid launches on missing/non-vector/read-only layers.
+- Session checklist dialog (`Ctrl+Alt+G`) for one-window beta startup control.
+- Command palette upgraded with category filter, Turkish aliases, and usage-based ordering.
+- New docs tab with QGIS smoke test checklist for release-candidate validation.
+- Direct smoke-test opener (`Ctrl+Alt+M`) for faster RC verification in QGIS.
+- Issue template dialog (`Ctrl+Alt+N`) that includes diagnostics text for structured bug reporting.
+- Release readiness dashboard (`Ctrl+Alt+V`) combining health, shortcut, docs, and metadata checks.
+
 ## [1.16.0] - 2026-05-23
 
 - Quick Start onboarding, usage metrics, Ctrl+Alt+Q

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 
-from qgis.PyQt.QtCore import Qt, pyqtSignal, QSize
+from qgis.PyQt.QtCore import Qt, pyqtSignal, QSize, QSettings
 from qgis.PyQt.QtGui import QIcon, QFont, QColor
 from qgis.PyQt.QtWidgets import (
     QDockWidget, QWidget, QVBoxLayout, QHBoxLayout,
@@ -100,6 +100,13 @@ class CADDockWidget(QDockWidget):
     cancel_requested = pyqtSignal()
     edit_toggle_requested = pyqtSignal()
     quick_start_requested = pyqtSignal()
+    pin_last_requested = pyqtSignal()
+    workspace_reset_requested = pyqtSignal()
+    tool_help_requested = pyqtSignal(str)
+    usage_stats_requested = pyqtSignal()
+    health_check_requested = pyqtSignal()
+    shortcut_audit_requested = pyqtSignal()
+    diagnostics_requested = pyqtSignal()
     docs_requested = pyqtSignal()
     shortcuts_requested = pyqtSignal()
 
@@ -119,7 +126,11 @@ class CADDockWidget(QDockWidget):
         self._tool_search_terms = {}
         self._recent_tools = []
         self._recent_buttons = []
+        self._favorites = []
+        self._favorite_buttons = []
+        self._last_activated_key = None
         self._activation_count = 0
+        self._tool_usage_counts = {}
 
         self._setup_ui()
 
@@ -504,6 +515,76 @@ class CADDockWidget(QDockWidget):
         )
         preflight_btn.clicked.connect(self.run_preflight)
         quick_row.addWidget(preflight_btn)
+        pin_btn = QPushButton("Pin Last")
+        pin_btn.setToolTip("Pin last activated tool / Son kullanilan araci sabitle")
+        pin_btn.setMinimumHeight(24)
+        pin_btn.setStyleSheet(
+            "QPushButton { background: #fef3c7; color: #92400e; font-size: 9px;"
+            "border: 1px solid #fde68a; border-radius: 4px; padding: 2px 6px; }"
+            "QPushButton:hover { background: #fde68a; border-color: #92400e; }"
+        )
+        pin_btn.clicked.connect(self.pin_last_tool)
+        quick_row.addWidget(pin_btn)
+        reset_workspace_btn = QPushButton("Reset WS")
+        reset_workspace_btn.setToolTip("Reset workspace state / Calisma alani durumunu sifirla")
+        reset_workspace_btn.setMinimumHeight(24)
+        reset_workspace_btn.setStyleSheet(
+            "QPushButton { background: #fff7ed; color: #9a3412; font-size: 9px;"
+            "border: 1px solid #fed7aa; border-radius: 4px; padding: 2px 6px; }"
+            "QPushButton:hover { background: #ffedd5; border-color: #9a3412; }"
+        )
+        reset_workspace_btn.clicked.connect(lambda: self.workspace_reset_requested.emit())
+        quick_row.addWidget(reset_workspace_btn)
+        stats_btn = QPushButton("Stats")
+        stats_btn.setToolTip("Open usage statistics / Kullanim istatistiklerini ac")
+        stats_btn.setMinimumHeight(24)
+        stats_btn.setStyleSheet(
+            "QPushButton { background: #eff6ff; color: #1e3a8a; font-size: 9px;"
+            "border: 1px solid #bfdbfe; border-radius: 4px; padding: 2px 6px; }"
+            "QPushButton:hover { background: #dbeafe; border-color: #1e3a8a; }"
+        )
+        stats_btn.clicked.connect(lambda: self.usage_stats_requested.emit())
+        quick_row.addWidget(stats_btn)
+        health_btn = QPushButton("Health")
+        health_btn.setToolTip("Run runtime health checks / Calisma saglik kontrollerini calistir")
+        health_btn.setMinimumHeight(24)
+        health_btn.setStyleSheet(
+            "QPushButton { background: #f0fdf4; color: #166534; font-size: 9px;"
+            "border: 1px solid #bbf7d0; border-radius: 4px; padding: 2px 6px; }"
+            "QPushButton:hover { background: #dcfce7; border-color: #166534; }"
+        )
+        health_btn.clicked.connect(lambda: self.health_check_requested.emit())
+        quick_row.addWidget(health_btn)
+        keys_audit_btn = QPushButton("Key Audit")
+        keys_audit_btn.setToolTip("Check shortcut conflicts / Kisayol cakismalarini kontrol et")
+        keys_audit_btn.setMinimumHeight(24)
+        keys_audit_btn.setStyleSheet(
+            "QPushButton { background: #fefce8; color: #854d0e; font-size: 9px;"
+            "border: 1px solid #fde68a; border-radius: 4px; padding: 2px 6px; }"
+            "QPushButton:hover { background: #fef9c3; border-color: #854d0e; }"
+        )
+        keys_audit_btn.clicked.connect(lambda: self.shortcut_audit_requested.emit())
+        quick_row.addWidget(keys_audit_btn)
+        help_tool_btn = QPushButton("Help Tool")
+        help_tool_btn.setToolTip("Open docs for active tool / Aktif arac icin dokuman ac")
+        help_tool_btn.setMinimumHeight(24)
+        help_tool_btn.setStyleSheet(
+            "QPushButton { background: #ecfdf5; color: #166534; font-size: 9px;"
+            "border: 1px solid #bbf7d0; border-radius: 4px; padding: 2px 6px; }"
+            "QPushButton:hover { background: #dcfce7; border-color: #166534; }"
+        )
+        help_tool_btn.clicked.connect(self.open_help_for_last_tool)
+        quick_row.addWidget(help_tool_btn)
+        diag_btn = QPushButton("Diag")
+        diag_btn.setToolTip("Open diagnostics report / Tani raporunu ac")
+        diag_btn.setMinimumHeight(24)
+        diag_btn.setStyleSheet(
+            "QPushButton { background: #ede9fe; color: #5b21b6; font-size: 9px;"
+            "border: 1px solid #c4b5fd; border-radius: 4px; padding: 2px 6px; }"
+            "QPushButton:hover { background: #ddd6fe; border-color: #5b21b6; }"
+        )
+        diag_btn.clicked.connect(lambda: self.diagnostics_requested.emit())
+        quick_row.addWidget(diag_btn)
         layout.addLayout(quick_row)
 
         recent_row = QHBoxLayout()
@@ -533,6 +614,24 @@ class CADDockWidget(QDockWidget):
         clear_recent_btn.clicked.connect(self.clear_recent)
         recent_row.addWidget(clear_recent_btn)
         layout.addLayout(recent_row)
+
+        fav_row = QHBoxLayout()
+        fav_label = QLabel("Favorites / Favoriler:")
+        fav_label.setStyleSheet("color: #64748b; font-size: 9px;")
+        fav_row.addWidget(fav_label)
+        for _ in range(3):
+            b = QPushButton("—")
+            b.setEnabled(False)
+            b.setMinimumHeight(22)
+            b.setStyleSheet(
+                "QPushButton { background: #fffbeb; color: #78350f; font-size: 9px;"
+                "border: 1px solid #fde68a; border-radius: 4px; padding: 1px 4px; }"
+                "QPushButton:enabled:hover { background: #fef3c7; border-color: #92400e; }"
+            )
+            b.clicked.connect(lambda checked=False, btn=b: self._emit_favorite(btn))
+            self._favorite_buttons.append(b)
+            fav_row.addWidget(b)
+        layout.addLayout(fav_row)
 
         hint_box = QFrame()
         hint_box.setStyleSheet(
@@ -580,9 +679,11 @@ class CADDockWidget(QDockWidget):
         layout.addWidget(self.status_label)
 
         layout.addStretch()
+        self._load_state()
         self.refresh_layer_state()
 
     def unload(self):
+        self._save_state()
         if hasattr(self, 'coord_widget') and self.coord_widget:
             try:
                 self.coord_widget.unload()
@@ -609,9 +710,11 @@ class CADDockWidget(QDockWidget):
         self._recent_tools.insert(0, key)
         self._recent_tools = self._recent_tools[:3]
         self._refresh_recent_buttons()
+        self._last_activated_key = key
         self._update_hint(key)
         self.refresh_layer_state()
         self._activation_count += 1
+        self._tool_usage_counts[key] = int(self._tool_usage_counts.get(key, 0)) + 1
         self.usage_label.setText(
             f"Usage: {self._activation_count} activations / Kullanim: {self._activation_count} aktivasyon"
         )
@@ -641,6 +744,28 @@ class CADDockWidget(QDockWidget):
                 btn.setProperty("tool_key", None)
 
     def _emit_recent(self, button):
+        key = button.property("tool_key")
+        if key:
+            self.tool_activated.emit(key)
+
+    def _refresh_favorite_buttons(self):
+        for idx, btn in enumerate(self._favorite_buttons):
+            if idx < len(self._favorites):
+                key = self._favorites[idx]
+                label = key.replace("_", " ")
+                if len(label) > 12:
+                    label = label[:11] + "…"
+                btn.setText(label)
+                btn.setToolTip(f"Activate {key}")
+                btn.setEnabled(True)
+                btn.setProperty("tool_key", key)
+            else:
+                btn.setText("—")
+                btn.setToolTip("")
+                btn.setEnabled(False)
+                btn.setProperty("tool_key", None)
+
+    def _emit_favorite(self, button):
         key = button.property("tool_key")
         if key:
             self.tool_activated.emit(key)
@@ -684,6 +809,19 @@ class CADDockWidget(QDockWidget):
         self._refresh_recent_buttons()
         self.set_status("Recent tools cleared / Son araclar temizlendi")
 
+    def pin_last_tool(self):
+        if not self._last_activated_key:
+            self.set_status("No tool to pin yet / Sabitlenecek arac yok")
+            return
+        key = self._last_activated_key
+        if key in self._favorites:
+            self._favorites.remove(key)
+        self._favorites.insert(0, key)
+        self._favorites = self._favorites[:3]
+        self._refresh_favorite_buttons()
+        self.set_status(f"Pinned: {key} / Sabitlendi: {key}")
+        self.pin_last_requested.emit()
+
     def refresh_layer_state(self):
         layer = self.iface.activeLayer()
         if layer is None:
@@ -709,3 +847,61 @@ class CADDockWidget(QDockWidget):
             self.set_status("Preflight: layer is read-only (use Edit ON/OFF) / katman salt-okunur")
             return
         self.set_status("Preflight: OK (vector + editable) / tamam (vektor + duzenlenebilir)")
+
+    def _save_state(self):
+        s = QSettings("PlanX", "PlanXCAD")
+        s.setValue("dock/search_text", self.search_input.text())
+        s.setValue("dock/recent_tools", self._recent_tools)
+        s.setValue("dock/favorites", self._favorites)
+        s.setValue("dock/activation_count", self._activation_count)
+        s.setValue("dock/tool_usage_counts", self._tool_usage_counts)
+
+    def _load_state(self):
+        s = QSettings("PlanX", "PlanXCAD")
+        text = s.value("dock/search_text", "", type=str)
+        recent = s.value("dock/recent_tools", [], type=list)
+        favs = s.value("dock/favorites", [], type=list)
+        count = s.value("dock/activation_count", 0, type=int)
+        usage_counts = s.value("dock/tool_usage_counts", {}, type=dict)
+
+        self.search_input.setText(text or "")
+        self._recent_tools = [k for k in (recent or []) if k in self.buttons][:3]
+        self._favorites = [k for k in (favs or []) if k in self.buttons][:3]
+        self._activation_count = max(0, int(count or 0))
+        self._tool_usage_counts = {str(k): int(v) for k, v in (usage_counts or {}).items() if str(k) in self.buttons}
+        self._refresh_recent_buttons()
+        self._refresh_favorite_buttons()
+        self.usage_label.setText(
+            f"Usage: {self._activation_count} activations / Kullanim: {self._activation_count} aktivasyon"
+        )
+
+    def diagnostics_snapshot(self):
+        layer = self.iface.activeLayer()
+        return {
+            "search_text": self.search_input.text(),
+            "recent_tools": list(self._recent_tools),
+            "favorites": list(self._favorites),
+            "activation_count": int(self._activation_count),
+            "tool_usage_counts": dict(self._tool_usage_counts),
+            "active_layer_name": (layer.name() if layer and hasattr(layer, "name") else ""),
+            "active_layer_editable": bool(layer.isEditable()) if layer and hasattr(layer, "isEditable") else False,
+        }
+
+    def clear_workspace_state(self):
+        self.search_input.clear()
+        self._recent_tools = []
+        self._favorites = []
+        self._activation_count = 0
+        self._tool_usage_counts = {}
+        self._refresh_recent_buttons()
+        self._refresh_favorite_buttons()
+        self.usage_label.setText("Usage: 0 activations / Kullanim: 0 aktivasyon")
+        self.hint_label.setText("Tip / Ipucu: Activate a tool to see best-practice guidance.")
+        self.set_status("Workspace reset complete / Calisma alani sifirlandi")
+        self._save_state()
+
+    def open_help_for_last_tool(self):
+        if not self._last_activated_key:
+            self.set_status("No active tool for help / Yardim icin aktif arac yok")
+            return
+        self.tool_help_requested.emit(self._last_activated_key)

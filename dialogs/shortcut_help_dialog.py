@@ -89,11 +89,21 @@ class ShortcutHelpDialog(QDialog):
             {"en": "focus_search", "tr": "arama_odagi", "shortcut": "Ctrl+Shift+S", "category": "System"},
             {"en": "open_shortcuts", "tr": "kisayol_rehberi", "shortcut": "Ctrl+Shift+/", "category": "System"},
             {"en": "open_docs", "tr": "komut_kilavuzu", "shortcut": "Ctrl+Alt+H", "category": "System"},
+            {"en": "open_smoke_test", "tr": "duman_test_listesi", "shortcut": "Ctrl+Alt+M", "category": "System"},
             {"en": "command_palette", "tr": "komut_paleti", "shortcut": "Ctrl+Alt+P", "category": "System"},
             {"en": "cancel_active_tool", "tr": "aktif_araci_iptal", "shortcut": "Ctrl+Alt+C", "category": "System"},
             {"en": "toggle_layer_editing", "tr": "katman_duzenleme_ac_kapat", "shortcut": "Ctrl+Alt+E", "category": "System"},
             {"en": "run_preflight", "tr": "preflight_kontrolu", "shortcut": "Ctrl+Alt+F", "category": "System"},
             {"en": "quick_start", "tr": "hizli_baslangic", "shortcut": "Ctrl+Alt+Q", "category": "System"},
+            {"en": "session_checklist", "tr": "oturum_kontrol_listesi", "shortcut": "Ctrl+Alt+G", "category": "System"},
+            {"en": "pin_last_tool", "tr": "son_araci_sabitle", "shortcut": "Ctrl+Alt+Z", "category": "System"},
+            {"en": "open_diagnostics", "tr": "tani_raporu", "shortcut": "Ctrl+Alt+D", "category": "System"},
+            {"en": "reset_workspace_state", "tr": "calisma_alani_sifirla", "shortcut": "Ctrl+Alt+R", "category": "System"},
+            {"en": "open_usage_stats", "tr": "kullanim_istatistikleri", "shortcut": "Ctrl+Alt+T", "category": "System"},
+            {"en": "open_health_check", "tr": "sistem_kontrolu", "shortcut": "Ctrl+Alt+W", "category": "System"},
+            {"en": "open_shortcut_audit", "tr": "kisayol_denetimi", "shortcut": "Ctrl+Alt+Y", "category": "System"},
+            {"en": "open_issue_template", "tr": "hata_rapor_sablonu", "shortcut": "Ctrl+Alt+N", "category": "System"},
+            {"en": "open_release_readiness", "tr": "surum_hazirlik", "shortcut": "Ctrl+Alt+V", "category": "System"},
         ])
 
         self._render_rows(self._rows)

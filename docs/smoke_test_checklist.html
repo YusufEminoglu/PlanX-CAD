@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PlanX CAD Smoke Test Checklist</title>
+  <style>
+    body { font-family: "Segoe UI", Arial, sans-serif; margin: 24px; color: #0f172a; line-height: 1.45; }
+    h1, h2 { color: #0f766e; margin-top: 20px; }
+    .card { border: 1px solid #d8e0ea; border-radius: 8px; padding: 12px; margin: 10px 0; background: #f8fafc; }
+    .k { font-family: Consolas, monospace; background: #e2e8f0; padding: 2px 6px; border-radius: 4px; }
+    .tr { color: #475569; margin-top: 6px; }
+    ol, ul { margin: 8px 0 0 18px; }
+  </style>
+</head>
+<body>
+  <h1>PlanX CAD - QGIS Smoke Test Checklist</h1>
+  <p>Use this in a real QGIS session after plugin updates.</p>
+  <p class="tr">Eklenti guncellemelerinden sonra gercek QGIS oturumunda bu kontrol listesini uygulayin.</p>
+
+  <div class="card">
+    <h2>1. Startup</h2>
+    <ol>
+      <li>Open dock and verify no load error.</li>
+      <li>Run <span class="k">Preflight</span>, <span class="k">Health</span>, and <span class="k">Key Audit</span>.</li>
+      <li>Confirm active vector layer + editable state.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>2. Core Tool Pass</h2>
+    <ul>
+      <li>Drawing: line, polyline, rectangle, circle</li>
+      <li>Editing: trim, extend, offset, fillet</li>
+      <li>Transform: move, rotate, mirror</li>
+      <li>Measure: distance + dimension</li>
+      <li>Urban: road or junction basic path</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>3. UX Pass</h2>
+    <ul>
+      <li>Search + Command Palette launch commands correctly.</li>
+      <li>Recent/Favorites rows update as expected.</li>
+      <li>Diagnostics report and usage stats open without error.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>4. Failure Reporting</h2>
+    <p>If any step fails, open Issue Template from plugin menu and attach diagnostics text.</p>
+    <p class="tr">Bir adim basarisiz olursa eklenti menusunden Issue Template acin ve tani metnini ekleyin.</p>
+  </div>
+</body>
+</html>

@@ -2,7 +2,7 @@
 name=PlanX CAD Toolset
 qgisMinimumVersion=3.28
 description=Lightweight and fast CAD toolset for urban planning processes in QGIS. Features include drawing, editing, transforming, measuring, and road platform design.
-version=1.16.0
+version=1.17.0
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 

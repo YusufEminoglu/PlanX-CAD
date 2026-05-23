@@ -8,9 +8,11 @@ from qgis.PyQt.QtCore import QUrl, Qt
 
 
 class DocsDialog(QDialog):
-    def __init__(self, plugin_dir, parent=None):
+    def __init__(self, plugin_dir, parent=None, initial_tab=0, command_anchor=None):
         super().__init__(parent)
         self.plugin_dir = plugin_dir
+        self.initial_tab = int(initial_tab)
+        self.command_anchor = command_anchor or ""
         self.setWindowTitle("PlanX CAD - Command Reference")
         self.resize(920, 700)
         self._build_ui()
@@ -18,20 +20,30 @@ class DocsDialog(QDialog):
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
-        tabs = QTabWidget(self)
-        tabs.addTab(self._make_browser("command_reference.html"), "Commands")
-        tabs.addTab(self._make_browser("shortcuts.html"), "Shortcuts")
-        layout.addWidget(tabs)
+        self.tabs = QTabWidget(self)
+        self.commands_browser = self._make_browser("command_reference.html", self.command_anchor)
+        self.shortcuts_browser = self._make_browser("shortcuts.html")
+        self.smoke_browser = self._make_browser("smoke_test_checklist.html")
+        self.tabs.addTab(self.commands_browser, "Commands")
+        self.tabs.addTab(self.shortcuts_browser, "Shortcuts")
+        self.tabs.addTab(self.smoke_browser, "Smoke Test")
+        self.tabs.setCurrentIndex(0 if self.initial_tab < 0 else min(self.initial_tab, 2))
+        layout.addWidget(self.tabs)
 
         close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn, alignment=Qt.AlignRight)
 
-    def _make_browser(self, html_name):
+    def _make_browser(self, html_name, anchor=""):
         browser = QTextBrowser(self)
         html_path = os.path.join(self.plugin_dir, "docs", html_name)
         if os.path.exists(html_path):
-            browser.setSource(QUrl.fromLocalFile(html_path))
+            if anchor:
+                url = QUrl.fromLocalFile(html_path)
+                url.setFragment(anchor)
+                browser.setSource(url)
+            else:
+                browser.setSource(QUrl.fromLocalFile(html_path))
         else:
             browser.setHtml(
                 "<h3>Documentation file missing</h3>"

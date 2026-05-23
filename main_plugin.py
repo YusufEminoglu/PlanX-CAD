@@ -6,7 +6,7 @@ planX CAD Araç Seti — Ana Plugin Sınıfı
 
 import os
 
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import Qt, QTimer, QSettings
 from qgis.PyQt.QtGui import QIcon, QKeySequence
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolBar, QMessageBox, QShortcut
 
@@ -84,6 +84,13 @@ class PlanXCADPlugin:
             status_tip="Detailed command documentation / Detayli komut dokumani"
         )
         self._add_action(
+            ":/images/themes/default/mActionHelpContents.svg",
+            "Smoke Test Checklist / Duman Test Listesi",
+            self._show_smoke_test,
+            add_to_toolbar=False,
+            status_tip="Open QGIS smoke test checklist / QGIS duman test listesini ac"
+        )
+        self._add_action(
             ":/images/themes/default/mIconExpression.svg",
             "Command Palette / Komut Paleti",
             self._show_command_palette,
@@ -97,9 +104,52 @@ class PlanXCADPlugin:
             add_to_toolbar=False,
             status_tip="Open onboarding guide / Baslangic rehberini ac"
         )
+        self._add_action(
+            ":/images/themes/default/mActionRefresh.svg",
+            "Session Checklist / Oturum Kontrol Listesi",
+            self._show_session_checklist,
+            add_to_toolbar=False,
+            status_tip="Run beta session checklist / Beta oturum kontrol listesini ac"
+        )
+        self._add_action(
+            ":/images/themes/default/mActionPropertiesWidget.svg",
+            "Diagnostics / Tani",
+            self._show_diagnostics,
+            add_to_toolbar=False,
+            status_tip="Open runtime diagnostics report / Calisma tani raporunu ac"
+        )
+        self._add_action(
+            ":/images/themes/default/mActionOptions.svg",
+            "Health Check / Sistem Kontrolu",
+            self._show_health_check,
+            add_to_toolbar=False,
+            status_tip="Run runtime readiness checks / Calisma hazirlik kontrollerini calistir"
+        )
+        self._add_action(
+            ":/images/themes/default/mIconFieldInteger.svg",
+            "Shortcut Audit / Kisayol Denetimi",
+            self._show_shortcut_audit,
+            add_to_toolbar=False,
+            status_tip="Check shortcut conflicts and duplicates / Kisayol cakisma ve tekrarlarini kontrol et"
+        )
+        self._add_action(
+            ":/images/themes/default/mIconNewText.svg",
+            "Issue Template / Hata Rapor Sablonu",
+            self._show_issue_template,
+            add_to_toolbar=False,
+            status_tip="Open copy-ready issue report template / Kopyalanabilir hata rapor sablonu ac"
+        )
+        self._add_action(
+            ":/images/themes/default/mActionRefresh.svg",
+            "Release Readiness / Surum Hazirlik",
+            self._show_release_readiness,
+            add_to_toolbar=False,
+            status_tip="Open beta release readiness checks / Beta surum hazirlik kontrollerini ac"
+        )
 
         # ── Klavye kısayolları ─────────────────────────────────────────────
         self._setup_shortcuts()
+        self._maybe_show_quick_start_once()
 
     def unload(self):
         """Plugin kaldırıldığında temizlik yap."""
@@ -165,6 +215,12 @@ class PlanXCADPlugin:
                 self._dock.quick_start_requested.connect(self._show_quick_start)
                 self._dock.docs_requested.connect(self._show_command_reference)
                 self._dock.shortcuts_requested.connect(self._show_shortcut_guide)
+                self._dock.diagnostics_requested.connect(self._show_diagnostics)
+                self._dock.workspace_reset_requested.connect(self._reset_workspace_state)
+                self._dock.tool_help_requested.connect(self._show_tool_help)
+                self._dock.usage_stats_requested.connect(self._show_usage_stats)
+                self._dock.health_check_requested.connect(self._show_health_check)
+                self._dock.shortcut_audit_requested.connect(self._show_shortcut_audit)
                 try:
                     self.iface.currentLayerChanged.connect(self._on_current_layer_changed)
                 except Exception:
@@ -202,6 +258,15 @@ class PlanXCADPlugin:
 
     # Dialog açan araçlar — her seferinde yeni instance gerekir
     _DIALOG_TOOLS = {"buffer", "fillet", "polygon", "road", "junction", "measure_area", "ada_kirma", "array", "divide", "multi_offset", "join", "hatch"}
+    _TOOLS_REQUIRING_LAYER = {
+        "line", "polyline", "rectangle", "polygon", "circle", "arc",
+        "offset", "trim", "extend", "fillet", "buffer", "vertex_edit", "hatch",
+        "construction_inf", "construction_ray", "construction_seg",
+        "move", "copy", "rotate", "scale", "mirror", "array",
+        "dimension", "divide", "multi_offset", "join",
+        "road", "junction", "ada_kirma",
+    }
+    _TOOLS_REQUIRING_EDITABLE = set(_TOOLS_REQUIRING_LAYER)
 
     # ═══════════════════════════════════════════════════════════════════════
     # Klavye kısayolları + tool history
@@ -263,6 +328,10 @@ class PlanXCADPlugin:
         docs_help.setContext(Qt.ApplicationShortcut)
         docs_help.activated.connect(self._show_command_reference)
         self._shortcuts.append(docs_help)
+        smoke_test = QShortcut(QKeySequence("Ctrl+Alt+M"), parent)
+        smoke_test.setContext(Qt.ApplicationShortcut)
+        smoke_test.activated.connect(self._show_smoke_test)
+        self._shortcuts.append(smoke_test)
         palette = QShortcut(QKeySequence("Ctrl+Alt+P"), parent)
         palette.setContext(Qt.ApplicationShortcut)
         palette.activated.connect(self._show_command_palette)
@@ -283,6 +352,42 @@ class PlanXCADPlugin:
         quick_start.setContext(Qt.ApplicationShortcut)
         quick_start.activated.connect(self._show_quick_start)
         self._shortcuts.append(quick_start)
+        checklist = QShortcut(QKeySequence("Ctrl+Alt+G"), parent)
+        checklist.setContext(Qt.ApplicationShortcut)
+        checklist.activated.connect(self._show_session_checklist)
+        self._shortcuts.append(checklist)
+        pin_last = QShortcut(QKeySequence("Ctrl+Alt+Z"), parent)
+        pin_last.setContext(Qt.ApplicationShortcut)
+        pin_last.activated.connect(self._pin_last_tool)
+        self._shortcuts.append(pin_last)
+        diagnostics = QShortcut(QKeySequence("Ctrl+Alt+D"), parent)
+        diagnostics.setContext(Qt.ApplicationShortcut)
+        diagnostics.activated.connect(self._show_diagnostics)
+        self._shortcuts.append(diagnostics)
+        reset_workspace = QShortcut(QKeySequence("Ctrl+Alt+R"), parent)
+        reset_workspace.setContext(Qt.ApplicationShortcut)
+        reset_workspace.activated.connect(self._reset_workspace_state)
+        self._shortcuts.append(reset_workspace)
+        usage_stats = QShortcut(QKeySequence("Ctrl+Alt+T"), parent)
+        usage_stats.setContext(Qt.ApplicationShortcut)
+        usage_stats.activated.connect(self._show_usage_stats)
+        self._shortcuts.append(usage_stats)
+        health = QShortcut(QKeySequence("Ctrl+Alt+W"), parent)
+        health.setContext(Qt.ApplicationShortcut)
+        health.activated.connect(self._show_health_check)
+        self._shortcuts.append(health)
+        shortcut_audit = QShortcut(QKeySequence("Ctrl+Alt+Y"), parent)
+        shortcut_audit.setContext(Qt.ApplicationShortcut)
+        shortcut_audit.activated.connect(self._show_shortcut_audit)
+        self._shortcuts.append(shortcut_audit)
+        issue_template = QShortcut(QKeySequence("Ctrl+Alt+N"), parent)
+        issue_template.setContext(Qt.ApplicationShortcut)
+        issue_template.activated.connect(self._show_issue_template)
+        self._shortcuts.append(issue_template)
+        release_readiness = QShortcut(QKeySequence("Ctrl+Alt+V"), parent)
+        release_readiness.setContext(Qt.ApplicationShortcut)
+        release_readiness.activated.connect(self._show_release_readiness)
+        self._shortcuts.append(release_readiness)
 
     def _repeat_last_tool(self):
         if self._last_tool_key:
@@ -341,11 +446,318 @@ class PlanXCADPlugin:
         if self._dock and hasattr(self._dock, "run_preflight"):
             self._dock.run_preflight()
 
+    def _pin_last_tool(self):
+        if self._dock and hasattr(self._dock, "pin_last_tool"):
+            self._dock.pin_last_tool()
+
+    def _reset_workspace_state(self):
+        if self._dock and hasattr(self._dock, "clear_workspace_state"):
+            self._dock.clear_workspace_state()
+
+    def _show_diagnostics(self):
+        try:
+            from .dialogs.diagnostics_dialog import DiagnosticsDialog
+            report = self._build_diagnostics_report()
+            dlg = DiagnosticsDialog(report, self.iface.mainWindow())
+            dlg.exec_()
+        except Exception as e:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Diagnostics",
+                f"Diagnostics report could not be opened:\n{e}"
+            )
+
+    def _show_usage_stats(self):
+        if not self._dock:
+            self._toggle_dock()
+        if not self._dock:
+            return
+        try:
+            from .dialogs.usage_stats_dialog import UsageStatsDialog
+            snap = self._dock.diagnostics_snapshot()
+            dlg = UsageStatsDialog(
+                usage_counts=snap.get("tool_usage_counts", {}),
+                total_activations=snap.get("activation_count", 0),
+                parent=self.iface.mainWindow()
+            )
+            dlg.exec_()
+        except Exception as e:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Usage Stats",
+                f"Usage statistics could not be opened:\n{e}"
+            )
+
+    def _show_tool_help(self, tool_key=None):
+        anchor = self._doc_anchor_for_tool(tool_key or self._last_tool_key)
+        self._show_command_reference(anchor=anchor)
+
+    def _doc_anchor_for_tool(self, tool_key):
+        drawing = {"line", "polyline", "rectangle", "polygon", "circle", "arc"}
+        editing = {"offset", "trim", "extend", "fillet", "buffer", "vertex_edit", "hatch", "construction_inf", "construction_ray", "construction_seg", "divide", "multi_offset", "join"}
+        transform = {"move", "copy", "rotate", "scale", "mirror", "array"}
+        measure = {"dimension", "measure", "measure_area", "measure_select_line", "measure_select_area"}
+        urban = {"road", "junction", "ada_kirma"}
+        if tool_key in drawing:
+            return "drawing"
+        if tool_key in editing:
+            return "editing"
+        if tool_key in transform:
+            return "transform"
+        if tool_key in measure:
+            return "measurement"
+        if tool_key in urban:
+            return "urban"
+        return "workflow"
+
+    def _show_health_check(self):
+        try:
+            from .dialogs.health_check_dialog import HealthCheckDialog
+            dlg = HealthCheckDialog(self._build_health_checks(), self.iface.mainWindow())
+            dlg.exec_()
+        except Exception as e:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Health Check",
+                f"Health check could not be opened:\n{e}"
+            )
+
+    def _show_shortcut_audit(self):
+        rows = self._build_shortcut_audit_rows()
+        text = ["Shortcut Audit / Kisayol Denetimi", "==============================", ""]
+        has_issue = False
+        for row in rows:
+            line = f"[{row['status']}] {row['shortcut']} -> {row['commands']}"
+            text.append(line)
+            if row["status"] != "OK":
+                has_issue = True
+        text.append("")
+        text.append("Result: ISSUE found" if has_issue else "Result: OK")
+        try:
+            from .dialogs.diagnostics_dialog import DiagnosticsDialog
+            dlg = DiagnosticsDialog("\n".join(text), self.iface.mainWindow())
+            dlg.setWindowTitle("PlanX CAD - Shortcut Audit / Kisayol Denetimi")
+            dlg.exec_()
+        except Exception as e:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Shortcut Audit",
+                f"Shortcut audit could not be opened:\n{e}"
+            )
+
+    def _build_health_checks(self):
+        checks = []
+        layer = self.iface.activeLayer()
+        checks.append({
+            "check": "Active layer",
+            "status": "OK" if layer else "WARN",
+            "value": layer.name() if layer and hasattr(layer, "name") else "None",
+            "hint": "Select target vector layer before editing tools."
+        })
+        editable = bool(layer.isEditable()) if layer and hasattr(layer, "isEditable") else False
+        checks.append({
+            "check": "Layer editable",
+            "status": "OK" if editable else "WARN",
+            "value": editable,
+            "hint": "Use Edit ON/OFF if tool requires write operations."
+        })
+        checks.append({
+            "check": "Tool registry",
+            "status": "OK" if len(self._SHORTCUTS) >= 20 else "WARN",
+            "value": f"{len(self._SHORTCUTS)} mapped tools",
+            "hint": "Shortcut coverage should include core CAD commands."
+        })
+        snap_enabled = False
+        try:
+            canvas = self.iface.mapCanvas()
+            snap_utils = canvas.snappingUtils() if canvas else None
+            snap_cfg = snap_utils.config() if snap_utils else None
+            snap_enabled = bool(snap_cfg.enabled()) if snap_cfg else False
+        except Exception:
+            snap_enabled = False
+        checks.append({
+            "check": "Snapping",
+            "status": "OK" if snap_enabled else "WARN",
+            "value": snap_enabled,
+            "hint": "Enable snapping for topology-safe drawing."
+        })
+        checks.append({
+            "check": "Dock state",
+            "status": "OK" if self._dock else "WARN",
+            "value": "Loaded" if self._dock else "Not loaded",
+            "hint": "Open PlanX CAD dock for full workflow controls."
+        })
+        return checks
+
+    def _build_shortcut_audit_rows(self):
+        shortcut_map = {}
+        for key, seq in self._SHORTCUTS:
+            s = str(seq).lower()
+            shortcut_map.setdefault(s, []).append(key)
+        system_pairs = [
+            ("repeat_last", "Ctrl+Shift+Space"),
+            ("focus_search", "Ctrl+Shift+S"),
+            ("open_shortcuts", "Ctrl+Shift+/"),
+            ("open_docs", "Ctrl+Alt+H"),
+            ("command_palette", "Ctrl+Alt+P"),
+            ("cancel_active_tool", "Ctrl+Alt+C"),
+            ("toggle_layer_editing", "Ctrl+Alt+E"),
+            ("run_preflight", "Ctrl+Alt+F"),
+            ("quick_start", "Ctrl+Alt+Q"),
+            ("pin_last_tool", "Ctrl+Alt+Z"),
+            ("open_diagnostics", "Ctrl+Alt+D"),
+            ("reset_workspace_state", "Ctrl+Alt+R"),
+            ("open_usage_stats", "Ctrl+Alt+T"),
+            ("open_health_check", "Ctrl+Alt+W"),
+            ("open_shortcut_audit", "Ctrl+Alt+Y"),
+        ]
+        for name, seq in system_pairs:
+            s = str(seq).lower()
+            shortcut_map.setdefault(s, []).append(name)
+
+        rows = []
+        for seq in sorted(shortcut_map.keys()):
+            commands = shortcut_map[seq]
+            status = "OK" if len(commands) == 1 else "CONFLICT"
+            rows.append({
+                "shortcut": seq,
+                "commands": ", ".join(commands),
+                "status": status,
+            })
+        return rows
+
+    def _build_diagnostics_report(self):
+        layer = self.iface.activeLayer()
+        layer_name = layer.name() if layer and hasattr(layer, "name") else "None"
+        layer_editable = bool(layer.isEditable()) if layer and hasattr(layer, "isEditable") else False
+        layer_type = layer.__class__.__name__ if layer else "None"
+
+        dock_data = {}
+        if self._dock and hasattr(self._dock, "diagnostics_snapshot"):
+            dock_data = self._dock.diagnostics_snapshot()
+
+        lines = [
+            "PlanX CAD Diagnostics / Tani Raporu",
+            "===================================",
+            f"Plugin directory: {self.plugin_dir}",
+            f"Current tool key: {self._last_tool_key or 'None'}",
+            f"Loaded tool instances: {sorted(list(self._tools.keys()))}",
+            f"Active layer name: {layer_name}",
+            f"Active layer editable: {layer_editable}",
+            f"Active layer class: {layer_type}",
+            "",
+            "Dock state:",
+            f"  search_text: {dock_data.get('search_text', '')}",
+            f"  recent_tools: {dock_data.get('recent_tools', [])}",
+            f"  favorites: {dock_data.get('favorites', [])}",
+            f"  activation_count: {dock_data.get('activation_count', 0)}",
+            f"  tool_usage_counts: {dock_data.get('tool_usage_counts', {})}",
+        ]
+        return "\n".join(lines)
+
+    def _show_issue_template(self):
+        try:
+            from .dialogs.diagnostics_dialog import DiagnosticsDialog
+            report = self._build_issue_template_text()
+            dlg = DiagnosticsDialog(report, self.iface.mainWindow())
+            dlg.setWindowTitle("PlanX CAD - Issue Template / Hata Rapor Sablonu")
+            dlg.exec_()
+        except Exception as e:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Issue Template",
+                f"Issue template could not be opened:\n{e}"
+            )
+
+    def _build_issue_template_text(self):
+        diagnostics = self._build_diagnostics_report()
+        return (
+            "PlanX CAD Issue Template / Hata Rapor Sablonu\n"
+            "============================================\n\n"
+            "1) Summary / Ozet:\n"
+            "-\n\n"
+            "2) Expected behavior / Beklenen davranis:\n"
+            "-\n\n"
+            "3) Actual behavior / Gercek davranis:\n"
+            "-\n\n"
+            "4) Reproduction steps / Tekrarlama adimlari:\n"
+            "1.\n2.\n3.\n\n"
+            "5) Data context / Veri baglami:\n"
+            "- CRS:\n- Layer type:\n- Editable state:\n\n"
+            "6) Attach diagnostics / Tani metni:\n\n"
+            f"{diagnostics}\n"
+        )
+
+    def _show_release_readiness(self):
+        try:
+            from .dialogs.release_readiness_dialog import ReleaseReadinessDialog
+            rows = self._build_release_readiness_rows()
+            dlg = ReleaseReadinessDialog(rows, self.iface.mainWindow())
+            dlg.exec_()
+        except Exception as e:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Release Readiness",
+                f"Release readiness report could not be opened:\n{e}"
+            )
+
+    def _build_release_readiness_rows(self):
+        rows = []
+        health_rows = self._build_health_checks()
+        health_warn = sum(1 for r in health_rows if r.get("status") != "OK")
+        rows.append({
+            "check": "Runtime health checks",
+            "status": "OK" if health_warn == 0 else "WARN",
+            "value": f"{len(health_rows) - health_warn}/{len(health_rows)} OK",
+            "action": "Run Health and fix warnings",
+        })
+
+        shortcut_rows = self._build_shortcut_audit_rows()
+        conflicts = [r for r in shortcut_rows if r.get("status") != "OK"]
+        rows.append({
+            "check": "Shortcut conflicts",
+            "status": "OK" if not conflicts else "WARN",
+            "value": f"{len(conflicts)} conflicts",
+            "action": "Run Key Audit and resolve duplicates",
+        })
+
+        docs = ["command_reference.html", "shortcuts.html", "smoke_test_checklist.html"]
+        for name in docs:
+            path = os.path.join(self.plugin_dir, "docs", name)
+            exists = os.path.exists(path)
+            rows.append({
+                "check": f"Docs file: {name}",
+                "status": "OK" if exists else "WARN",
+                "value": "present" if exists else "missing",
+                "action": "Restore documentation file",
+            })
+
+        meta_path = os.path.join(self.plugin_dir, "metadata.txt")
+        version = "unknown"
+        try:
+            with open(meta_path, "r", encoding="utf-8") as f:
+                import re
+                content = f.read()
+                m = re.search(r"^version=(.+)$", content, re.MULTILINE)
+                if m:
+                    version = m.group(1).strip()
+        except Exception:
+            pass
+        rows.append({
+            "check": "Metadata version",
+            "status": "OK" if version not in ("", "unknown") else "WARN",
+            "value": version,
+            "action": "Set release target version before packaging",
+        })
+        return rows
+
     def _activate_tool(self, tool_key):
         """Araç tuşuna basıldığında ilgili map tool'u aktifleştirir."""
         # "Repeat last" button in dock emits the sentinel key.
         if tool_key == "__repeat__":
             self._repeat_last_tool()
+            return
+        if not self._validate_tool_activation_context(tool_key):
             return
 
         canvas = self.iface.mapCanvas()
@@ -376,6 +788,31 @@ class PlanXCADPlugin:
         canvas.setMapTool(tool)
         if self._dock and hasattr(self._dock, "register_tool_activation"):
             self._dock.register_tool_activation(tool_key)
+
+    def _validate_tool_activation_context(self, tool_key):
+        layer = self.iface.activeLayer()
+
+        if tool_key in self._TOOLS_REQUIRING_LAYER and layer is None:
+            if self._dock:
+                self._dock.set_status("Select a target layer first / Once hedef katman secin")
+            return False
+
+        if tool_key in self._TOOLS_REQUIRING_LAYER and layer is not None:
+            if not hasattr(layer, "geometryType"):
+                if self._dock:
+                    self._dock.set_status("Active layer is not vector / Aktif katman vektor degil")
+                return False
+
+        if tool_key in self._TOOLS_REQUIRING_EDITABLE and layer is not None:
+            editable = bool(layer.isEditable()) if hasattr(layer, "isEditable") else False
+            if not editable:
+                if self._dock:
+                    self._dock.set_status(
+                        "Layer is read-only: use Edit ON/OFF / Katman salt-okunur: Edit ON/OFF kullanin"
+                    )
+                return False
+
+        return True
 
     def _create_tool(self, key):
         """Araç instance'ı oluşturur."""
@@ -591,10 +1028,10 @@ class PlanXCADPlugin:
                 f"Shortcut guide could not be opened:\n{e}"
             )
 
-    def _show_command_reference(self):
+    def _show_command_reference(self, anchor=None):
         try:
             from .dialogs.docs_dialog import DocsDialog
-            dlg = DocsDialog(self.plugin_dir, self.iface.mainWindow())
+            dlg = DocsDialog(self.plugin_dir, self.iface.mainWindow(), initial_tab=0, command_anchor=anchor)
             dlg.exec_()
         except Exception as e:
             QMessageBox.warning(
@@ -603,10 +1040,25 @@ class PlanXCADPlugin:
                 f"Command reference could not be opened:\n{e}"
             )
 
+    def _show_smoke_test(self):
+        try:
+            from .dialogs.docs_dialog import DocsDialog
+            dlg = DocsDialog(self.plugin_dir, self.iface.mainWindow(), initial_tab=2, command_anchor=None)
+            dlg.exec_()
+        except Exception as e:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Smoke Test Checklist",
+                f"Smoke test checklist could not be opened:\n{e}"
+            )
+
     def _show_command_palette(self):
         try:
             from .dialogs.command_palette_dialog import CommandPaletteDialog
-            dlg = CommandPaletteDialog(self._SHORTCUTS, self.iface.mainWindow())
+            usage_counts = {}
+            if self._dock and hasattr(self._dock, "diagnostics_snapshot"):
+                usage_counts = self._dock.diagnostics_snapshot().get("tool_usage_counts", {})
+            dlg = CommandPaletteDialog(self._SHORTCUTS, usage_counts=usage_counts, parent=self.iface.mainWindow())
             dlg.tool_selected.connect(self._activate_tool)
             dlg.exec_()
         except Exception as e:
@@ -614,6 +1066,23 @@ class PlanXCADPlugin:
                 self.iface.mainWindow(),
                 "Command Palette",
                 f"Command palette could not be opened:\n{e}"
+            )
+
+    def _show_session_checklist(self):
+        try:
+            from .dialogs.session_checklist_dialog import SessionChecklistDialog
+            dlg = SessionChecklistDialog(
+                run_preflight_cb=self._run_dock_preflight,
+                run_health_cb=self._show_health_check,
+                run_audit_cb=self._show_shortcut_audit,
+                parent=self.iface.mainWindow()
+            )
+            dlg.exec_()
+        except Exception as e:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Session Checklist",
+                f"Session checklist could not be opened:\n{e}"
             )
 
     def _show_quick_start(self):
@@ -627,3 +1096,14 @@ class PlanXCADPlugin:
                 "Quick Start",
                 f"Quick Start could not be opened:\n{e}"
             )
+
+    def _maybe_show_quick_start_once(self):
+        try:
+            s = QSettings("PlanX", "PlanXCAD")
+            seen = s.value("onboarding/quick_start_seen", False, type=bool)
+            if seen:
+                return
+            QTimer.singleShot(400, self._show_quick_start)
+            s.setValue("onboarding/quick_start_seen", True)
+        except Exception:
+            pass
