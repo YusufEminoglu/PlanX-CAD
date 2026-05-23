@@ -2,7 +2,7 @@
 name=PlanX CAD Toolset
 qgisMinimumVersion=3.28
 description=Lightweight and fast CAD toolset for urban planning processes in QGIS. Features include drawing, editing, transforming, measuring, and road platform design.
-version=1.10.0
+version=1.11.0
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
@@ -23,6 +23,10 @@ experimental=False
 deprecated=False
 
 changelog=
+    PlanX CAD Toolset 1.11.0 - English-first docs and beta usability upgrades.
+        - Revised docs to English-first with Turkish secondary guidance.
+        - Added searchable shortcut center with category filter.
+        - Added live workflow hint panel in dock and Ctrl+Alt+H global docs shortcut.
     PlanX CAD Toolset 1.10.0 - HTML docs and in-dock help integration.
         - Added command reference HTML and shortcuts HTML documents under docs/.
         - Added dock quick-access buttons (Docs / Keys) to open help content without leaving drafting workflow.
@@ -37,7 +41,7 @@ changelog=
         - Tool activation sync: keyboard-triggered tools now update dock selection and recent history.
     PlanX CAD Toolset 1.7.0 - Hatch / Pattern Fill + Construction Lines.
         - Hatch tool: pick a closed polygon, choose pattern (parallel / cross / diag up / diag down), spacing, angle and colour. Hatch lines are clipped to the polygon and written to the auto-created planx_hatch layer with full attribute metadata (source layer, pattern, spacing, angle, colour) so they survive export to other GIS/CAD formats.
-        - Construction Line tool: 2-click reference line on the auto-created planx_construction layer with a dashed cyan style. Three modes registered via the dispatcher (infinite reference / ray / segment) Ã¢â‚¬â€ the dock exposes the infinite mode; ray and segment are reachable through the construction_ray / construction_seg dispatch keys.
+        - Construction Line tool: 2-click reference line on the auto-created planx_construction layer with a dashed cyan style. Three modes registered via the dispatcher (infinite reference / ray / segment) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the dock exposes the infinite mode; ray and segment are reachable through the construction_ray / construction_seg dispatch keys.
         - Shortcuts: Hatch = Ctrl+Shift+H, Construction (infinite) = Ctrl+Shift+K.
         - New icons cad_hatch.svg and cad_construction.svg.
     PlanX CAD Toolset 1.6.0 - Join, Divide, Multi-Offset and a bilingual/compact UI pass.
@@ -48,7 +52,7 @@ changelog=
     PlanX CAD Toolset 1.4.0 - Keyboard shortcuts framework + tool history.
         - 15 Ctrl+Shift+<letter> shortcuts (Line=L, Polyline=P, Rectangle=R, Polygon=G, Circle=C, Arc=A, Offset=O, Trim=T, Extend=E, Fillet=F, Buffer=B, Move=M, Array=Y, Dimension=D, Measure=I) registered as ApplicationShortcut on the QGIS main window.
         - Ctrl+Shift+Space: repeat the last activated tool (CAD convention).
-        - Dock: new 'Son aracÃ„Â± tekrarla' button next to the status bar; tool button tooltips now include the keyboard shortcut.
+        - Dock: new 'Son aracÃƒâ€žÃ‚Â± tekrarla' button next to the status bar; tool button tooltips now include the keyboard shortcut.
         - main_plugin remembers the last tool key in self._last_tool_key; shortcuts are owned by the plugin and cleaned up in unload.
     PlanX CAD Toolset 1.3.0 - Two new tools: Array and Linear Dimension.
         - Array (rectangular + polar): pick a feature, choose rows/cols + dx/dy or count + sweep angle, optional polar center on canvas with live preview. Multipart-safe via the existing rotate_geometry helper.

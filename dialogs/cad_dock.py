@@ -149,6 +149,18 @@ class CADDockWidget(QDockWidget):
         "multi_offset":     "Ctrl+Shift+X",
         "join":             "Ctrl+Shift+J",
     }
+    _TOOL_HINTS = {
+        "line": "Line: click start and end points. / Cizgi: baslangic ve bitis noktasi tiklayin.",
+        "polyline": "Polyline: keep clicking vertices, finish with right click. / Coklu Cizgi: koseleri tiklayin, sag tikla bitir.",
+        "trim": "Trim: pick cutting boundary, then target segment. / Budama: once sinir, sonra budanacak parca.",
+        "extend": "Extend: pick reference edge, then line to extend. / Uzatma: once referans, sonra uzatilacak cizgi.",
+        "fillet": "Fillet: select two edges; use small radius for stability. / Fillet: iki kenar secin; kucuk yaricap daha stabil.",
+        "construction_inf": "Infinite construction: axis/grid references. / Sonsuz referans: aks ve grid icin.",
+        "construction_ray": "Ray construction: one-way projection. / Isin referans: tek yon projeksiyon.",
+        "construction_seg": "Segment construction: bounded temporary reference. / Segment referans: sinirli gecici dogru.",
+        "measure": "Measure: snap both ends for reliable distance. / Olcum: dogru mesafe icin iki ucu snapleyin.",
+        "road": "Road sketch: define centerline cleanly, then platform params. / Yol: once aksi cizin, sonra platform parametreleri.",
+    }
 
     def _add_tool_button(self, grid, row, col, key, icon_file, tooltip):
         """Add tool button to grid and register it in button group."""
@@ -441,7 +453,7 @@ class CADDockWidget(QDockWidget):
         layout.addLayout(quick_row)
 
         recent_row = QHBoxLayout()
-        recent_label = QLabel("Recent:")
+        recent_label = QLabel("Recent / Son:")
         recent_label.setStyleSheet("color: #64748b; font-size: 9px;")
         recent_row.addWidget(recent_label)
         for _ in range(3):
@@ -457,6 +469,18 @@ class CADDockWidget(QDockWidget):
             self._recent_buttons.append(b)
             recent_row.addWidget(b)
         layout.addLayout(recent_row)
+
+        hint_box = QFrame()
+        hint_box.setStyleSheet(
+            "QFrame { background: #f8fafc; border: 1px solid #d8e0ea; border-radius: 4px; }"
+            "QLabel { color: #334155; font-size: 9px; padding: 4px 6px; }"
+        )
+        hint_layout = QVBoxLayout(hint_box)
+        hint_layout.setContentsMargins(0, 0, 0, 0)
+        self.hint_label = QLabel("Tip / Ipucu: Activate a tool to see best-practice guidance.")
+        self.hint_label.setWordWrap(True)
+        hint_layout.addWidget(self.hint_label)
+        layout.addWidget(hint_box)
 
         # ── Live Coordinates Widget ──────────────────────────────────────
         try:
@@ -505,6 +529,14 @@ class CADDockWidget(QDockWidget):
         self._recent_tools.insert(0, key)
         self._recent_tools = self._recent_tools[:3]
         self._refresh_recent_buttons()
+        self._update_hint(key)
+
+    def _update_hint(self, key):
+        hint = self._TOOL_HINTS.get(
+            key,
+            "Tip / Ipucu: Use snapping, work on editable layers, and verify topology before export."
+        )
+        self.hint_label.setText(f"Tip / Ipucu: {hint}")
 
     def _refresh_recent_buttons(self):
         for idx, btn in enumerate(self._recent_buttons):

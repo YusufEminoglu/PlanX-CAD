@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.11.0] - 2026-05-23
+
+- English-first docs, searchable shortcut center, live dock hints
+
+## [1.11.0] - 2026-05-23
+
+English-first documentation revision + beta usability upgrades.
+
+### Added
+- **English-primary docs with Turkish secondary notes** in both command and shortcut HTML references.
+- **Searchable shortcut center** (`dialogs/shortcut_help_dialog.py`) with command/category filters.
+- **Live workflow hint panel** in dock (`Tip / Ipucu`) that updates per active tool.
+- **Global docs shortcut**: `Ctrl+Alt+H` opens Command Reference.
+
 ## [1.10.0] - 2026-05-23
 
 - HTML command reference, shortcuts page, Docs/Keys dock integration

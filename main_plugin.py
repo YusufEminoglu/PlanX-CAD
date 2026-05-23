@@ -234,6 +234,10 @@ class PlanXCADPlugin:
         shortcut_help.setContext(Qt.ApplicationShortcut)
         shortcut_help.activated.connect(self._show_shortcut_guide)
         self._shortcuts.append(shortcut_help)
+        docs_help = QShortcut(QKeySequence("Ctrl+Alt+H"), parent)
+        docs_help.setContext(Qt.ApplicationShortcut)
+        docs_help.activated.connect(self._show_command_reference)
+        self._shortcuts.append(docs_help)
 
     def _repeat_last_tool(self):
         if self._last_tool_key:

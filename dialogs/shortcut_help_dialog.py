@@ -2,44 +2,118 @@
 """Shortcut guide dialog for PlanX CAD."""
 
 from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtWidgets import QDialog, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QPushButton
+from qgis.PyQt.QtWidgets import (
+    QDialog, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
+    QPushButton, QLineEdit, QHBoxLayout, QComboBox
+)
 
 
 class ShortcutHelpDialog(QDialog):
     def __init__(self, shortcuts, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("PlanX CAD - Shortcut Guide")
-        self.setMinimumWidth(560)
-        self.setMinimumHeight(520)
+        self.setWindowTitle("PlanX CAD - Shortcut Guide / Kisayol Rehberi")
+        self.setMinimumWidth(700)
+        self.setMinimumHeight(560)
         self._shortcuts = shortcuts
+        self._rows = []
         self._build_ui()
+        self._populate_rows()
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
         intro = QLabel(
-            "Use Ctrl+Shift+S to focus tool search, Ctrl+Shift+Space to repeat last tool.\n"
-            "Construction modes: infinite (Ctrl+Shift+K), ray (Ctrl+Alt+K), segment (Ctrl+Alt+L)."
+            "Keyboard-first workflow: Ctrl+Shift+S focuses search, Ctrl+Shift+Space repeats last tool.\n"
+            "Klavye odakli akista Ctrl+Shift+S aramayi odaklar, Ctrl+Shift+Space son araci tekrarlar."
         )
         intro.setWordWrap(True)
         intro.setStyleSheet("color: #334155; padding: 4px;")
         layout.addWidget(intro)
 
-        table = QTableWidget(len(self._shortcuts), 2, self)
-        table.setHorizontalHeaderLabels(["Tool Key", "Shortcut"])
-        table.verticalHeader().setVisible(False)
-        table.setAlternatingRowColors(True)
-        table.setEditTriggers(QTableWidget.NoEditTriggers)
-        table.setSelectionMode(QTableWidget.NoSelection)
-        table.setFocusPolicy(Qt.NoFocus)
+        filter_row = QHBoxLayout()
+        self.search_input = QLineEdit(self)
+        self.search_input.setPlaceholderText("Search command or shortcut / Komut veya kisayol ara")
+        self.search_input.textChanged.connect(self._apply_filter)
+        filter_row.addWidget(self.search_input)
 
-        for row, (tool_key, seq) in enumerate(self._shortcuts):
-            table.setItem(row, 0, QTableWidgetItem(tool_key))
-            table.setItem(row, 1, QTableWidgetItem(seq))
+        self.category_combo = QComboBox(self)
+        self.category_combo.addItems(["All / Tum", "Drawing", "Editing", "Transform", "Measure", "Urban", "System"])
+        self.category_combo.currentTextChanged.connect(self._apply_filter)
+        filter_row.addWidget(self.category_combo)
+        layout.addLayout(filter_row)
 
-        table.resizeColumnsToContents()
-        layout.addWidget(table)
+        self.table = QTableWidget(0, 4, self)
+        self.table.setHorizontalHeaderLabels(["Command", "Komut", "Shortcut", "Category"])
+        self.table.verticalHeader().setVisible(False)
+        self.table.setAlternatingRowColors(True)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setSelectionMode(QTableWidget.NoSelection)
+        self.table.setFocusPolicy(Qt.NoFocus)
+        self.table.horizontalHeader().setStretchLastSection(True)
+        layout.addWidget(self.table)
 
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton("Close / Kapat")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn, alignment=Qt.AlignRight)
+
+    def _populate_rows(self):
+        tr_map = {
+            "line": "Cizgi", "polyline": "Coklu Cizgi", "rectangle": "Dikdortgen", "polygon": "Cokgen",
+            "circle": "Daire", "arc": "Yay", "offset": "Oteleme", "trim": "Budama", "extend": "Uzatma",
+            "fillet": "Kose Yuvarlama", "buffer": "Tampon", "move": "Tasi", "array": "Coklu Kopya",
+            "vertex_edit": "Kose Duzenleme", "hatch": "Tarama", "construction_inf": "Sonsuz Referans",
+            "construction_ray": "Isin Referans", "construction_seg": "Segment Referans", "dimension": "Olculendirme",
+            "measure": "Mesafe Olc", "divide": "Esit Parcaya Bol", "multi_offset": "Coklu Oteleme", "join": "Birlestir"
+        }
+
+        categories = {
+            "line": "Drawing", "polyline": "Drawing", "rectangle": "Drawing", "polygon": "Drawing", "circle": "Drawing", "arc": "Drawing",
+            "offset": "Editing", "trim": "Editing", "extend": "Editing", "fillet": "Editing", "buffer": "Editing", "vertex_edit": "Editing",
+            "hatch": "Editing", "construction_inf": "Editing", "construction_ray": "Editing", "construction_seg": "Editing",
+            "divide": "Editing", "multi_offset": "Editing", "join": "Editing",
+            "move": "Transform", "array": "Transform",
+            "dimension": "Measure", "measure": "Measure",
+        }
+
+        self._rows = []
+        for tool_key, seq in self._shortcuts:
+            self._rows.append({
+                "en": tool_key,
+                "tr": tr_map.get(tool_key, tool_key),
+                "shortcut": seq,
+                "category": categories.get(tool_key, "System"),
+            })
+
+        self._rows.extend([
+            {"en": "repeat_last", "tr": "son_araci_tekrar", "shortcut": "Ctrl+Shift+Space", "category": "System"},
+            {"en": "focus_search", "tr": "arama_odagi", "shortcut": "Ctrl+Shift+S", "category": "System"},
+            {"en": "open_shortcuts", "tr": "kisayol_rehberi", "shortcut": "Ctrl+Shift+/", "category": "System"},
+            {"en": "open_docs", "tr": "komut_kilavuzu", "shortcut": "Ctrl+Alt+H", "category": "System"},
+        ])
+
+        self._render_rows(self._rows)
+
+    def _render_rows(self, rows):
+        self.table.setRowCount(len(rows))
+        for r, row in enumerate(rows):
+            self.table.setItem(r, 0, QTableWidgetItem(row["en"]))
+            self.table.setItem(r, 1, QTableWidgetItem(row["tr"]))
+            self.table.setItem(r, 2, QTableWidgetItem(row["shortcut"]))
+            self.table.setItem(r, 3, QTableWidgetItem(row["category"]))
+        self.table.resizeColumnsToContents()
+
+    def _apply_filter(self):
+        query = (self.search_input.text() or "").strip().lower()
+        cat = self.category_combo.currentText()
+        cat = cat.split(" /")[0]
+
+        filtered = []
+        for row in self._rows:
+            if cat != "All" and row["category"] != cat:
+                continue
+            blob = f"{row['en']} {row['tr']} {row['shortcut']} {row['category']}".lower()
+            if query and query not in blob:
+                continue
+            filtered.append(row)
+
+        self._render_rows(filtered)
