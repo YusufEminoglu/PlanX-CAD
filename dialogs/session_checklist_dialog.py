@@ -50,4 +50,4 @@ class SessionChecklistDialog(QDialog):
 
         close_btn = QPushButton("Close / Kapat")
         close_btn.clicked.connect(self.accept)
-        layout.addWidget(close_btn, alignment=Qt.AlignRight)
+        layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)

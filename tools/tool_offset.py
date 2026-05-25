@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Offset Aracı"""
+"""planX CAD â€” Offset AracÄ±"""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry
@@ -10,7 +10,7 @@ from ..core.sketcher_feedback import create_preview_rubberband, cleanup_sketcher
 
 
 class tool_offset(tool_base):
-    """Seçilen objeyi belirtilen mesafe kadar öteleme yapar."""
+    """SeÃ§ilen objeyi belirtilen mesafe kadar Ã¶teleme yapar."""
 
     def __init__(self, canvas, iface):
         super().__init__(canvas, iface)
@@ -28,22 +28,22 @@ class tool_offset(tool_base):
         if ok:
             self.distance = d
             self.tool_message.emit(
-                f"🔧 Offset ({self.distance}m) — Hangi tarafa? Sol tık: taraf seçin"
+                f"ðŸ”§ Offset ({self.distance}m) â€” Hangi tarafa? Sol tÄ±k: taraf seÃ§in"
             )
             self._step = 2
 
     def on_click(self, point, button):
-        if self._step == 2 and button == Qt.LeftButton:
+        if self._step == 2 and button == Qt.MouseButton.LeftButton:
             geom = self.selected_feature.geometry()
-            # Hangi tarafta olduğunu belirle
+            # Hangi tarafta olduÄŸunu belirle
             dist_signed = geom.lineLocatePoint(QgsGeometry.fromPointXY(point))
             closest = geom.nearestPoint(QgsGeometry.fromPointXY(point))
             if closest:
-                # Soldaki/sağdaki offset
+                # Soldaki/saÄŸdaki offset
                 left = offset_geometry(geom, self.distance, "left")
                 right = offset_geometry(geom, self.distance, "right")
 
-                # Hangi taraf tıklanan noktaya daha yakın?
+                # Hangi taraf tÄ±klanan noktaya daha yakÄ±n?
                 use_geom = None
                 if left and right:
                     d_left = left.distance(QgsGeometry.fromPointXY(point))
@@ -57,9 +57,9 @@ class tool_offset(tool_base):
                 if use_geom:
                     self._add_feature(self.selected_layer, use_geom,
                                       self.selected_feature)
-                    self.tool_message.emit("✅ Offset — Tamamlandı")
+                    self.tool_message.emit("âœ… Offset â€” TamamlandÄ±")
                 else:
-                    self.tool_message.emit("⚠️ Offset hesaplanamadı")
+                    self.tool_message.emit("âš ï¸ Offset hesaplanamadÄ±")
 
             self._reset()
 

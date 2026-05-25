@@ -32,7 +32,7 @@ class DocsDialog(QDialog):
 
         close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.accept)
-        layout.addWidget(close_btn, alignment=Qt.AlignRight)
+        layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
     def _make_browser(self, html_name, anchor=""):
         browser = QTextBrowser(self)

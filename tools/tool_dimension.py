@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Linear Dimension tool.
+"""planX CAD â€” Linear Dimension tool.
 
 Pick two points (with snap). The tool creates:
   - A dimension line between them on a dedicated `planx_dimensions` layer
@@ -63,7 +63,7 @@ class tool_dimension(QgsMapTool):
         if self.preview_rb is not None:
             self.preview_rb.setColor(COLOR_ACCENT)
             self.preview_rb.setWidth(2)
-        self.tool_message.emit("📏 Dimension — click the first point")
+        self.tool_message.emit("ðŸ“ Dimension â€” click the first point")
 
     def deactivate(self):
         cleanup_sketcher_rubberband(self.canvas, self.preview_rb)
@@ -71,20 +71,20 @@ class tool_dimension(QgsMapTool):
         self.first_point = None
         super().deactivate()
 
-    # ───────────────────────── Event handlers ─────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Event handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def canvasPressEvent(self, event):
         point = self._snapped_point(event)
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             if self.first_point is None:
                 self.first_point = point
-                self.tool_message.emit("📏 Dimension — click the second point")
+                self.tool_message.emit("ðŸ“ Dimension â€” click the second point")
             else:
                 self._commit_dimension(self.first_point, point)
                 self.first_point = None
-        elif event.button() == Qt.RightButton:
+        elif event.button() == Qt.MouseButton.RightButton:
             self.first_point = None
-            self.tool_message.emit(f"📏 Dimension — reset ({self._dim_count} so far)")
+            self.tool_message.emit(f"ðŸ“ Dimension â€” reset ({self._dim_count} so far)")
 
     def canvasMoveEvent(self, event):
         if self.first_point is None or self.preview_rb is None:
@@ -94,16 +94,16 @@ class tool_dimension(QgsMapTool):
         self.preview_rb.addPoint(self.first_point)
         self.preview_rb.addPoint(point)
         live = _format_distance(self._measure(self.first_point, point))
-        self.tool_message.emit(f"📏 Dimension — live: {live}")
+        self.tool_message.emit(f"ðŸ“ Dimension â€” live: {live}")
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Escape:
+        if event.key() == Qt.Key.Key_Escape:
             self.first_point = None
             if self.preview_rb is not None:
                 self.preview_rb.reset(QgsWkbTypes.LineGeometry)
-            self.tool_message.emit("📏 Dimension — cancelled")
+            self.tool_message.emit("ðŸ“ Dimension â€” cancelled")
 
-    # ───────────────────────── Helpers ─────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _snapped_point(self, event) -> QgsPointXY:
         point = self.toMapCoordinates(event.pos())
@@ -141,7 +141,7 @@ class tool_dimension(QgsMapTool):
             ],
         )
         if layer is None:
-            self.tool_message.emit("⚠️ Dimension — could not create layer")
+            self.tool_message.emit("âš ï¸ Dimension â€” could not create layer")
             return
 
         was_editing = layer.isEditable()
@@ -185,5 +185,5 @@ class tool_dimension(QgsMapTool):
 
         self._dim_count += 1
         self.tool_message.emit(
-            f"✅ Dimension #{self._dim_count} — {label} | continue or right-click to reset"
+            f"âœ… Dimension #{self._dim_count} â€” {label} | continue or right-click to reset"
         )

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Döndür (Rotate) Aracı
-Ctrl basılıyken 90° snap desteği.
+"""planX CAD â€” DÃ¶ndÃ¼r (Rotate) AracÄ±
+Ctrl basÄ±lÄ±yken 90Â° snap desteÄŸi.
 """
 
 import math
@@ -12,9 +12,9 @@ from ..core.sketcher_utils import rotate_geometry, angle_between_points
 
 
 class tool_rotate(tool_base):
-    """Objeyi döndürme aracı.
-    1. Objeyi seç | 2. Referans yönü | 3. Hedef açı
-    Ctrl basılı tutunca 90° artışlarla (0/90/180/270) snap yapar.
+    """Objeyi dÃ¶ndÃ¼rme aracÄ±.
+    1. Objeyi seÃ§ | 2. Referans yÃ¶nÃ¼ | 3. Hedef aÃ§Ä±
+    Ctrl basÄ±lÄ± tutunca 90Â° artÄ±ÅŸlarla (0/90/180/270) snap yapar.
     """
 
     def __init__(self, canvas, iface):
@@ -23,23 +23,23 @@ class tool_rotate(tool_base):
         self.ref_angle = None
 
     def tool_name(self):
-        return "Döndür"
+        return "DÃ¶ndÃ¼r"
 
     def on_entity_selected(self, layer, feature, point):
         self.center = point
         self._step = 2
         self.tool_message.emit(
-            "↻ Döndür — Referans yönünü belirleyin (tıklayın)"
+            "â†» DÃ¶ndÃ¼r â€” Referans yÃ¶nÃ¼nÃ¼ belirleyin (tÄ±klayÄ±n)"
         )
 
     def on_click(self, point, button):
-        if button == Qt.LeftButton:
+        if button == Qt.MouseButton.LeftButton:
             if self._step == 2:
                 self.ref_angle = angle_between_points(self.center, point)
                 self._step = 3
                 self.tool_message.emit(
-                    "↻ Döndür — Hedef açıyı belirleyin | "
-                    "Ctrl: 90° snap"
+                    "â†» DÃ¶ndÃ¼r â€” Hedef aÃ§Ä±yÄ± belirleyin | "
+                    "Ctrl: 90Â° snap"
                 )
             elif self._step == 3:
                 rotation = self._calc_rotation(point)
@@ -52,7 +52,7 @@ class tool_rotate(tool_base):
 
                 angle_deg = abs(rotation)
                 self.tool_message.emit(
-                    f"✅ Döndür — {angle_deg:.1f}° döndürüldü"
+                    f"âœ… DÃ¶ndÃ¼r â€” {angle_deg:.1f}Â° dÃ¶ndÃ¼rÃ¼ldÃ¼"
                 )
                 self.center = None
                 self.ref_angle = None
@@ -68,22 +68,22 @@ class tool_rotate(tool_base):
             self.preview_rb.reset(geom.type())
             self.preview_rb.setToGeometry(preview)
 
-            # Açıyı göster
+            # AÃ§Ä±yÄ± gÃ¶ster
             angle_deg = rotation
-            ctrl = QApplication.keyboardModifiers() & Qt.ControlModifier
-            snap_text = " [90° SNAP]" if ctrl else ""
+            ctrl = QApplication.keyboardModifiers() & Qt.KeyboardModifier.ControlModifier
+            snap_text = " [90Â° SNAP]" if ctrl else ""
             self.tool_message.emit(
-                f"↻ Döndür — Açı: {angle_deg:.1f}°{snap_text} | "
-                f"Ctrl: 90° snap"
+                f"â†» DÃ¶ndÃ¼r â€” AÃ§Ä±: {angle_deg:.1f}Â°{snap_text} | "
+                f"Ctrl: 90Â° snap"
             )
 
     def _calc_rotation(self, point):
-        """Dönüş açısını hesapla. Ctrl basılıysa 90° snap."""
+        """DÃ¶nÃ¼ÅŸ aÃ§Ä±sÄ±nÄ± hesapla. Ctrl basÄ±lÄ±ysa 90Â° snap."""
         target_angle = angle_between_points(self.center, point)
         rotation = target_angle - self.ref_angle
 
-        # Ctrl basılıysa 90° artışlarla snap
-        if QApplication.keyboardModifiers() & Qt.ControlModifier:
+        # Ctrl basÄ±lÄ±ysa 90Â° artÄ±ÅŸlarla snap
+        if QApplication.keyboardModifiers() & Qt.KeyboardModifier.ControlModifier:
             rotation = round(rotation / 90.0) * 90.0
 
         return rotation

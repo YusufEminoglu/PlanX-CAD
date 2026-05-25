@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Ölç (Measure) Aracı
-Geliştirilmiş: Canlı ölçüm, Alan Ölç modu, harita üzeri etiketler.
+"""planX CAD â€” Ã–lÃ§ (Measure) AracÄ±
+GeliÅŸtirilmiÅŸ: CanlÄ± Ã¶lÃ§Ã¼m, Alan Ã–lÃ§ modu, harita Ã¼zeri etiketler.
 """
 
 from qgis.PyQt.QtCore import Qt, QPointF, pyqtSignal
@@ -18,9 +18,9 @@ from ..core.sketcher_utils import measure_distance, measure_area
 
 
 class tool_measure(QgsMapTool):
-    """Mesafe ve alan ölçüm aracı.
-    Sol tık: Nokta ekle | Sağ tık: Bitir | ESC: İptal
-    Canlı önizleme ile ölçüm göstergesi.
+    """Mesafe ve alan Ã¶lÃ§Ã¼m aracÄ±.
+    Sol tÄ±k: Nokta ekle | SaÄŸ tÄ±k: Bitir | ESC: Ä°ptal
+    CanlÄ± Ã¶nizleme ile Ã¶lÃ§Ã¼m gÃ¶stergesi.
     """
 
     tool_finished = pyqtSignal()
@@ -40,7 +40,7 @@ class tool_measure(QgsMapTool):
         self.mode = mode  # 0=mesafe, 1=alan
 
     def tool_name(self):
-        return "Ölç" if self.mode == self.MODE_DISTANCE else "Alan Ölç"
+        return "Ã–lÃ§" if self.mode == self.MODE_DISTANCE else "Alan Ã–lÃ§"
 
     def activate(self):
         super().activate()
@@ -52,9 +52,9 @@ class tool_measure(QgsMapTool):
         self.preview_rb = create_preview_rubberband(self.canvas, geom_type)
 
         if self.mode == self.MODE_DISTANCE:
-            self.tool_message.emit("📏 Mesafe Ölç — Noktaları tıklayın | Sağ tık: Bitir")
+            self.tool_message.emit("ðŸ“ Mesafe Ã–lÃ§ â€” NoktalarÄ± tÄ±klayÄ±n | SaÄŸ tÄ±k: Bitir")
         else:
-            self.tool_message.emit("📐 Alan Ölç — Alanın köşelerini tıklayın | Sağ tık: Bitir")
+            self.tool_message.emit("ðŸ“ Alan Ã–lÃ§ â€” AlanÄ±n kÃ¶ÅŸelerini tÄ±klayÄ±n | SaÄŸ tÄ±k: Bitir")
 
     def deactivate(self):
         cleanup_sketcher_rubberband(self.canvas, self.rb)
@@ -74,7 +74,7 @@ class tool_measure(QgsMapTool):
             if match.isValid():
                 point = match.point()
 
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self.vertices.append(point)
             if self.rb:
                 self.rb.addPoint(point)
@@ -84,11 +84,11 @@ class tool_measure(QgsMapTool):
             else:
                 self._show_area_info()
 
-        elif event.button() == Qt.RightButton:
+        elif event.button() == Qt.MouseButton.RightButton:
             self._finish_measurement()
 
     def canvasMoveEvent(self, event):
-        """Canlı önizleme."""
+        """CanlÄ± Ã¶nizleme."""
         if not self.vertices:
             return
 
@@ -110,12 +110,12 @@ class tool_measure(QgsMapTool):
             if self.mode == self.MODE_AREA and len(self.vertices) >= 2:
                 self.preview_rb.addPoint(self.vertices[0])  # Kapatma
 
-        # Canlı mesafe göstergesi
+        # CanlÄ± mesafe gÃ¶stergesi
         if self.mode == self.MODE_DISTANCE and len(self.vertices) >= 1:
             live_dist = measure_distance(self.vertices[-1], point)
             total_live = self.total_distance + live_dist
             self.tool_message.emit(
-                f"📏 Segment: {live_dist:.2f} m | "
+                f"ðŸ“ Segment: {live_dist:.2f} m | "
                 f"Toplam: {total_live:.2f} m | "
                 f"{len(self.vertices)} nokta"
             )
@@ -124,16 +124,16 @@ class tool_measure(QgsMapTool):
             geom = QgsGeometry.fromPolygonXY([temp_pts])
             area = measure_area(geom)
             self.tool_message.emit(
-                f"📐 Alan: {self._format_area(area)} | "
-                f"{len(self.vertices)} köşe"
+                f"ðŸ“ Alan: {self._format_area(area)} | "
+                f"{len(self.vertices)} kÃ¶ÅŸe"
             )
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Escape:
+        if event.key() == Qt.Key.Key_Escape:
             self._cancel()
-        elif event.key() == Qt.Key_Backspace:
+        elif event.key() == Qt.Key.Key_Backspace:
             self._undo_last()
-        elif event.key() in (Qt.Key_Return, Qt.Key_Enter):
+        elif event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             self._finish_measurement()
 
     def _show_distance_info(self):
@@ -141,12 +141,12 @@ class tool_measure(QgsMapTool):
             seg_dist = measure_distance(self.vertices[-2], self.vertices[-1])
             self.total_distance += seg_dist
             self.tool_message.emit(
-                f"📏 Segment: {seg_dist:.2f} m | "
+                f"ðŸ“ Segment: {seg_dist:.2f} m | "
                 f"Toplam: {self.total_distance:.2f} m | "
                 f"{len(self.vertices)} nokta"
             )
         else:
-            self.tool_message.emit("📏 İkinci noktayı tıklayın")
+            self.tool_message.emit("ðŸ“ Ä°kinci noktayÄ± tÄ±klayÄ±n")
 
     def _show_area_info(self):
         if len(self.vertices) >= 3:
@@ -155,21 +155,21 @@ class tool_measure(QgsMapTool):
             )
             area = measure_area(geom)
             self.tool_message.emit(
-                f"📐 Alan: {self._format_area(area)} | "
-                f"{len(self.vertices)} köşe"
+                f"ðŸ“ Alan: {self._format_area(area)} | "
+                f"{len(self.vertices)} kÃ¶ÅŸe"
             )
         else:
             n = len(self.vertices)
             self.tool_message.emit(
-                f"📐 {3 - n} nokta daha gerekli | {n} köşe"
+                f"ðŸ“ {3 - n} nokta daha gerekli | {n} kÃ¶ÅŸe"
             )
 
     def _finish_measurement(self):
         if self.mode == self.MODE_DISTANCE:
             if len(self.vertices) >= 2:
-                msg = f"📏 Toplam mesafe: {self.total_distance:.2f} m"
+                msg = f"ðŸ“ Toplam mesafe: {self.total_distance:.2f} m"
                 self.tool_message.emit(msg)
-                self.iface.messageBar().pushInfo("planX CAD Ölçüm", msg)
+                self.iface.messageBar().pushInfo("planX CAD Ã–lÃ§Ã¼m", msg)
         else:
             if len(self.vertices) >= 3:
                 geom = QgsGeometry.fromPolygonXY(
@@ -177,18 +177,18 @@ class tool_measure(QgsMapTool):
                 )
                 area = measure_area(geom)
 
-                # Çevre de hesapla
+                # Ã‡evre de hesapla
                 perimeter = 0.0
                 pts = self.vertices + [self.vertices[0]]
                 for i in range(len(pts) - 1):
                     perimeter += measure_distance(pts[i], pts[i + 1])
 
                 msg = (
-                    f"📐 Alan: {self._format_area(area)} | "
-                    f"Çevre: {perimeter:.2f} m"
+                    f"ðŸ“ Alan: {self._format_area(area)} | "
+                    f"Ã‡evre: {perimeter:.2f} m"
                 )
                 self.tool_message.emit(msg)
-                self.iface.messageBar().pushInfo("planX CAD Ölçüm", msg)
+                self.iface.messageBar().pushInfo("planX CAD Ã–lÃ§Ã¼m", msg)
 
         # Temizle
         self.vertices = []
@@ -208,7 +208,7 @@ class tool_measure(QgsMapTool):
             self.rb.reset(geom_type)
         if self.preview_rb:
             self.preview_rb.reset(geom_type)
-        self.tool_message.emit(f"{'📏' if self.mode == 0 else '📐'} Ölçüm iptal edildi")
+        self.tool_message.emit(f"{'ðŸ“' if self.mode == 0 else 'ðŸ“'} Ã–lÃ§Ã¼m iptal edildi")
 
     def _undo_last(self):
         if self.vertices:
@@ -227,11 +227,11 @@ class tool_measure(QgsMapTool):
                     self.rb.addPoint(v)
 
             self.tool_message.emit(
-                f"Son nokta silindi. {len(self.vertices)} nokta kaldı"
+                f"Son nokta silindi. {len(self.vertices)} nokta kaldÄ±"
             )
 
     def _format_area(self, area):
-        """Alanı okunabilir formata çevir."""
+        """AlanÄ± okunabilir formata Ã§evir."""
         if area >= 10000:
-            return f"{area / 10000:.4f} ha ({area:.2f} m²)"
-        return f"{area:.2f} m²"
+            return f"{area / 10000:.4f} ha ({area:.2f} mÂ²)"
+        return f"{area:.2f} mÂ²"

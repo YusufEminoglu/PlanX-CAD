@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Divide (Eşit Parçaya Bölme) tool.
+"""planX CAD â€” Divide (EÅŸit ParÃ§aya BÃ¶lme) tool.
 
 Divides a selected line feature into N equal segments.
 Can either split the line itself or generate point markers along the divisions.
@@ -28,7 +28,7 @@ class DivideDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("÷ Divide / Böl")
+        self.setWindowTitle("Ã· Divide / BÃ¶l")
         self.setMinimumWidth(320)
         self.setModal(True)
         self._build_ui()
@@ -36,12 +36,12 @@ class DivideDialog(QDialog):
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
-        title = QLabel("÷ Division Parameters / Bölme Parametreleri")
+        title = QLabel("Ã· Division Parameters / BÃ¶lme Parametreleri")
         f = QFont()
         f.setBold(True)
         f.setPointSize(10)
         title.setFont(f)
-        title.setAlignment(Qt.AlignCenter)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
         form = QFormLayout()
@@ -49,18 +49,18 @@ class DivideDialog(QDialog):
         self.spn_segments = QSpinBox()
         self.spn_segments.setRange(2, 10000)
         self.spn_segments.setValue(3)
-        form.addRow("Segments / Parça Sayısı:", self.spn_segments)
+        form.addRow("Segments / ParÃ§a SayÄ±sÄ±:", self.spn_segments)
 
         self.cmb_method = QComboBox()
         self.cmb_method.addItems([
-            "Split Line / Çizgiyi Parçalara Böl",
-            "Create Points / Bölüm Noktaları Oluştur"
+            "Split Line / Ã‡izgiyi ParÃ§alara BÃ¶l",
+            "Create Points / BÃ¶lÃ¼m NoktalarÄ± OluÅŸtur"
         ])
-        form.addRow("Method / Yöntem:", self.cmb_method)
+        form.addRow("Method / YÃ¶ntem:", self.cmb_method)
         layout.addLayout(form)
 
         btn_row = QHBoxLayout()
-        ok = QPushButton("✅ Apply / Uygula")
+        ok = QPushButton("âœ… Apply / Uygula")
         ok.setMinimumHeight(34)
         ok.setStyleSheet(
             "QPushButton { background: #1a237e; color: white; font-weight: bold;"
@@ -68,7 +68,7 @@ class DivideDialog(QDialog):
             "QPushButton:hover { background: #283593; }"
         )
         ok.clicked.connect(self.accept)
-        cancel = QPushButton("Cancel / İptal")
+        cancel = QPushButton("Cancel / Ä°ptal")
         cancel.setMinimumHeight(34)
         cancel.clicked.connect(self.reject)
         btn_row.addWidget(ok)
@@ -90,28 +90,28 @@ class tool_divide(tool_base):
         self.require_editable = True
 
     def tool_name(self):
-        return "Divide / Eşit Parçaya Böl"
+        return "Divide / EÅŸit ParÃ§aya BÃ¶l"
 
     def activate(self):
         super().activate()
-        self.tool_message.emit("÷ Divide — Select line to divide / Bölme — Bölünecek çizgiyi seçin")
+        self.tool_message.emit("Ã· Divide â€” Select line to divide / BÃ¶lme â€” BÃ¶lÃ¼necek Ã§izgiyi seÃ§in")
 
     def on_entity_selected(self, layer, feature, point):
         geom = feature.geometry()
         if geom is None or geom.isEmpty():
-            self.tool_message.emit("⚠️ Divide — Empty geometry / Boş geometri")
+            self.tool_message.emit("âš ï¸ Divide â€” Empty geometry / BoÅŸ geometri")
             self._reset()
             return
 
         if geom.type() != QgsWkbTypes.LineGeometry:
-            self.tool_message.emit("⚠️ Divide — Only lines can be divided / Sadece çizgi objeleri bölünebilir")
+            self.tool_message.emit("âš ï¸ Divide â€” Only lines can be divided / Sadece Ã§izgi objeleri bÃ¶lÃ¼nebilir")
             self._reset()
             return
 
         # Open dialog
         dlg = DivideDialog(self.iface.mainWindow())
-        if dlg.exec_() != QDialog.Accepted:
-            self.tool_message.emit("⚠️ Divide — Cancelled / İptal edildi")
+        if dlg.exec() != QDialog.Accepted:
+            self.tool_message.emit("âš ï¸ Divide â€” Cancelled / Ä°ptal edildi")
             self._reset()
             return
 
@@ -123,7 +123,7 @@ class tool_divide(tool_base):
         if geom.isMultipart():
             parts = geom.asMultiPolyline()
             if not parts or not parts[0]:
-                self.tool_message.emit("⚠️ Divide — Line part not found / Çizgi parçası bulunamadı")
+                self.tool_message.emit("âš ï¸ Divide â€” Line part not found / Ã‡izgi parÃ§asÄ± bulunamadÄ±")
                 self._reset()
                 return
             line_pts = parts[0]
@@ -131,7 +131,7 @@ class tool_divide(tool_base):
             line_pts = geom.asPolyline()
 
         if len(line_pts) < 2:
-            self.tool_message.emit("⚠️ Divide — Insufficient vertex count / Yetersiz vertex sayısı")
+            self.tool_message.emit("âš ï¸ Divide â€” Insufficient vertex count / Yetersiz vertex sayÄ±sÄ±")
             self._reset()
             return
 
@@ -145,7 +145,7 @@ class tool_divide(tool_base):
 
         total_len = cum_dists[-1]
         if total_len <= 1e-6:
-            self.tool_message.emit("⚠️ Divide — Line length is zero / Çizgi uzunluğu sıfır")
+            self.tool_message.emit("âš ï¸ Divide â€” Line length is zero / Ã‡izgi uzunluÄŸu sÄ±fÄ±r")
             self._reset()
             return
 
@@ -182,7 +182,7 @@ class tool_divide(tool_base):
             segments_geoms.append(QgsGeometry.fromPolylineXY(seg_pts))
 
         if not segments_geoms:
-            self.tool_message.emit("⚠️ Divide — Division failed / Bölme işlemi başarısız")
+            self.tool_message.emit("âš ï¸ Divide â€” Division failed / BÃ¶lme iÅŸlemi baÅŸarÄ±sÄ±z")
             return
 
         # Start edit block
@@ -197,7 +197,7 @@ class tool_divide(tool_base):
             self._add_feature(layer, s_geom, feature)
 
         layer.triggerRepaint()
-        self.tool_message.emit(f"✅ Divide — Line divided into {N} segments / Çizgi {N} eşit parçaya bölündü")
+        self.tool_message.emit(f"âœ… Divide â€” Line divided into {N} segments / Ã‡izgi {N} eÅŸit parÃ§aya bÃ¶lÃ¼ndÃ¼")
 
     def _create_division_points(self, geom, total_len, N):
         seg_len = total_len / N
@@ -209,7 +209,7 @@ class tool_divide(tool_base):
                 points.append(pt_geom)
 
         if not points:
-            self.tool_message.emit("⚠️ Divide — Points not calculated / Noktalar hesaplanamadı")
+            self.tool_message.emit("âš ï¸ Divide â€” Points not calculated / Noktalar hesaplanamadÄ±")
             return
 
         # Determine target point layer
@@ -226,7 +226,7 @@ class tool_divide(tool_base):
             )
 
         if target_layer is None:
-            self.tool_message.emit("⚠️ Divide — Could not create target layer / Hedef nokta katmanı oluşturulamadı")
+            self.tool_message.emit("âš ï¸ Divide â€” Could not create target layer / Hedef nokta katmanÄ± oluÅŸturulamadÄ±")
             return
 
         was_editing = target_layer.isEditable()
@@ -252,6 +252,6 @@ class tool_divide(tool_base):
             target_layer.triggerRepaint()
 
         self.tool_message.emit(
-            f"✅ Divide — {N-1} division points added to '{target_layer.name()}' / "
-            f"{N-1} adet bölüm noktası '{target_layer.name()}' katmanına eklendi"
+            f"âœ… Divide â€” {N-1} division points added to '{target_layer.name()}' / "
+            f"{N-1} adet bÃ¶lÃ¼m noktasÄ± '{target_layer.name()}' katmanÄ±na eklendi"
         )

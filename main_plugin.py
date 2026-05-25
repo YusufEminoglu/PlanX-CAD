@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-planX CAD Araç Seti — Ana Plugin Sınıfı
-18 CAD aracı, dockable panel UI, toolbar ve menü yönetimi.
+planX CAD AraÃ§ Seti â€” Ana Plugin SÄ±nÄ±fÄ±
+18 CAD aracÄ±, dockable panel UI, toolbar ve menÃ¼ yÃ¶netimi.
 """
 
 import os
@@ -12,7 +12,7 @@ from qgis.PyQt.QtWidgets import QAction, QMenu, QToolBar, QMessageBox, QShortcut
 
 
 class PlanXCADPlugin:
-    """planX CAD Araç Seti ana plugin sınıfı."""
+    """planX CAD AraÃ§ Seti ana plugin sÄ±nÄ±fÄ±."""
 
     def __init__(self, iface):
         self.iface = iface
@@ -25,7 +25,7 @@ class PlanXCADPlugin:
         self._dock = None
         self._current_tool = None
 
-        # Araç instance'ları (lazy loaded)
+        # AraÃ§ instance'larÄ± (lazy loaded)
         self._tools = {}
 
         # Tool history: most-recently activated key for "repeat last"
@@ -33,41 +33,41 @@ class PlanXCADPlugin:
         # QShortcuts owned by the plugin (cleaned up in unload)
         self._shortcuts = []
 
-    # ═══════════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # QGIS Plugin Interface
-    # ═══════════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     def initGui(self):
-        """QGIS GUI'ye menü, toolbar ve dock widget ekle."""
-        # ── Menü ─────────────────────────────────────────────────────────
-        self.menu = QMenu("&planX CAD Toolset / Araç Seti")
+        """QGIS GUI'ye menÃ¼, toolbar ve dock widget ekle."""
+        # â”€â”€ MenÃ¼ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        self.menu = QMenu("&planX CAD Toolset / AraÃ§ Seti")
         self.iface.mainWindow().menuBar().addMenu(self.menu)
 
-        # ── Toolbar ──────────────────────────────────────────────────────
+        # â”€â”€ Toolbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         self.toolbar = QToolBar("planX CAD Toolbar")
         self.toolbar.setObjectName("PlanXCADToolbar")
         self.iface.addToolBar(self.toolbar)
 
-        # ── Ana Panel Toggle ─────────────────────────────────────────────
+        # â”€â”€ Ana Panel Toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         main_icon = os.path.join(self.icon_dir, "icon_main.svg")
         self.panel_action = self._add_action(
             main_icon,
             "planX CAD Panel / Paneli",
             self._toggle_dock,
             checkable=True,
-            status_tip="Open/close planX CAD panel / planX CAD panelini aç/kapat"
+            status_tip="Open/close planX CAD panel / planX CAD panelini aÃ§/kapat"
         )
 
-        # ── Menü Separator ───────────────────────────────────────────────
+        # â”€â”€ MenÃ¼ Separator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         self.menu.addSeparator()
 
-        # ── Hakkında ─────────────────────────────────────────────────────
+        # â”€â”€ HakkÄ±nda â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         self._add_action(
             ":/images/themes/default/mActionHelpContents.svg",
-            "About / Hakkında",
+            "About / HakkÄ±nda",
             self._show_about,
             add_to_toolbar=False,
-            status_tip="About planX CAD Toolset / planX CAD Araç Seti hakkında"
+            status_tip="About planX CAD Toolset / planX CAD AraÃ§ Seti hakkÄ±nda"
         )
         self._add_action(
             ":/images/themes/default/mActionHelpContents.svg",
@@ -147,13 +147,13 @@ class PlanXCADPlugin:
             status_tip="Open beta release readiness checks / Beta surum hazirlik kontrollerini ac"
         )
 
-        # ── Klavye kısayolları ─────────────────────────────────────────────
+        # â”€â”€ Klavye kÄ±sayollarÄ± â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         self._setup_shortcuts()
         self._maybe_show_quick_start_once()
 
     def unload(self):
-        """Plugin kaldırıldığında temizlik yap."""
-        # Aktif aracı deaktive et
+        """Plugin kaldÄ±rÄ±ldÄ±ÄŸÄ±nda temizlik yap."""
+        # Aktif aracÄ± deaktive et
         if self._current_tool:
             self.iface.mapCanvas().unsetMapTool(self._current_tool)
             self._current_tool = None
@@ -170,13 +170,13 @@ class PlanXCADPlugin:
             self._dock.deleteLater()
             self._dock = None
 
-        # Araçlar
+        # AraÃ§lar
         for tool in self._tools.values():
             if tool:
                 del tool
         self._tools.clear()
 
-        # Klavye kısayolları
+        # Klavye kÄ±sayollarÄ±
         for sc in self._shortcuts:
             sc.setEnabled(False)
             sc.deleteLater()
@@ -184,7 +184,7 @@ class PlanXCADPlugin:
 
         # Actions
         for action in self.actions:
-            self.iface.removePluginMenu("&planX CAD Araç Seti", action)
+            self.iface.removePluginMenu("&planX CAD AraÃ§ Seti", action)
 
         # Toolbar
         if self.toolbar:
@@ -194,12 +194,12 @@ class PlanXCADPlugin:
         if self.menu:
             self.menu.deleteLater()
 
-    # ═══════════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # Dock Widget
-    # ═══════════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     def _toggle_dock(self):
-        """Dock widget'ı aç/kapat."""
+        """Dock widget'Ä± aÃ§/kapat."""
         if self._dock is None:
             try:
                 from .dialogs.cad_dock import CADDockWidget
@@ -237,7 +237,7 @@ class PlanXCADPlugin:
                 QMessageBox.critical(
                     self.iface.mainWindow(),
                     "Error / Hata",
-                    f"Failed to create panel / Panel oluşturulamadı:\n{str(e)}"
+                    f"Failed to create panel / Panel oluÅŸturulamadÄ±:\n{str(e)}"
                 )
                 self.panel_action.setChecked(False)
                 return
@@ -252,11 +252,11 @@ class PlanXCADPlugin:
     def _on_dock_visibility(self, visible):
         self.panel_action.setChecked(visible)
 
-    # ═══════════════════════════════════════════════════════════════════════
-    # Araç Yönetimi
-    # ═══════════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # AraÃ§ YÃ¶netimi
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    # Dialog açan araçlar — her seferinde yeni instance gerekir
+    # Dialog aÃ§an araÃ§lar â€” her seferinde yeni instance gerekir
     _DIALOG_TOOLS = {"buffer", "fillet", "polygon", "road", "junction", "measure_area", "ada_kirma", "array", "divide", "multi_offset", "join", "hatch"}
     _TOOLS_REQUIRING_LAYER = {
         "line", "polyline", "rectangle", "polygon", "circle", "arc",
@@ -268,12 +268,12 @@ class PlanXCADPlugin:
     }
     _TOOLS_REQUIRING_EDITABLE = set(_TOOLS_REQUIRING_LAYER)
 
-    # ═══════════════════════════════════════════════════════════════════════
-    # Klavye kısayolları + tool history
-    # ═══════════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # Klavye kÄ±sayollarÄ± + tool history
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    # Tool-key -> shortcut spec. Ctrl+Shift+<letter> seçildi: QGIS'in built-in
-    # shortcut'larıyla çakışmıyor, kolay hatırlanır.
+    # Tool-key -> shortcut spec. Ctrl+Shift+<letter> seÃ§ildi: QGIS'in built-in
+    # shortcut'larÄ±yla Ã§akÄ±ÅŸmÄ±yor, kolay hatÄ±rlanÄ±r.
     _SHORTCUTS = (
         ("line",                  "Ctrl+Shift+L"),
         ("polyline",              "Ctrl+Shift+P"),
@@ -301,8 +301,8 @@ class PlanXCADPlugin:
     )
 
     def _setup_shortcuts(self):
-        """QShortcut'lar QGIS main window'a bağlanır (Qt.ApplicationShortcut
-        context). Plugin yüklü iken her yerden çalışırlar; unload'da temizlenir."""
+        """QShortcut'lar QGIS main window'a baÄŸlanÄ±r (Qt.ApplicationShortcut
+        context). Plugin yÃ¼klÃ¼ iken her yerden Ã§alÄ±ÅŸÄ±rlar; unload'da temizlenir."""
         parent = self.iface.mainWindow()
         for key, seq in self._SHORTCUTS:
             sc = QShortcut(QKeySequence(seq), parent)
@@ -393,7 +393,7 @@ class PlanXCADPlugin:
         if self._last_tool_key:
             self._activate_tool(self._last_tool_key)
         elif self._dock:
-            self._dock.set_status("⚠️ No previous tool to repeat / Tekrarlanacak eski bir araç yok")
+            self._dock.set_status("âš ï¸ No previous tool to repeat / Tekrarlanacak eski bir araÃ§ yok")
 
     def _focus_dock_search(self):
         if self._dock is None:
@@ -459,7 +459,7 @@ class PlanXCADPlugin:
             from .dialogs.diagnostics_dialog import DiagnosticsDialog
             report = self._build_diagnostics_report()
             dlg = DiagnosticsDialog(report, self.iface.mainWindow())
-            dlg.exec_()
+            dlg.exec()
         except Exception as e:
             QMessageBox.warning(
                 self.iface.mainWindow(),
@@ -480,7 +480,7 @@ class PlanXCADPlugin:
                 total_activations=snap.get("activation_count", 0),
                 parent=self.iface.mainWindow()
             )
-            dlg.exec_()
+            dlg.exec()
         except Exception as e:
             QMessageBox.warning(
                 self.iface.mainWindow(),
@@ -514,7 +514,7 @@ class PlanXCADPlugin:
         try:
             from .dialogs.health_check_dialog import HealthCheckDialog
             dlg = HealthCheckDialog(self._build_health_checks(), self.iface.mainWindow())
-            dlg.exec_()
+            dlg.exec()
         except Exception as e:
             QMessageBox.warning(
                 self.iface.mainWindow(),
@@ -537,7 +537,7 @@ class PlanXCADPlugin:
             from .dialogs.diagnostics_dialog import DiagnosticsDialog
             dlg = DiagnosticsDialog("\n".join(text), self.iface.mainWindow())
             dlg.setWindowTitle("PlanX CAD - Shortcut Audit / Kisayol Denetimi")
-            dlg.exec_()
+            dlg.exec()
         except Exception as e:
             QMessageBox.warning(
                 self.iface.mainWindow(),
@@ -661,7 +661,7 @@ class PlanXCADPlugin:
             report = self._build_issue_template_text()
             dlg = DiagnosticsDialog(report, self.iface.mainWindow())
             dlg.setWindowTitle("PlanX CAD - Issue Template / Hata Rapor Sablonu")
-            dlg.exec_()
+            dlg.exec()
         except Exception as e:
             QMessageBox.warning(
                 self.iface.mainWindow(),
@@ -693,7 +693,7 @@ class PlanXCADPlugin:
             from .dialogs.release_readiness_dialog import ReleaseReadinessDialog
             rows = self._build_release_readiness_rows()
             dlg = ReleaseReadinessDialog(rows, self.iface.mainWindow())
-            dlg.exec_()
+            dlg.exec()
         except Exception as e:
             QMessageBox.warning(
                 self.iface.mainWindow(),
@@ -752,7 +752,7 @@ class PlanXCADPlugin:
         return rows
 
     def _activate_tool(self, tool_key):
-        """Araç tuşuna basıldığında ilgili map tool'u aktifleştirir."""
+        """AraÃ§ tuÅŸuna basÄ±ldÄ±ÄŸÄ±nda ilgili map tool'u aktifleÅŸtirir."""
         # "Repeat last" button in dock emits the sentinel key.
         if tool_key == "__repeat__":
             self._repeat_last_tool()
@@ -762,26 +762,26 @@ class PlanXCADPlugin:
 
         canvas = self.iface.mapCanvas()
 
-        # Önceki aracı deaktive et
+        # Ã–nceki aracÄ± deaktive et
         if self._current_tool:
             canvas.unsetMapTool(self._current_tool)
             self._current_tool = None
 
-        # Tool history — used by Ctrl+Shift+Space ("repeat last tool")
+        # Tool history â€” used by Ctrl+Shift+Space ("repeat last tool")
         self._last_tool_key = tool_key
 
-        # Dialog tabanlı araçlar → her seferinde yeni instance
+        # Dialog tabanlÄ± araÃ§lar â†’ her seferinde yeni instance
         if tool_key in self._DIALOG_TOOLS:
             tool = self._create_tool(tool_key)
         else:
-            # Lazy load: araç henüz oluşturulmadıysa oluştur
+            # Lazy load: araÃ§ henÃ¼z oluÅŸturulmadÄ±ysa oluÅŸtur
             if tool_key not in self._tools:
                 self._tools[tool_key] = self._create_tool(tool_key)
             tool = self._tools.get(tool_key)
 
         if tool is None:
             if self._dock:
-                self._dock.set_status(f"⚠️ Failed to load tool '{tool_key}' / '{tool_key}' aracı yüklenemedi")
+                self._dock.set_status(f"âš ï¸ Failed to load tool '{tool_key}' / '{tool_key}' aracÄ± yÃ¼klenemedi")
             return
 
         self._current_tool = tool
@@ -815,11 +815,11 @@ class PlanXCADPlugin:
         return True
 
     def _create_tool(self, key):
-        """Araç instance'ı oluşturur."""
+        """AraÃ§ instance'Ä± oluÅŸturur."""
         canvas = self.iface.mapCanvas()
 
         try:
-            # ── Çizim Araçları ───────────────────────────────────────────
+            # â”€â”€ Ã‡izim AraÃ§larÄ± â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if key == "line":
                 from .sketcher.sketcher_line import sketcher_line
                 t = sketcher_line(canvas, self.iface)
@@ -839,7 +839,7 @@ class PlanXCADPlugin:
                 from .sketcher.sketcher_arc import sketcher_arc
                 t = sketcher_arc(canvas, self.iface)
 
-            # ── Düzenleme Araçları ───────────────────────────────────────
+            # â”€â”€ DÃ¼zenleme AraÃ§larÄ± â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             elif key == "offset":
                 from .tools.tool_offset import tool_offset
                 t = tool_offset(canvas, self.iface)
@@ -856,7 +856,7 @@ class PlanXCADPlugin:
                 from .tools.tool_buffer import tool_buffer
                 t = tool_buffer(canvas, self.iface)
 
-            # ── Dönüşüm Araçları ────────────────────────────────────────
+            # â”€â”€ DÃ¶nÃ¼ÅŸÃ¼m AraÃ§larÄ± â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             elif key == "move":
                 from .tools.tool_move import tool_move
                 t = tool_move(canvas, self.iface)
@@ -873,7 +873,7 @@ class PlanXCADPlugin:
                 from .tools.tool_mirror import tool_mirror
                 t = tool_mirror(canvas, self.iface)
 
-            # ── Yeni: Array & Dimension ─────────────────────────────────
+            # â”€â”€ Yeni: Array & Dimension â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             elif key == "array":
                 from .tools.tool_array import tool_array
                 t = tool_array(canvas, self.iface)
@@ -905,7 +905,7 @@ class PlanXCADPlugin:
                 from .tools.tool_join import tool_join
                 t = tool_join(canvas, self.iface)
 
-            # ── Ölçüm ───────────────────────────────────────────────────
+            # â”€â”€ Ã–lÃ§Ã¼m â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             elif key == "measure":
                 from .tools.tool_measure import tool_measure
                 t = tool_measure(canvas, self.iface, mode=0)
@@ -919,7 +919,7 @@ class PlanXCADPlugin:
                 from .tools.tool_measure_select import tool_measure_select
                 t = tool_measure_select(canvas, self.iface, mode=1)
 
-            # ── Şehir Planlama ──────────────────────────────────────────
+            # â”€â”€ Åžehir Planlama â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             elif key == "road":
                 from .urban.road_sketcher import RoadSketcher
                 t = RoadSketcher(canvas, self.iface)
@@ -933,37 +933,37 @@ class PlanXCADPlugin:
             else:
                 return None
 
-            # Mesaj sinyalini dock widget'a bağla
+            # Mesaj sinyalini dock widget'a baÄŸla
             if hasattr(t, 'sketcher_message') and self._dock:
                 t.sketcher_message.connect(self._dock.set_status)
             if hasattr(t, 'tool_message') and self._dock:
                 t.tool_message.connect(self._dock.set_status)
 
-            # Bitış sinyali
+            # BitÄ±ÅŸ sinyali
             if hasattr(t, 'sketcher_finished') and self._dock:
                 t.sketcher_finished.connect(
-                    lambda: self._dock.set_status("Ready / Hazır")
+                    lambda: self._dock.set_status("Ready / HazÄ±r")
                 )
             if hasattr(t, 'tool_finished') and self._dock:
                 t.tool_finished.connect(
-                    lambda: self._dock.set_status("Ready / Hazır")
+                    lambda: self._dock.set_status("Ready / HazÄ±r")
                 )
 
             return t
 
         except Exception as e:
-            print(f"[planX-CAD] Araç yüklenemedi ({key}): {e}")
+            print(f"[planX-CAD] AraÃ§ yÃ¼klenemedi ({key}): {e}")
             import traceback
             traceback.print_exc()
             return None
 
-    # ═══════════════════════════════════════════════════════════════════════
-    # Yardımcı
-    # ═══════════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # YardÄ±mcÄ±
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     def _add_action(self, icon_path, text, callback, add_to_toolbar=True,
                     add_to_menu=True, checkable=False, status_tip=None):
-        """Toolbar/menüye action ekle."""
+        """Toolbar/menÃ¼ye action ekle."""
         icon = QIcon(icon_path)
         action = QAction(icon, text, self.iface.mainWindow())
         action.triggered.connect(callback)
@@ -982,7 +982,7 @@ class PlanXCADPlugin:
         return action
 
     def _show_about(self):
-        """Hakkında dialog'unu göster."""
+        """HakkÄ±nda dialog'unu gÃ¶ster."""
         version = "1.0.0"
         try:
             meta_path = os.path.join(self.plugin_dir, "metadata.txt")
@@ -997,22 +997,22 @@ class PlanXCADPlugin:
 
         QMessageBox.about(
             self.iface.mainWindow(),
-            "About planX CAD Toolset / planX CAD Araç Seti Hakkında",
+            "About planX CAD Toolset / planX CAD AraÃ§ Seti HakkÄ±nda",
             f"""
-<h2>planX CAD Toolset / Araç Seti</h2>
+<h2>planX CAD Toolset / AraÃ§ Seti</h2>
 <p>Version / Versiyon: {version}</p>
 
-<h3>Features / Özellikler:</h3>
+<h3>Features / Ã–zellikler:</h3>
 <ul>
-<li><b>6 Drawing Tools / Çizim Aracı:</b> Line, Polyline, Rectangle, Polygon, Circle, Arc</li>
-<li><b>7 Editing Tools / Düzenleme Aracı:</b> Offset, Trim, Extend, Fillet, Buffer, Divide, Join</li>
-<li><b>5 Transform Tools / Dönüşüm Aracı:</b> Move, Copy, Rotate, Scale, Mirror</li>
-<li><b>5 Measurement Tools / Ölçüm Aracı:</b> Distance, Area, Dimension, Select Line, Select Area</li>
-<li><b>3 Urban Planning Tools / Şehir Planlama Aracı:</b> Road, Junction, Block Chamfer</li>
+<li><b>6 Drawing Tools / Ã‡izim AracÄ±:</b> Line, Polyline, Rectangle, Polygon, Circle, Arc</li>
+<li><b>7 Editing Tools / DÃ¼zenleme AracÄ±:</b> Offset, Trim, Extend, Fillet, Buffer, Divide, Join</li>
+<li><b>5 Transform Tools / DÃ¶nÃ¼ÅŸÃ¼m AracÄ±:</b> Move, Copy, Rotate, Scale, Mirror</li>
+<li><b>5 Measurement Tools / Ã–lÃ§Ã¼m AracÄ±:</b> Distance, Area, Dimension, Select Line, Select Area</li>
+<li><b>3 Urban Planning Tools / Åžehir Planlama AracÄ±:</b> Road, Junction, Block Chamfer</li>
 </ul>
 
-<p>Designed for urban planning workflows / Şehir planlama süreçleri için tasarlanmıştır.</p>
-<p><i>Integrates with QGIS snapping / QGIS native snap desteği ile çalışır.</i></p>
+<p>Designed for urban planning workflows / Åžehir planlama sÃ¼reÃ§leri iÃ§in tasarlanmÄ±ÅŸtÄ±r.</p>
+<p><i>Integrates with QGIS snapping / QGIS native snap desteÄŸi ile Ã§alÄ±ÅŸÄ±r.</i></p>
 """
         )
 
@@ -1020,7 +1020,7 @@ class PlanXCADPlugin:
         try:
             from .dialogs.shortcut_help_dialog import ShortcutHelpDialog
             dlg = ShortcutHelpDialog(self._SHORTCUTS, self.iface.mainWindow())
-            dlg.exec_()
+            dlg.exec()
         except Exception as e:
             QMessageBox.warning(
                 self.iface.mainWindow(),
@@ -1032,7 +1032,7 @@ class PlanXCADPlugin:
         try:
             from .dialogs.docs_dialog import DocsDialog
             dlg = DocsDialog(self.plugin_dir, self.iface.mainWindow(), initial_tab=0, command_anchor=anchor)
-            dlg.exec_()
+            dlg.exec()
         except Exception as e:
             QMessageBox.warning(
                 self.iface.mainWindow(),
@@ -1044,7 +1044,7 @@ class PlanXCADPlugin:
         try:
             from .dialogs.docs_dialog import DocsDialog
             dlg = DocsDialog(self.plugin_dir, self.iface.mainWindow(), initial_tab=2, command_anchor=None)
-            dlg.exec_()
+            dlg.exec()
         except Exception as e:
             QMessageBox.warning(
                 self.iface.mainWindow(),
@@ -1060,7 +1060,7 @@ class PlanXCADPlugin:
                 usage_counts = self._dock.diagnostics_snapshot().get("tool_usage_counts", {})
             dlg = CommandPaletteDialog(self._SHORTCUTS, usage_counts=usage_counts, parent=self.iface.mainWindow())
             dlg.tool_selected.connect(self._activate_tool)
-            dlg.exec_()
+            dlg.exec()
         except Exception as e:
             QMessageBox.warning(
                 self.iface.mainWindow(),
@@ -1077,7 +1077,7 @@ class PlanXCADPlugin:
                 run_audit_cb=self._show_shortcut_audit,
                 parent=self.iface.mainWindow()
             )
-            dlg.exec_()
+            dlg.exec()
         except Exception as e:
             QMessageBox.warning(
                 self.iface.mainWindow(),
@@ -1089,7 +1089,7 @@ class PlanXCADPlugin:
         try:
             from .dialogs.quick_start_dialog import QuickStartDialog
             dlg = QuickStartDialog(self.iface.mainWindow())
-            dlg.exec_()
+            dlg.exec()
         except Exception as e:
             QMessageBox.warning(
                 self.iface.mainWindow(),

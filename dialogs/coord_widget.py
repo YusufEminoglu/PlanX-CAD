@@ -22,7 +22,7 @@ class LiveCoordWidget(QWidget):
             self.canvas.xyCoordinates.connect(self._on_xy)
             self.canvas.scaleChanged.connect(self._on_scale)
         except Exception:
-            # Signal API differs across QGIS minor versions — fail safe.
+            # Signal API differs across QGIS minor versions â€” fail safe.
             pass
         self._on_scale(self.canvas.scale())
 
@@ -42,19 +42,19 @@ class LiveCoordWidget(QWidget):
         box_layout.setContentsMargins(0, 0, 0, 0)
         box_layout.setSpacing(0)
 
-        self.lbl_xy = QLabel("X: —   Y: —")
+        self.lbl_xy = QLabel("X: â€”   Y: â€”")
         xy_font = QFont()
         xy_font.setPointSize(9)
         xy_font.setBold(True)
         self.lbl_xy.setFont(xy_font)
-        self.lbl_xy.setAlignment(Qt.AlignCenter)
+        self.lbl_xy.setAlignment(Qt.AlignmentFlag.AlignCenter)
         box_layout.addWidget(self.lbl_xy)
 
-        self.lbl_meta = QLabel("CRS: —    1: —")
+        self.lbl_meta = QLabel("CRS: â€”    1: â€”")
         meta_font = QFont()
         meta_font.setPointSize(7.5)
         self.lbl_meta.setFont(meta_font)
-        self.lbl_meta.setAlignment(Qt.AlignCenter)
+        self.lbl_meta.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_meta.setStyleSheet("color: #546e7a;")
         box_layout.addWidget(self.lbl_meta)
 
@@ -69,7 +69,7 @@ class LiveCoordWidget(QWidget):
     def _on_scale(self, scale: float) -> None:
         try:
             crs = self.canvas.mapSettings().destinationCrs()
-            crs_id = crs.authid() or "—"
+            crs_id = crs.authid() or "â€”"
             self.lbl_meta.setText(f"CRS: {crs_id}    1: {scale:,.0f}")
         except Exception:
             pass

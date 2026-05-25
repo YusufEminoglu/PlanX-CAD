@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Buffer Aracı
-Dialog ile join style seçimi + otomatik katman oluşturma.
+"""planX CAD â€” Buffer AracÄ±
+Dialog ile join style seÃ§imi + otomatik katman oluÅŸturma.
 """
 
 from qgis.PyQt.QtCore import Qt
@@ -19,7 +19,7 @@ class BufferDialog(QDialog):
 
     def __init__(self, parent=None, default_distance=5.0):
         super().__init__(parent)
-        self.setWindowTitle("◎ Buffer Parametreleri")
+        self.setWindowTitle("â—Ž Buffer Parametreleri")
         self.setMinimumWidth(320)
         self.setModal(True)
         self._setup_ui(default_distance)
@@ -27,12 +27,12 @@ class BufferDialog(QDialog):
     def _setup_ui(self, default_distance):
         layout = QVBoxLayout(self)
 
-        title = QLabel("◎ Buffer (Tampon) Parametreleri")
+        title = QLabel("â—Ž Buffer (Tampon) Parametreleri")
         f = QFont()
         f.setPointSize(11)
         f.setBold(True)
         title.setFont(f)
-        title.setAlignment(Qt.AlignCenter)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
         form = QFormLayout()
@@ -48,22 +48,22 @@ class BufferDialog(QDialog):
         self.cmb_join = QComboBox()
         self.cmb_join.addItems([
             "Yuvarlak (Round)",
-            "Düz (Flat / Bevel)",
-            "Köşeli (Miter)"
+            "DÃ¼z (Flat / Bevel)",
+            "KÃ¶ÅŸeli (Miter)"
         ])
-        form.addRow("Köşe stili:", self.cmb_join)
+        form.addRow("KÃ¶ÅŸe stili:", self.cmb_join)
 
         self.spn_segments = QDoubleSpinBox()
         self.spn_segments.setRange(4, 128)
         self.spn_segments.setValue(16)
         self.spn_segments.setDecimals(0)
-        form.addRow("Segment sayısı:", self.spn_segments)
+        form.addRow("Segment sayÄ±sÄ±:", self.spn_segments)
 
         layout.addLayout(form)
 
         # Butonlar
         btn_layout = QHBoxLayout()
-        btn_ok = QPushButton("✅ Uygula")
+        btn_ok = QPushButton("âœ… Uygula")
         btn_ok.setMinimumHeight(36)
         btn_ok.setStyleSheet(
             "QPushButton { background: #1a237e; color: white; "
@@ -73,7 +73,7 @@ class BufferDialog(QDialog):
         btn_ok.clicked.connect(self.accept)
         btn_layout.addWidget(btn_ok)
 
-        btn_cancel = QPushButton("İptal")
+        btn_cancel = QPushButton("Ä°ptal")
         btn_cancel.setMinimumHeight(36)
         btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(btn_cancel)
@@ -90,7 +90,7 @@ class BufferDialog(QDialog):
 
 
 class tool_buffer(tool_base):
-    """Tampon bölge oluşturma — otomatik katman ile."""
+    """Tampon bÃ¶lge oluÅŸturma â€” otomatik katman ile."""
 
     def __init__(self, canvas, iface):
         super().__init__(canvas, iface)
@@ -104,19 +104,19 @@ class tool_buffer(tool_base):
     def activate(self):
         super().activate()
         dlg = BufferDialog(self.iface.mainWindow(), self.distance)
-        if dlg.exec_() == QDialog.Accepted:
+        if dlg.exec() == QDialog.Accepted:
             params = dlg.get_params()
             self.distance = params["distance"]
             self.join_style = params["join_style"]
             self.segments = params["segments"]
 
-            join_names = {1: "Yuvarlak", 2: "Düz", 3: "Köşeli"}
+            join_names = {1: "Yuvarlak", 2: "DÃ¼z", 3: "KÃ¶ÅŸeli"}
             self.tool_message.emit(
-                f"◎ Buffer ({self.distance}m, {join_names.get(self.join_style, '?')}) "
-                f"— Tamponlanacak objeyi seçin"
+                f"â—Ž Buffer ({self.distance}m, {join_names.get(self.join_style, '?')}) "
+                f"â€” Tamponlanacak objeyi seÃ§in"
             )
         else:
-            self.tool_message.emit("◎ Buffer — İptal edildi")
+            self.tool_message.emit("â—Ž Buffer â€” Ä°ptal edildi")
 
     def on_entity_selected(self, layer, feature, point):
         geom = feature.geometry()
@@ -172,11 +172,11 @@ class tool_buffer(tool_base):
                 buffer_layer.triggerRepaint()
 
                 self.tool_message.emit(
-                    f"✅ Buffer ({self.distance}m) — planx_buffer katmanına eklendi"
+                    f"âœ… Buffer ({self.distance}m) â€” planx_buffer katmanÄ±na eklendi"
                 )
             else:
-                self.tool_message.emit("⚠️ Buffer — Katman oluşturulamadı")
+                self.tool_message.emit("âš ï¸ Buffer â€” Katman oluÅŸturulamadÄ±")
         else:
-            self.tool_message.emit("⚠️ Buffer — Tampon oluşturulamadı")
+            self.tool_message.emit("âš ï¸ Buffer â€” Tampon oluÅŸturulamadÄ±")
 
         self._reset()

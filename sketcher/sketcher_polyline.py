@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Polyline Sketcher"""
+"""planX CAD â€” Polyline Sketcher"""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry
@@ -7,8 +7,8 @@ from .sketcher_base import sketcher_base
 
 
 class sketcher_polyline(sketcher_base):
-    """Çoklu bağlı çizgi segmentleri çizer.
-    Sol tık: Nokta ekle | Sağ tık / Enter: Bitir
+    """Ã‡oklu baÄŸlÄ± Ã§izgi segmentleri Ã§izer.
+    Sol tÄ±k: Nokta ekle | SaÄŸ tÄ±k / Enter: Bitir
     """
 
     def tool_name(self):
@@ -18,9 +18,9 @@ class sketcher_polyline(sketcher_base):
         return QgsWkbTypes.LineGeometry
 
     def on_click(self, point, button):
-        if button == Qt.LeftButton:
+        if button == Qt.MouseButton.LeftButton:
             self.add_vertex(point)
-        elif button == Qt.RightButton:
+        elif button == Qt.MouseButton.RightButton:
             if len(self.vertices) >= 2:
                 self._finish()
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Çizgi (Line) Sketcher"""
+"""planX CAD â€” Ã‡izgi (Line) Sketcher"""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry
@@ -7,16 +7,16 @@ from .sketcher_base import sketcher_base
 
 
 class sketcher_line(sketcher_base):
-    """İki noktalı düz çizgi çizer."""
+    """Ä°ki noktalÄ± dÃ¼z Ã§izgi Ã§izer."""
 
     def tool_name(self):
-        return "Çizgi"
+        return "Ã‡izgi"
 
     def geom_type(self):
         return QgsWkbTypes.LineGeometry
 
     def on_click(self, point, button):
-        if button == Qt.LeftButton:
+        if button == Qt.MouseButton.LeftButton:
             self.add_vertex(point)
             if len(self.vertices) == 2:
                 self._finish()

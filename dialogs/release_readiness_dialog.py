@@ -30,7 +30,7 @@ class ReleaseReadinessDialog(QDialog):
         table.setAlternatingRowColors(True)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.setSelectionMode(QTableWidget.NoSelection)
-        table.setFocusPolicy(Qt.NoFocus)
+        table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         table.horizontalHeader().setStretchLastSection(True)
         table.setRowCount(len(self._rows))
         for i, row in enumerate(self._rows):
@@ -43,11 +43,11 @@ class ReleaseReadinessDialog(QDialog):
 
         copy_btn = QPushButton("Copy Report / Raporu Kopyala")
         copy_btn.clicked.connect(self._copy_report)
-        layout.addWidget(copy_btn, alignment=Qt.AlignLeft)
+        layout.addWidget(copy_btn, alignment=Qt.AlignmentFlag.AlignLeft)
 
         close_btn = QPushButton("Close / Kapat")
         close_btn.clicked.connect(self.accept)
-        layout.addWidget(close_btn, alignment=Qt.AlignRight)
+        layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
     def _copy_report(self):
         lines = ["Release Readiness Report", "========================", ""]

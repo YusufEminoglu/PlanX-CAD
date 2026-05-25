@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Aynala (Mirror) Aracı"""
+"""planX CAD â€” Aynala (Mirror) AracÄ±"""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsGeometry, QgsPointXY
@@ -8,8 +8,8 @@ from ..core.sketcher_utils import mirror_geometry
 
 
 class tool_mirror(tool_base):
-    """Objeyi bir çizgiye göre aynalama aracı.
-    1. Objeyi seç | 2. Ayna çizgisi başlangıç | 3. Ayna çizgisi bitiş
+    """Objeyi bir Ã§izgiye gÃ¶re aynalama aracÄ±.
+    1. Objeyi seÃ§ | 2. Ayna Ã§izgisi baÅŸlangÄ±Ã§ | 3. Ayna Ã§izgisi bitiÅŸ
     """
 
     def __init__(self, canvas, iface):
@@ -22,16 +22,16 @@ class tool_mirror(tool_base):
     def on_entity_selected(self, layer, feature, point):
         self._step = 2
         self.tool_message.emit(
-            "⟺ Aynala — Ayna çizgisinin başlangıç noktasını tıklayın"
+            "âŸº Aynala â€” Ayna Ã§izgisinin baÅŸlangÄ±Ã§ noktasÄ±nÄ± tÄ±klayÄ±n"
         )
 
     def on_click(self, point, button):
-        if button == Qt.LeftButton:
+        if button == Qt.MouseButton.LeftButton:
             if self._step == 2:
                 self.line_start = point
                 self._step = 3
                 self.tool_message.emit(
-                    "⟺ Aynala — Ayna çizgisinin bitiş noktasını tıklayın"
+                    "âŸº Aynala â€” Ayna Ã§izgisinin bitiÅŸ noktasÄ±nÄ± tÄ±klayÄ±n"
                 )
             elif self._step == 3:
                 geom = self.selected_feature.geometry()
@@ -40,9 +40,9 @@ class tool_mirror(tool_base):
                 if mirrored:
                     self._add_feature(self.selected_layer, mirrored,
                                       self.selected_feature)
-                    self.tool_message.emit("✅ Aynala — Ayna oluşturuldu")
+                    self.tool_message.emit("âœ… Aynala â€” Ayna oluÅŸturuldu")
                 else:
-                    self.tool_message.emit("⚠️ Aynalama yapılamadı")
+                    self.tool_message.emit("âš ï¸ Aynalama yapÄ±lamadÄ±")
 
                 self.line_start = None
                 self._reset()

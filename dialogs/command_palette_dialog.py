@@ -47,7 +47,7 @@ class CommandPaletteDialog(QDialog):
 
         close_btn = QPushButton("Close / Kapat")
         close_btn.clicked.connect(self.reject)
-        layout.addWidget(close_btn, alignment=Qt.AlignRight)
+        layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
     def _populate(self):
         categories = {
@@ -86,7 +86,7 @@ class CommandPaletteDialog(QDialog):
             cat = row["category"]
             usage = row["usage"]
             item = QListWidgetItem(f"{key}    [{seq}]    ({cat})    uses:{usage}")
-            item.setData(Qt.UserRole, key)
+            item.setData(Qt.ItemDataRole.UserRole, key)
             self.list_widget.addItem(item)
         if self.list_widget.count() > 0:
             self.list_widget.setCurrentRow(0)
@@ -108,7 +108,7 @@ class CommandPaletteDialog(QDialog):
         item = self.list_widget.currentItem()
         if not item:
             return
-        key = item.data(Qt.UserRole)
+        key = item.data(Qt.ItemDataRole.UserRole)
         if key:
             self.tool_selected.emit(key)
             self.accept()

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Kopyala (Copy) Aracı"""
+"""planX CAD â€” Kopyala (Copy) AracÄ±"""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsGeometry
@@ -7,8 +7,8 @@ from .tool_base import tool_base
 
 
 class tool_copy(tool_base):
-    """Objeyi kopyalama aracı.
-    1. Objeyi seç | 2. Başlangıç noktası | 3. Hedef nokta
+    """Objeyi kopyalama aracÄ±.
+    1. Objeyi seÃ§ | 2. BaÅŸlangÄ±Ã§ noktasÄ± | 3. Hedef nokta
     """
 
     def __init__(self, canvas, iface):
@@ -21,10 +21,10 @@ class tool_copy(tool_base):
     def on_entity_selected(self, layer, feature, point):
         self.base_point = point
         self._step = 2
-        self.tool_message.emit("⎘ Kopyala — Hedef noktayı tıklayın")
+        self.tool_message.emit("âŽ˜ Kopyala â€” Hedef noktayÄ± tÄ±klayÄ±n")
 
     def on_click(self, point, button):
-        if self._step == 2 and button == Qt.LeftButton:
+        if self._step == 2 and button == Qt.MouseButton.LeftButton:
             dx = point.x() - self.base_point.x()
             dy = point.y() - self.base_point.y()
 
@@ -33,7 +33,7 @@ class tool_copy(tool_base):
 
             self._add_feature(self.selected_layer, new_geom,
                               self.selected_feature)
-            self.tool_message.emit("✅ Kopyala — Obje kopyalandı")
+            self.tool_message.emit("âœ… Kopyala â€” Obje kopyalandÄ±")
             self.base_point = None
             self._reset()
 

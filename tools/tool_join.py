@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Join (Birleştirme) Tool.
+"""planX CAD â€” Join (BirleÅŸtirme) Tool.
 
 Interactive tool to select multiple lines/polylines and weld them together
 into a single continuous feature, with customizable gap tolerance.
@@ -89,7 +89,7 @@ class tool_join(tool_base):
         self.features_to_join: list[QgsFeature] = []
 
     def tool_name(self):
-        return "Join / Birleştir"
+        return "Join / BirleÅŸtir"
 
     def activate(self):
         super().activate()
@@ -97,7 +97,7 @@ class tool_join(tool_base):
         if self.highlight_rb:
             self.highlight_rb.reset()
         self.tool_message.emit(
-            "🔗 Join — Select first line / Çizgileri Birleştir — İlk çizgiyi seçin"
+            "ðŸ”— Join â€” Select first line / Ã‡izgileri BirleÅŸtir â€” Ä°lk Ã§izgiyi seÃ§in"
         )
 
     def deactivate(self):
@@ -112,14 +112,14 @@ class tool_join(tool_base):
         if snapped is not None:
             point = snapped
 
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             result = self._pick_feature(event.pos())
             if result:
                 layer, feature = result
                 geom = feature.geometry()
                 if geom is None or geom.isEmpty() or geom.type() != QgsWkbTypes.LineGeometry:
                     self.tool_message.emit(
-                        "⚠️ Only line/polyline features can be joined / Sadece çizgiler birleştirilebilir"
+                        "âš ï¸ Only line/polyline features can be joined / Sadece Ã§izgiler birleÅŸtirilebilir"
                     )
                     return
                 
@@ -131,44 +131,44 @@ class tool_join(tool_base):
                     elif layer != self.selected_layer:
                         # Must be from the same layer
                         self.tool_message.emit(
-                            "⚠️ Features must belong to the same layer / Objeler aynı katmana ait olmalı"
+                            "âš ï¸ Features must belong to the same layer / Objeler aynÄ± katmana ait olmalÄ±"
                         )
                         return
                     
                     self.features_to_join.append(feature)
                     self.tool_message.emit(
-                        f"🔗 Join — {len(self.features_to_join)} lines selected. Right-click or Enter to weld | "
-                        f"Çizgileri Birleştir — {len(self.features_to_join)} çizgi seçildi. Birleştirmek için Sağ Tık veya Enter."
+                        f"ðŸ”— Join â€” {len(self.features_to_join)} lines selected. Right-click or Enter to weld | "
+                        f"Ã‡izgileri BirleÅŸtir â€” {len(self.features_to_join)} Ã§izgi seÃ§ildi. BirleÅŸtirmek iÃ§in SaÄŸ TÄ±k veya Enter."
                     )
                     self._update_highlights()
                 else:
                     self.tool_message.emit(
-                        "⚠️ Line already selected / Bu çizgi zaten seçildi"
+                        "âš ï¸ Line already selected / Bu Ã§izgi zaten seÃ§ildi"
                     )
             else:
                 self.tool_message.emit(
-                    "⚠️ No feature found / Obje bulunamadı"
+                    "âš ï¸ No feature found / Obje bulunamadÄ±"
                 )
                 
-        elif event.button() == Qt.RightButton:
+        elif event.button() == Qt.MouseButton.RightButton:
             if len(self.features_to_join) >= 2:
                 self._do_join()
             else:
                 self.tool_message.emit(
-                    "⚠️ Select at least 2 lines to join / Birleştirmek için en az 2 çizgi seçmelisiniz"
+                    "âš ï¸ Select at least 2 lines to join / BirleÅŸtirmek iÃ§in en az 2 Ã§izgi seÃ§melisiniz"
                 )
                 self._reset()
 
     def keyPressEvent(self, event):
-        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             if len(self.features_to_join) >= 2:
                 self._do_join()
             else:
                 self.tool_message.emit(
-                    "⚠️ Select at least 2 lines to join / Birleştirmek için en az 2 çizgi seçmelisiniz"
+                    "âš ï¸ Select at least 2 lines to join / BirleÅŸtirmek iÃ§in en az 2 Ã§izgi seÃ§melisiniz"
                 )
                 self._reset()
-        elif event.key() == Qt.Key_Escape:
+        elif event.key() == Qt.Key.Key_Escape:
             self._reset()
 
     def _update_highlights(self):
@@ -191,13 +191,13 @@ class tool_join(tool_base):
         # Prompt for tolerance
         tolerance, ok = QInputDialog.getDouble(
             self.iface.mainWindow(),
-            "Join / Birleştir",
-            "Join Tolerance / Birleştirme Toleransı (m):",
+            "Join / BirleÅŸtir",
+            "Join Tolerance / BirleÅŸtirme ToleransÄ± (m):",
             1.0, 0.0, 1000.0, 2
         )
         if not ok:
             self.tool_message.emit(
-                "⚠️ Join cancelled / Birleştirme iptal edildi"
+                "âš ï¸ Join cancelled / BirleÅŸtirme iptal edildi"
             )
             self._reset()
             return
@@ -207,7 +207,7 @@ class tool_join(tool_base):
 
         if not joined_geoms:
             self.tool_message.emit(
-                "⚠️ Join failed: No matching endpoints / Birleştirme başarısız: Uçlar eşleşmedi"
+                "âš ï¸ Join failed: No matching endpoints / BirleÅŸtirme baÅŸarÄ±sÄ±z: UÃ§lar eÅŸleÅŸmedi"
             )
             self._reset()
             return
@@ -222,7 +222,7 @@ class tool_join(tool_base):
         if not layer.isEditable():
             layer.startEditing()
 
-        layer.beginEditCommand("Join / Çizgileri Birleştir")
+        layer.beginEditCommand("Join / Ã‡izgileri BirleÅŸtir")
         try:
             # Update first feature in-place
             f1 = self.features_to_join[0]
@@ -236,13 +236,13 @@ class tool_join(tool_base):
             layer.triggerRepaint()
             
             self.tool_message.emit(
-                f"✅ Joined {len(self.features_to_join)} segments into {len(joined_geoms)} polylines / "
-                f"{len(self.features_to_join)} segment {len(joined_geoms)} çizgi olarak birleştirildi"
+                f"âœ… Joined {len(self.features_to_join)} segments into {len(joined_geoms)} polylines / "
+                f"{len(self.features_to_join)} segment {len(joined_geoms)} Ã§izgi olarak birleÅŸtirildi"
             )
         except Exception as e:
             layer.destroyEditCommand()
             self.tool_message.emit(
-                f"⚠️ Error joining / Birleştirme hatası: {e}"
+                f"âš ï¸ Error joining / BirleÅŸtirme hatasÄ±: {e}"
             )
 
         self._reset()

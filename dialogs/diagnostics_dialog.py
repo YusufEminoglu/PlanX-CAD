@@ -39,11 +39,11 @@ class DiagnosticsDialog(QDialog):
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._stamp_label = QLabel(f"Generated / Uretildi: {ts}")
         self._stamp_label.setStyleSheet("color: #64748b;")
-        row.addWidget(self._stamp_label, alignment=Qt.AlignCenter)
+        row.addWidget(self._stamp_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
         close_btn = QPushButton("Close / Kapat")
         close_btn.clicked.connect(self.accept)
-        row.addWidget(close_btn, alignment=Qt.AlignRight)
+        row.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
         layout.addLayout(row)
 
     def _copy_report(self):

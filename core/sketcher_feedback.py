@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-planX CAD — Sketcher Görsel Geri Bildirim Yöneticisi
-RubberBand oluşturma, snap noktası gösterimi ve cursor yönetimi.
+planX CAD â€” Sketcher GÃ¶rsel Geri Bildirim YÃ¶neticisi
+RubberBand oluÅŸturma, snap noktasÄ± gÃ¶sterimi ve cursor yÃ¶netimi.
 """
 
 from qgis.PyQt.QtCore import Qt
@@ -10,22 +10,22 @@ from qgis.core import QgsWkbTypes
 from qgis.gui import QgsRubberBand
 
 
-# ── Renk Sabitleri ──────────────────────────────────────────────────────────
+# â”€â”€ Renk Sabitleri â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 COLOR_PRIMARY = QColor(26, 35, 126, 200)      # Koyu mavi
 COLOR_ACCENT = QColor(255, 109, 0, 200)       # Turuncu
 COLOR_PREVIEW = QColor(100, 149, 237, 150)    # Cornflower blue
-COLOR_SNAP = QColor(255, 0, 0, 220)           # Kırmızı
+COLOR_SNAP = QColor(255, 0, 0, 220)           # KÄ±rmÄ±zÄ±
 
 
 def create_sketcher_rubberband(canvas, geom_type=QgsWkbTypes.LineGeometry,
                                color=None, width=2):
-    """Yeni bir RubberBand oluşturur.
+    """Yeni bir RubberBand oluÅŸturur.
 
     Args:
         canvas: QgsMapCanvas
         geom_type: QgsWkbTypes geometri tipi
-        color: QColor (varsayılan: COLOR_PRIMARY)
-        width: Çizgi kalınlığı
+        color: QColor (varsayÄ±lan: COLOR_PRIMARY)
+        width: Ã‡izgi kalÄ±nlÄ±ÄŸÄ±
 
     Returns:
         QgsRubberBand
@@ -40,16 +40,16 @@ def create_sketcher_rubberband(canvas, geom_type=QgsWkbTypes.LineGeometry,
         fill.setAlpha(40)
         rb.setFillColor(fill)
 
-    rb.setLineStyle(Qt.SolidLine)
+    rb.setLineStyle(Qt.PenStyle.SolidLine)
     return rb
 
 
 def create_preview_rubberband(canvas, geom_type=QgsWkbTypes.LineGeometry):
-    """Önizleme (preview) için yarı saydam RubberBand."""
+    """Ã–nizleme (preview) iÃ§in yarÄ± saydam RubberBand."""
     rb = QgsRubberBand(canvas, geom_type)
     rb.setColor(COLOR_PREVIEW)
     rb.setWidth(1)
-    rb.setLineStyle(Qt.DashLine)
+    rb.setLineStyle(Qt.PenStyle.DashLine)
 
     if geom_type == QgsWkbTypes.PolygonGeometry:
         fill = QColor(COLOR_PREVIEW)
@@ -59,7 +59,7 @@ def create_preview_rubberband(canvas, geom_type=QgsWkbTypes.LineGeometry):
 
 
 def create_snap_marker(canvas):
-    """Snap noktası göstergesi oluşturur.
+    """Snap noktasÄ± gÃ¶stergesi oluÅŸturur.
 
     Returns:
         QgsRubberBand (nokta tipi)
@@ -73,7 +73,7 @@ def create_snap_marker(canvas):
 
 
 def cleanup_sketcher_rubberband(canvas, rb):
-    """RubberBand'i temizleyip sahiden kaldırır."""
+    """RubberBand'i temizleyip sahiden kaldÄ±rÄ±r."""
     if rb is not None:
         rb.reset()
         canvas.scene().removeItem(rb)

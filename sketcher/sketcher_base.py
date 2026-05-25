@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-planX CAD — Sketcher Base Class
-Tüm çizim araçlarının temel sınıfı. QgsMapTool tabanlı.
-RubberBand yönetimi, snap desteği, ESC ile iptal.
+planX CAD â€” Sketcher Base Class
+TÃ¼m Ã§izim araÃ§larÄ±nÄ±n temel sÄ±nÄ±fÄ±. QgsMapTool tabanlÄ±.
+RubberBand yÃ¶netimi, snap desteÄŸi, ESC ile iptal.
 """
 
 from qgis.PyQt.QtCore import Qt, pyqtSignal
@@ -18,14 +18,14 @@ from ..core.sketcher_layer_utils import add_geometry_to_current_layer
 
 
 class sketcher_base(QgsMapTool):
-    """Tüm sketcher'ların miras aldığı temel sınıf.
+    """TÃ¼m sketcher'larÄ±n miras aldÄ±ÄŸÄ± temel sÄ±nÄ±f.
 
-    Alt sınıflar şunları override etmelidir:
-        - tool_name(): str — araç adı
-        - geom_type(): QgsWkbTypes — geometri tipi
-        - on_click(point, button): tıklama işlemi
+    Alt sÄ±nÄ±flar ÅŸunlarÄ± override etmelidir:
+        - tool_name(): str â€” araÃ§ adÄ±
+        - geom_type(): QgsWkbTypes â€” geometri tipi
+        - on_click(point, button): tÄ±klama iÅŸlemi
         - on_move(point): fare hareketi (opsiyonel)
-        - build_geometry(): QgsGeometry — son geometri
+        - build_geometry(): QgsGeometry â€” son geometri
     """
 
     sketcher_finished = pyqtSignal()
@@ -40,10 +40,10 @@ class sketcher_base(QgsMapTool):
         self.preview_rb = None
         self._is_active = False
 
-    # ── Override edilecek metodlar ────────────────────────────────────────
+    # â”€â”€ Override edilecek metodlar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def tool_name(self):
-        """Araç adı."""
+        """AraÃ§ adÄ±."""
         return "Sketcher"
 
     def geom_type(self):
@@ -51,30 +51,30 @@ class sketcher_base(QgsMapTool):
         return QgsWkbTypes.LineGeometry
 
     def on_click(self, point, button):
-        """Tıklama işlemi. Alt sınıf override eder."""
+        """TÄ±klama iÅŸlemi. Alt sÄ±nÄ±f override eder."""
         pass
 
     def on_move(self, point):
-        """Fare hareketi. Alt sınıf override eder."""
+        """Fare hareketi. Alt sÄ±nÄ±f override eder."""
         pass
 
     def build_geometry(self):
-        """Son geometriyi oluştur. Alt sınıf override eder."""
+        """Son geometriyi oluÅŸtur. Alt sÄ±nÄ±f override eder."""
         return None
 
-    # ── Yaşam Döngüsü ───────────────────────────────────────────────────
+    # â”€â”€ YaÅŸam DÃ¶ngÃ¼sÃ¼ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def activate(self):
-        """Araç aktifleştiğinde."""
+        """AraÃ§ aktifleÅŸtiÄŸinde."""
         super().activate()
         self._is_active = True
         self.vertices = []
         self.rb = create_sketcher_rubberband(self.canvas, self.geom_type())
         self.preview_rb = create_preview_rubberband(self.canvas, self.geom_type())
-        self.sketcher_message.emit(f"✏️ {self.tool_name()} — Tıklayarak çizime başlayın")
+        self.sketcher_message.emit(f"âœï¸ {self.tool_name()} â€” TÄ±klayarak Ã§izime baÅŸlayÄ±n")
 
     def deactivate(self):
-        """Araç deaktifleştiğinde."""
+        """AraÃ§ deaktifleÅŸtiÄŸinde."""
         self._is_active = False
         self._cleanup()
         super().deactivate()
@@ -87,10 +87,10 @@ class sketcher_base(QgsMapTool):
         self.preview_rb = None
         self.vertices = []
 
-    # ── Olay İşleyiciler ─────────────────────────────────────────────────
+    # â”€â”€ Olay Ä°ÅŸleyiciler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def canvasPressEvent(self, event):
-        """Harita tuval tıklama olayı."""
+        """Harita tuval tÄ±klama olayÄ±."""
         point = self.toMapCoordinates(event.pos())
 
         # Snap uygula
@@ -115,18 +115,18 @@ class sketcher_base(QgsMapTool):
         self.on_move(point)
 
     def keyPressEvent(self, event):
-        """Tuş basma olayı."""
-        if event.key() == Qt.Key_Escape:
+        """TuÅŸ basma olayÄ±."""
+        if event.key() == Qt.Key.Key_Escape:
             self._cancel()
-        elif event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Z:
+        elif event.key() == Qt.Key.Key_Backspace or event.key() == Qt.Key_Z:
             self._undo_last_vertex()
-        elif event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+        elif event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
             self._finish()
 
-    # ── Yardımcı Metodlar ────────────────────────────────────────────────
+    # â”€â”€ YardÄ±mcÄ± Metodlar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _snap_point(self, pos):
-        """QGIS native snap ile en yakın noktayı bul."""
+        """QGIS native snap ile en yakÄ±n noktayÄ± bul."""
         snapper = self.canvas.snappingUtils()
         if snapper is None:
             return None
@@ -136,49 +136,49 @@ class sketcher_base(QgsMapTool):
         return None
 
     def add_vertex(self, point):
-        """Yeni köşe noktası ekle."""
+        """Yeni kÃ¶ÅŸe noktasÄ± ekle."""
         self.vertices.append(point)
         if self.rb:
             self.rb.addPoint(point)
         self.sketcher_message.emit(
-            f"✏️ {self.tool_name()} — {len(self.vertices)} nokta | "
-            f"Enter: Bitir | Esc: İptal | Backspace: Geri"
+            f"âœï¸ {self.tool_name()} â€” {len(self.vertices)} nokta | "
+            f"Enter: Bitir | Esc: Ä°ptal | Backspace: Geri"
         )
 
     def _undo_last_vertex(self):
-        """Son köşeyi geri al."""
+        """Son kÃ¶ÅŸeyi geri al."""
         if len(self.vertices) > 0:
             self.vertices.pop()
             self._rebuild_sketcher_rubberband()
             self.sketcher_message.emit(
-                f"✏️ {self.tool_name()} — Son nokta silindi. "
-                f"{len(self.vertices)} nokta kaldı"
+                f"âœï¸ {self.tool_name()} â€” Son nokta silindi. "
+                f"{len(self.vertices)} nokta kaldÄ±"
             )
 
     def _rebuild_sketcher_rubberband(self):
-        """RubberBand'i köşe listesinden yeniden oluştur."""
+        """RubberBand'i kÃ¶ÅŸe listesinden yeniden oluÅŸtur."""
         if self.rb:
             self.rb.reset(self.geom_type())
             for v in self.vertices:
                 self.rb.addPoint(v)
 
     def _finish(self):
-        """Çizimi bitir ve katmana ekle."""
+        """Ã‡izimi bitir ve katmana ekle."""
         geom = self.build_geometry()
         if geom and not geom.isEmpty():
             success = add_geometry_to_current_layer(self.iface, geom)
             if success:
                 self.sketcher_message.emit(
-                    f"✅ {self.tool_name()} — Geometri eklendi"
+                    f"âœ… {self.tool_name()} â€” Geometri eklendi"
                 )
                 self.iface.mapCanvas().refresh()
             else:
                 self.sketcher_message.emit(
-                    "⚠️ Aktif düzenlenebilir katman bulunamadı!"
+                    "âš ï¸ Aktif dÃ¼zenlenebilir katman bulunamadÄ±!"
                 )
         else:
             self.sketcher_message.emit(
-                "⚠️ Geçerli geometri oluşturulamadı"
+                "âš ï¸ GeÃ§erli geometri oluÅŸturulamadÄ±"
             )
 
         self._cleanup()
@@ -187,15 +187,15 @@ class sketcher_base(QgsMapTool):
         self.sketcher_finished.emit()
 
     def _cancel(self):
-        """Çizimi iptal et."""
+        """Ã‡izimi iptal et."""
         self._cleanup()
         self.rb = create_sketcher_rubberband(self.canvas, self.geom_type())
         self.preview_rb = create_preview_rubberband(self.canvas, self.geom_type())
-        self.sketcher_message.emit(f"❌ {self.tool_name()} — İptal edildi")
+        self.sketcher_message.emit(f"âŒ {self.tool_name()} â€” Ä°ptal edildi")
         self.sketcher_finished.emit()
 
     def update_preview(self, current_point):
-        """Önizleme RubberBand'ini güncelle."""
+        """Ã–nizleme RubberBand'ini gÃ¼ncelle."""
         if self.preview_rb and len(self.vertices) > 0:
             self.preview_rb.reset(self.geom_type())
             for v in self.vertices:

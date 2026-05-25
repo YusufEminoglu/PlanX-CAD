@@ -48,13 +48,13 @@ class ShortcutHelpDialog(QDialog):
         self.table.setAlternatingRowColors(True)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionMode(QTableWidget.NoSelection)
-        self.table.setFocusPolicy(Qt.NoFocus)
+        self.table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.table)
 
         close_btn = QPushButton("Close / Kapat")
         close_btn.clicked.connect(self.accept)
-        layout.addWidget(close_btn, alignment=Qt.AlignRight)
+        layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
     def _populate_rows(self):
         tr_map = {

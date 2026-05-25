@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Construction (reference) lines.
+"""planX CAD â€” Construction (reference) lines.
 
 Pick two points to define a construction line. Modes:
   - Infinite: the line stretches across the current canvas extent (auto
@@ -63,7 +63,7 @@ def _ray_through(p1: QgsPointXY, p2: QgsPointXY, length: float) -> QgsPointXY:
 
 
 class tool_construction_line(QgsMapTool):
-    """Map tool: 2 clicks → committed construction line on planx_construction."""
+    """Map tool: 2 clicks â†’ committed construction line on planx_construction."""
 
     tool_finished = pyqtSignal()
     tool_message = pyqtSignal(str)
@@ -91,9 +91,9 @@ class tool_construction_line(QgsMapTool):
         if self.preview_rb is not None:
             self.preview_rb.setColor(COLOR_ACCENT)
             self.preview_rb.setWidth(1)
-            self.preview_rb.setLineStyle(Qt.DashLine)
+            self.preview_rb.setLineStyle(Qt.PenStyle.DashLine)
         self.tool_message.emit(
-            f"┄ Construction ({self.mode}) — click the first reference point | "
+            f"â”„ Construction ({self.mode}) â€” click the first reference point | "
             f"right-click resets | Esc cancels"
         )
 
@@ -104,25 +104,25 @@ class tool_construction_line(QgsMapTool):
         super().deactivate()
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Escape:
+        if event.key() == Qt.Key.Key_Escape:
             self.first_point = None
             if self.preview_rb is not None:
                 self.preview_rb.reset(QgsWkbTypes.LineGeometry)
-            self.tool_message.emit("┄ Construction — cancelled")
+            self.tool_message.emit("â”„ Construction â€” cancelled")
 
     def canvasPressEvent(self, event):
         point = self._snap(event)
-        if event.button() == Qt.RightButton:
+        if event.button() == Qt.MouseButton.RightButton:
             self.first_point = None
             if self.preview_rb is not None:
                 self.preview_rb.reset(QgsWkbTypes.LineGeometry)
-            self.tool_message.emit(f"┄ Construction — reset ({self._count} so far)")
+            self.tool_message.emit(f"â”„ Construction â€” reset ({self._count} so far)")
             return
-        if event.button() != Qt.LeftButton:
+        if event.button() != Qt.MouseButton.LeftButton:
             return
         if self.first_point is None:
             self.first_point = point
-            self.tool_message.emit(f"┄ Construction ({self.mode}) — click the second reference point")
+            self.tool_message.emit(f"â”„ Construction ({self.mode}) â€” click the second reference point")
         else:
             self._commit(self.first_point, point)
             self.first_point = None
@@ -136,7 +136,7 @@ class tool_construction_line(QgsMapTool):
         self.preview_rb.addPoint(a)
         self.preview_rb.addPoint(b)
 
-    # ───────────────────────── helpers ─────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _snap(self, event) -> QgsPointXY:
         snapper = self.canvas.snappingUtils()
@@ -167,7 +167,7 @@ class tool_construction_line(QgsMapTool):
                     ("to_x", "double"), ("to_y", "double")],
         )
         if layer is None:
-            self.tool_message.emit("⚠️ Construction — layer creation failed")
+            self.tool_message.emit("âš ï¸ Construction â€” layer creation failed")
             return
 
         was_editing = layer.isEditable()
@@ -197,5 +197,5 @@ class tool_construction_line(QgsMapTool):
         layer.triggerRepaint()
         self._count += 1
         self.tool_message.emit(
-            f"✅ Construction #{self._count} — {self.mode}; continue or right-click to reset"
+            f"âœ… Construction #{self._count} â€” {self.mode}; continue or right-click to reset"
         )

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Çokgen (Polygon) Sketcher"""
+"""planX CAD â€” Ã‡okgen (Polygon) Sketcher"""
 
 import math
 from qgis.PyQt.QtCore import Qt
@@ -9,9 +9,9 @@ from .sketcher_base import sketcher_base
 
 
 class sketcher_polygon(sketcher_base):
-    """Düzgün N-gen çizer.
-    1. tık: Merkez | 2. tık: Yarıçap ve yön
-    Başlangıçta kenar sayısı sorulur.
+    """DÃ¼zgÃ¼n N-gen Ã§izer.
+    1. tÄ±k: Merkez | 2. tÄ±k: YarÄ±Ã§ap ve yÃ¶n
+    BaÅŸlangÄ±Ã§ta kenar sayÄ±sÄ± sorulur.
     """
 
     def __init__(self, canvas, iface):
@@ -20,30 +20,30 @@ class sketcher_polygon(sketcher_base):
         self.center = None
 
     def tool_name(self):
-        return "Çokgen"
+        return "Ã‡okgen"
 
     def geom_type(self):
         return QgsWkbTypes.PolygonGeometry
 
     def activate(self):
         super().activate()
-        # Kenar sayısı sor
+        # Kenar sayÄ±sÄ± sor
         n, ok = QInputDialog.getInt(
-            self.iface.mainWindow(), "Çokgen", "Kenar sayısı:", self.sides, 3, 100
+            self.iface.mainWindow(), "Ã‡okgen", "Kenar sayÄ±sÄ±:", self.sides, 3, 100
         )
         if ok:
             self.sides = n
         self.sketcher_message.emit(
-            f"✏️ Çokgen ({self.sides} kenar) — Merkez noktasını tıklayın"
+            f"âœï¸ Ã‡okgen ({self.sides} kenar) â€” Merkez noktasÄ±nÄ± tÄ±klayÄ±n"
         )
 
     def on_click(self, point, button):
-        if button == Qt.LeftButton:
+        if button == Qt.MouseButton.LeftButton:
             if self.center is None:
                 self.center = point
                 self.add_vertex(point)
                 self.sketcher_message.emit(
-                    f"✏️ Çokgen — Yarıçapı belirlemek için tıklayın"
+                    f"âœï¸ Ã‡okgen â€” YarÄ±Ã§apÄ± belirlemek iÃ§in tÄ±klayÄ±n"
                 )
             else:
                 self.add_vertex(point)
@@ -63,7 +63,7 @@ class sketcher_polygon(sketcher_base):
         return None
 
     def _calc_polygon(self, center, edge_point):
-        """Regular polygon noktalarını hesapla."""
+        """Regular polygon noktalarÄ±nÄ± hesapla."""
         radius = math.sqrt(
             (edge_point.x() - center.x()) ** 2 +
             (edge_point.y() - center.y()) ** 2

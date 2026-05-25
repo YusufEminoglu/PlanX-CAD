@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Dikdörtgen (Rectangle) Sketcher"""
+"""planX CAD â€” DikdÃ¶rtgen (Rectangle) Sketcher"""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry, QgsPointXY
@@ -7,16 +7,16 @@ from .sketcher_base import sketcher_base
 
 
 class sketcher_rectangle(sketcher_base):
-    """İki köşe noktasıyla dikdörtgen çizer."""
+    """Ä°ki kÃ¶ÅŸe noktasÄ±yla dikdÃ¶rtgen Ã§izer."""
 
     def tool_name(self):
-        return "Dikdörtgen"
+        return "DikdÃ¶rtgen"
 
     def geom_type(self):
         return QgsWkbTypes.PolygonGeometry
 
     def on_click(self, point, button):
-        if button == Qt.LeftButton:
+        if button == Qt.MouseButton.LeftButton:
             self.add_vertex(point)
             if len(self.vertices) == 2:
                 self._finish()

@@ -23,7 +23,7 @@ class HealthCheckDialog(QDialog):
         table.setAlternatingRowColors(True)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.setSelectionMode(QTableWidget.NoSelection)
-        table.setFocusPolicy(Qt.NoFocus)
+        table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         table.horizontalHeader().setStretchLastSection(True)
         table.setRowCount(len(checks))
 
@@ -37,4 +37,4 @@ class HealthCheckDialog(QDialog):
 
         close_btn = QPushButton("Close / Kapat")
         close_btn.clicked.connect(self.accept)
-        layout.addWidget(close_btn, alignment=Qt.AlignRight)
+        layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
