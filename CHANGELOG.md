@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.17.2] - 2026-05-26
+
+- fix: Qt.ApplicationShortcut to Qt.ShortcutContext.ApplicationShortcut for PyQt6/QGIS 4
+
 ## [1.17.0] - 2026-05-23
 
 - Beta completion release: readiness, diagnostics, smoke test, issue template, UX and shortcuts
