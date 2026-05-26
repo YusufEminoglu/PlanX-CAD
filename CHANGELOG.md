@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.19.0] - 2026-05-26
+
+### Accessibility
+- **Screen readers**: icon-only tool buttons and quick-action buttons now set `accessibleName` / `accessibleDescription`, so assistive tech announces the tool name + bilingual description instead of a bare "button". The dock itself has an accessible name.
+- **Keyboard navigation**: tool buttons are now tab-focusable (`Qt.FocusPolicy.TabFocus`) with a visible focus ring on both tool buttons and quick-action buttons.
+
+### Compactness
+- **Status strip consolidation**: the layer-state label and the session usage counter now share a single horizontal row (3:1 width split) instead of two full-width stacked rows, reclaiming vertical space in the dock.
+
+### Tests
+- `tests/smoke_compat.py` gains a dock-accessibility check (9 checks total).
+
 ## [1.18.0] - 2026-05-26
 
 ### Improvements

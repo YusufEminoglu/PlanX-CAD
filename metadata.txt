@@ -3,7 +3,7 @@ name=PlanX CAD Toolset
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=Lightweight and fast CAD toolset for urban planning processes in QGIS. Features include drawing, editing, transforming, measuring, and road platform design.
-version=1.18.0
+version=1.19.0
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
@@ -24,6 +24,11 @@ experimental=False
 deprecated=False
 
 changelog=
+    PlanX CAD Toolset 1.19.0 - Accessibility pass + compact status strip.
+        - Screen-reader support: icon-only tool buttons and quick-action buttons now expose accessible names/descriptions; the dock has an accessible name.
+        - Keyboard navigation: tool buttons are tab-focusable with a visible focus ring.
+        - Compact footer: layer-state and session usage counter now share one horizontal strip instead of two stacked rows, reclaiming vertical space.
+        - Smoke test now includes a dock-accessibility check (9 checks total).
     PlanX CAD Toolset 1.18.0 - Compact GUI overhaul + static compatibility smoke test.
         - Replaced 15-button single-row overflow layout with a compact 3x4 QGridLayout that fits the 160px minimum dock width.
         - Added tests/smoke_compat.py: 8-check static smoke test (no QGIS runtime needed) covering Qt6 enum safety, metadata, imports, and layout correctness.

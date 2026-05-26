@@ -214,6 +214,22 @@ def check_dock_quick_actions_grid() -> bool:
     return _ok("dock quick actions: compact QGridLayout", ok, detail)
 
 
+def check_dock_accessibility() -> bool:
+    """Icon-only tool buttons must expose accessible names for screen readers."""
+    dock_path = PLUGIN_DIR / "dialogs" / "cad_dock.py"
+    if not dock_path.exists():
+        return _ok("dock accessibility names", False, "cad_dock.py missing")
+    src = dock_path.read_text(encoding="utf-8")
+    has_names = "setAccessibleName" in src
+    has_focus = "QToolButton:focus" in src or "FocusPolicy" in src
+    ok = has_names and has_focus
+    detail = (
+        "accessible names + keyboard focus present" if ok else
+        ("setAccessibleName missing" if not has_names else "no keyboard focus affordance")
+    )
+    return _ok("dock accessibility (a11y names + focus)", ok, detail)
+
+
 # ── runner ────────────────────────────────────────────────────────────────────
 
 def run_all() -> bool:
@@ -230,6 +246,7 @@ def run_all() -> bool:
         check_class_factory(),
         check_qgis_pyside_import_guard(),
         check_dock_quick_actions_grid(),
+        check_dock_accessibility(),
     ]
     passed = sum(results)
     total = len(results)

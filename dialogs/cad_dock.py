@@ -26,9 +26,17 @@ class CadToolButton(QToolButton):
         if os.path.exists(icon_path):
             self.setIcon(QIcon(icon_path))
         self.setToolTip(tooltip)
+        # Accessibility: icon-only buttons are announced as a bare "button" by
+        # screen readers unless given an explicit name. Use the tool label (the
+        # text before the shortcut badge) as the name, full tooltip as detail.
+        accessible_name = tooltip.split(" [")[0].strip()
+        self.setAccessibleName(accessible_name)
+        self.setAccessibleDescription(tooltip)
         self.setIconSize(QSize(22, 22))
         self.setFixedSize(34, 34)
         self.setCheckable(True)
+        # Keyboard accessibility: allow tab-navigation to every tool button.
+        self.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self.setStyleSheet("""
             QToolButton {
                 border: 1px solid transparent;
@@ -39,6 +47,10 @@ class CadToolButton(QToolButton):
             QToolButton:hover {
                 background: #eef6f4;
                 border: 1px solid #bfe8dc;
+            }
+            QToolButton:focus {
+                border: 1px solid #0f766e;
+                background: #f0fdfa;
             }
             QToolButton:checked {
                 background: #bfe8dc;
@@ -121,6 +133,7 @@ class CADDockWidget(QDockWidget):
             Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea
         )
         self.setMinimumWidth(160)
+        self.setAccessibleName("PlanX CAD Toolset panel")
 
         self.buttons = {}
         self.button_group = QButtonGroup(self)
@@ -448,12 +461,17 @@ class CADDockWidget(QDockWidget):
         def _mk_qa(label, tip, bg, fg, border, hover_bg):
             b = QPushButton(label)
             b.setToolTip(tip)
+            # Accessibility: the visible label is terse ("Diag", "↻ Last"); the
+            # tooltip carries the full bilingual action + shortcut for readers.
+            b.setAccessibleName(label.replace("↻ ", "").strip())
+            b.setAccessibleDescription(tip)
             b.setMinimumHeight(24)
             b.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             b.setStyleSheet(
                 f"QPushButton{{background:{bg};color:{fg};font-size:9px;"
                 f"border:1px solid {border};border-radius:4px;padding:2px 2px;}}"
                 f"QPushButton:hover{{background:{hover_bg};border-color:{border};}}"
+                f"QPushButton:focus{{border:1px solid #0f766e;}}"
             )
             return b
 
@@ -592,20 +610,32 @@ class CADDockWidget(QDockWidget):
         hint_layout.addWidget(self.hint_label)
         layout.addWidget(hint_box)
 
+        # Compact status strip: layer state (wide) + usage counter (narrow)
+        # share one horizontal row instead of two stacked rows.
+        status_strip = QHBoxLayout()
+        status_strip.setSpacing(4)
         self.layer_state_label = QLabel("Layer: unknown / Katman: bilinmiyor")
         self.layer_state_label.setWordWrap(True)
         self.layer_state_label.setStyleSheet(
             "color: #475569; font-size: 9px; padding: 2px 4px; "
             "background: #f8fafc; border: 1px solid #d8e0ea; border-radius: 3px;"
         )
-        layout.addWidget(self.layer_state_label)
-        self.usage_label = QLabel("Usage: 0 activations / Kullanim: 0 aktivasyon")
-        self.usage_label.setWordWrap(True)
+        self.layer_state_label.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
+        status_strip.addWidget(self.layer_state_label, 3)
+        self.usage_label = QLabel(self._format_usage(0))
+        self.usage_label.setToolTip(
+            "Tool activations this session / Bu oturumdaki arac aktivasyonlari"
+        )
+        self.usage_label.setAccessibleName("Session tool activation count")
+        self.usage_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.usage_label.setStyleSheet(
             "color: #0f766e; font-size: 9px; padding: 2px 4px; "
             "background: #ecfeff; border: 1px solid #99f6e4; border-radius: 3px;"
         )
-        layout.addWidget(self.usage_label)
+        status_strip.addWidget(self.usage_label, 1)
+        layout.addLayout(status_strip)
 
         # ── Live Coordinates Widget ──────────────────────────────────────
         try:
@@ -640,6 +670,11 @@ class CADDockWidget(QDockWidget):
     def set_status(self, message):
         self.status_label.setText(message)
 
+    @staticmethod
+    def _format_usage(count):
+        """Compact usage-counter text for the narrow status-strip column."""
+        return f"Act {int(count)}"
+
     def register_tool_activation(self, key):
         if key not in self.buttons:
             return
@@ -662,9 +697,7 @@ class CADDockWidget(QDockWidget):
         self.refresh_layer_state()
         self._activation_count += 1
         self._tool_usage_counts[key] = int(self._tool_usage_counts.get(key, 0)) + 1
-        self.usage_label.setText(
-            f"Usage: {self._activation_count} activations / Kullanim: {self._activation_count} aktivasyon"
-        )
+        self.usage_label.setText(self._format_usage(self._activation_count))
 
     def _update_hint(self, key):
         hint = self._TOOL_HINTS.get(
@@ -818,9 +851,7 @@ class CADDockWidget(QDockWidget):
         self._tool_usage_counts = {str(k): int(v) for k, v in (usage_counts or {}).items() if str(k) in self.buttons}
         self._refresh_recent_buttons()
         self._refresh_favorite_buttons()
-        self.usage_label.setText(
-            f"Usage: {self._activation_count} activations / Kullanim: {self._activation_count} aktivasyon"
-        )
+        self.usage_label.setText(self._format_usage(self._activation_count))
 
     def diagnostics_snapshot(self):
         layer = self.iface.activeLayer()
@@ -842,7 +873,7 @@ class CADDockWidget(QDockWidget):
         self._tool_usage_counts = {}
         self._refresh_recent_buttons()
         self._refresh_favorite_buttons()
-        self.usage_label.setText("Usage: 0 activations / Kullanim: 0 aktivasyon")
+        self.usage_label.setText(self._format_usage(0))
         self.hint_label.setText("Tip / Ipucu: Activate a tool to see best-practice guidance.")
         self.set_status("Workspace reset complete / Calisma alani sifirlandi")
         self._save_state()
