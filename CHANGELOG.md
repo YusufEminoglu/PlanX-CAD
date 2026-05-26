@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.20.0] - 2026-05-26
+
+Stable release — full accessibility coverage, verified on QGIS 3 LTR and QGIS 4.
+
+### Accessibility (completed)
+- The tool **search box** and the **Road / Junction / Block Chamfer** buttons now expose `accessibleName` / `accessibleDescription`. Combined with 1.19.0, every interactive control in the dock (tool buttons, quick actions, urban buttons, search, usage counter) is now screen-reader friendly with no bare-emoji announcements.
+
+### Quality
+- Verified clean CAD dock construction on **both QGIS 3.x LTR and QGIS 4** runtimes through the full release gate (doctor + encoding audit + dual-runtime smoke + zip verification).
+
 ## [1.19.0] - 2026-05-26
 
 ### Accessibility

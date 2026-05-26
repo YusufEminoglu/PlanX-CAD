@@ -253,6 +253,10 @@ class CADDockWidget(QDockWidget):
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Find tool / Araç ara (Enter)")
         self.search_input.setClearButtonEnabled(True)
+        self.search_input.setAccessibleName("Tool search")
+        self.search_input.setAccessibleDescription(
+            "Filter CAD tools by name; press Enter to activate the first match"
+        )
         self.search_input.setStyleSheet(
             "QLineEdit { border: 1px solid #d8e0ea; border-radius: 4px; padding: 4px 6px; "
             "font-size: 10px; background: white; color: #12343b; }"
@@ -387,6 +391,8 @@ class CADDockWidget(QDockWidget):
             QPushButton:hover { background: #dce9ed; border-color: #0f766e; }
             QPushButton:checked { background: #0f766e; color: white; border-color: #0f766e; }
         """)
+        road_btn.setAccessibleName("Draw Road")
+        road_btn.setAccessibleDescription("Draw Road / Yol Çiz — interactive road platform tool")
         road_btn.clicked.connect(lambda: self._on_button_clicked("road"))
         urban_grid.addWidget(road_btn, 0, 0)
         self.buttons["road"] = road_btn
@@ -406,6 +412,8 @@ class CADDockWidget(QDockWidget):
             QPushButton:hover { background: #dce9ed; border-color: #0f766e; }
             QPushButton:checked { background: #0f766e; color: white; border-color: #0f766e; }
         """)
+        junction_btn.setAccessibleName("Junction")
+        junction_btn.setAccessibleDescription("Junction / Kavşak — road intersection tool")
         junction_btn.clicked.connect(lambda: self._on_button_clicked("junction"))
         urban_grid.addWidget(junction_btn, 0, 1)
         self.buttons["junction"] = junction_btn
@@ -425,6 +433,8 @@ class CADDockWidget(QDockWidget):
             QPushButton:hover { background: #fde68a; border-color: #b45309; }
             QPushButton:checked { background: #b45309; color: white; border-color: #b45309; }
         """)
+        ada_btn.setAccessibleName("Block Chamfer")
+        ada_btn.setAccessibleDescription("Block Chamfer / Ada Kırma — corner chamfering tool")
         ada_btn.clicked.connect(lambda: self._on_button_clicked("ada_kirma"))
         urban_grid.addWidget(ada_btn, 1, 0, 1, 2)
         self.buttons["ada_kirma"] = ada_btn
