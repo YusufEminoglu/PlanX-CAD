@@ -44,6 +44,30 @@ _QT6_BAD_ALIASES: dict[tuple[str, str], str] = {
 
 _SPLIT_GEOM_RE = re.compile(r"\w+\s*,\s*\w+\s*=\s*\w+\.splitGeometry\(")
 
+# Unscoped Qt enum members that exist in PyQt5 but were removed in PyQt6/QGIS 4.
+# Detected as 2-element chains ('Qt', <name>); scoped forms like
+# Qt.Key.Key_Z or Qt.MouseButton.LeftButton are 3 elements and stay valid.
+_QT_UNSCOPED_BUTTONS = {
+    "LeftButton", "RightButton", "MidButton", "MiddleButton", "NoButton",
+}
+_QT_UNSCOPED_MODIFIERS = {
+    "NoModifier", "ShiftModifier", "ControlModifier", "AltModifier", "MetaModifier",
+}
+
+
+def _is_unscoped_qt_member(chain: tuple) -> str | None:
+    """Return the correct scoped replacement if chain is an unscoped Qt member."""
+    if len(chain) != 2 or chain[0] != "Qt":
+        return None
+    name = chain[1]
+    if name.startswith("Key_"):
+        return f"Qt.Key.{name}"
+    if name in _QT_UNSCOPED_BUTTONS:
+        return f"Qt.MouseButton.{name}"
+    if name in _QT_UNSCOPED_MODIFIERS:
+        return f"Qt.KeyboardModifier.{name}"
+    return None
+
 
 def _attribute_chain(node: ast.AST) -> tuple[str, ...]:
     parts: list[str] = []
@@ -101,11 +125,11 @@ def check_qt6_enum_aliases() -> bool:
         for node in ast.walk(tree):
             if isinstance(node, ast.Attribute):
                 chain = _attribute_chain(node)
-                replacement = _QT6_BAD_ALIASES.get(chain)
+                replacement = _QT6_BAD_ALIASES.get(chain) or _is_unscoped_qt_member(chain)
                 if replacement:
                     hits.append(f"{rel}:{node.lineno}: {'.'.join(chain)} → use {replacement}")
     return _ok("Qt6 enum compatibility", not hits,
-               f"{len(hits)} issues found" if hits else "no Qt5-only aliases detected")
+               f"{len(hits)} issues found: {hits[0]}" if hits else "no Qt5-only aliases detected")
 
 
 def check_split_geometry_unpack() -> bool:

@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.22.0] - 2026-05-26
+
+### Fixed
+- **Line/Polyline now finish correctly on QGIS 4.** `sketcher_base.keyPressEvent` referenced the unscoped `Qt.Key_Z` enum, which raises `AttributeError` under PyQt6 — and because it sat in the `elif` chain before the Enter branch, pressing Enter (or any non-Escape key) crashed the handler and the sketch never completed. Switched to the scoped `Qt.Key.Key_Z`.
+- **Fillet preview is now visible.** The preview rubber band is recreated if it was cleared, and the candidate arc is drawn as a bold orange dashed line. Previously a thin cornflower-blue line (or a silently-swallowed `None` rubber band) made the preview effectively invisible even though the fillet itself worked.
+
+### Command line (more AutoCAD-like)
+- **Empty Enter repeats the last command** (AutoCAD muscle memory).
+- **The input clears after each run**, so you can chain commands: type `L` ↵, draw, type `O` ↵, …
+
+### Quality
+- New runtime check exercises the full Line/Polyline draw pipeline (rubber-band construction → geometry build → feature insertion) on **both QGIS 3 LTR and QGIS 4**.
+- Static Qt-enum scan now also catches unscoped `Qt.Key_*`, mouse-button, and modifier members (the exact bug class fixed above).
+
 ## [1.21.0] - 2026-05-26
 
 ### AutoCAD-style command line

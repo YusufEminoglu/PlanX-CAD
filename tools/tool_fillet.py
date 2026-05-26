@@ -100,21 +100,37 @@ class tool_fillet(tool_base):
         
     def on_move(self, point):
         """Fare hareket ettikçe ikinci çizgiyi saptayıp on-the-fly preview (önizleme) oluştur."""
-        if self._step == 2:
-            self.preview_rb.reset()
-            pos = self.canvas.mouseLastXY()
-            result = self._pick_feature(pos)
-            if result:
-                layer, feature = result
-                # Kendisi değilse
-                if feature.id() != self.first_feature.id():
-                    geom1 = self.first_feature.geometry()
-                    geom2 = feature.geometry()
-                    fillet_result = create_fillet_and_trims(geom1, geom2, self.radius)
-                    if fillet_result:
-                        arc_geom = fillet_result['arc']
-                        self.preview_rb.setToGeometry(arc_geom, None)
-                        self.preview_rb.show()
+        if self._step != 2:
+            return
+
+        # preview_rb, _reset/_cleanup sonrasında None olabilir; map tool olay
+        # işleyicileri istisnaları sessizce yutar, bu yüzden burada yeniden
+        # oluşturmazsak fillet çalışır ama önizleme hiç görünmez.
+        if self.preview_rb is None:
+            self.preview_rb = create_preview_rubberband(self.canvas)
+        self.preview_rb.reset(QgsWkbTypes.LineGeometry)
+
+        pos = self.canvas.mouseLastXY()
+        result = self._pick_feature(pos)
+        if not result:
+            return
+        layer, feature = result
+        # Kendisi değilse
+        if feature.id() == self.first_feature.id():
+            return
+        geom1 = self.first_feature.geometry()
+        geom2 = feature.geometry()
+        fillet_result = create_fillet_and_trims(geom1, geom2, self.radius)
+        if not fillet_result:
+            return
+        arc_geom = fillet_result['arc']
+        if arc_geom and not arc_geom.isEmpty():
+            # Belirgin turuncu, kalın kesik çizgi — ince mavi önizleme zor görünüyordu.
+            self.preview_rb.setColor(COLOR_ACCENT)
+            self.preview_rb.setWidth(3)
+            self.preview_rb.setLineStyle(Qt.PenStyle.DashLine)
+            self.preview_rb.setToGeometry(arc_geom, None)
+            self.preview_rb.show()
 
     def _cleanup_fillet(self):
         self.first_layer = None

@@ -881,12 +881,19 @@ class CADDockWidget(QDockWidget):
         return None
 
     def _run_command(self):
-        """Resolve and run the command currently typed in the command line."""
+        """Resolve and run the command currently typed in the command line.
+
+        AutoCAD command-loop conventions:
+          - Empty Enter repeats the last activated tool.
+          - The input line is cleared after each run so commands can be chained.
+        """
         raw = (self.search_input.text() or "").strip()
         if not raw:
+            self.tool_activated.emit("__repeat__")
             return
         self.search_input.add_history(raw)
         key = self._resolve_command(raw)
+        self.search_input.clear()
         if key:
             self.set_status(f"> {key.replace('_', ' ').upper()} / Komut calistirildi")
             self.tool_activated.emit(key)

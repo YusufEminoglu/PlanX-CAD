@@ -118,7 +118,7 @@ class sketcher_base(QgsMapTool):
         """Tuş basma olayı."""
         if event.key() == Qt.Key.Key_Escape:
             self._cancel()
-        elif event.key() == Qt.Key.Key_Backspace or event.key() == Qt.Key_Z:
+        elif event.key() == Qt.Key.Key_Backspace or event.key() == Qt.Key.Key_Z:
             self._undo_last_vertex()
         elif event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
             self._finish()

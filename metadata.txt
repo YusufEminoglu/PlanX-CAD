@@ -3,7 +3,7 @@ name=PlanX CAD Toolset
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=Lightweight and fast CAD toolset for urban planning processes in QGIS. Features include drawing, editing, transforming, measuring, and road platform design.
-version=1.21.0
+version=1.22.0
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
@@ -24,6 +24,11 @@ experimental=False
 deprecated=False
 
 changelog=
+    PlanX CAD Toolset 1.22.0 - QGIS 4 drawing fix + command-loop and fillet preview polish.
+        - Fixed a QGIS 4 crash that stopped Line/Polyline from finishing: an unscoped Qt.Key_Z enum raised AttributeError in the key handler before Enter could complete a sketch. Drawing now works on both QGIS 3 and QGIS 4.
+        - Fillet preview now reliably shows: the preview rubber band is recreated if missing and drawn as a bold orange dashed arc (the old thin blue line was easy to miss / silently failed).
+        - Command line now follows AutoCAD's command loop: empty Enter repeats the last command, and the input clears after each run so commands can be chained.
+        - Added an end-to-end draw-pipeline runtime check and stricter static Qt-enum scanning (catches unscoped Qt.Key_*/button/modifier members).
     PlanX CAD Toolset 1.21.0 - AutoCAD-style command line.
         - The dock search box is now a command line: type an AutoCAD-style alias (L, PL, REC, O, TR, EX, F, CO, MI, RO, SC, AR, H, DIM...) and press Enter to launch the matching tool.
         - Autocomplete popup suggests commands as you type; Up/Down arrows recall command history like a terminal.
