@@ -28,7 +28,7 @@ class QuickStartDialog(QDialog):
             "komutu arama/palet ile acin, snap ile calisin ve is bitince araci guvenli iptal edin.</p>"
         )
         body.setWordWrap(True)
-        body.setTextFormat(Qt.RichText)
+        body.setTextFormat(Qt.TextFormat.RichText)
         body.setStyleSheet("color: #1e293b; padding: 6px;")
         layout.addWidget(body)
 

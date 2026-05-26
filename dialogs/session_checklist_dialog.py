@@ -32,7 +32,7 @@ class SessionChecklistDialog(QDialog):
             "Preflight + Health Check calistirin, kisayol degisikligi oncesi Key Audit yapin.</p>"
         )
         text.setWordWrap(True)
-        text.setTextFormat(Qt.RichText)
+        text.setTextFormat(Qt.TextFormat.RichText)
         text.setStyleSheet("color: #1e293b; padding: 6px;")
         layout.addWidget(text)
 

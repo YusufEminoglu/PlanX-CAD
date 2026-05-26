@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.17.6] - 2026-05-26
+
+- Qt5/Qt6 compatibility hardening for dock UI, rich-text enum fixes, and QGIS 3.40+/4 runtime validation.
+
 ## [1.17.5] - 2026-05-26
 
 - Maintenance release: refreshed Plugin Hub package with QGIS 4 compatibility fixes and repaired CAD UI text encoding.
