@@ -435,161 +435,104 @@ class CADDockWidget(QDockWidget):
         sep.setFrameShadow(QFrame.Shadow.Sunken)
         layout.addWidget(sep)
 
-        # ── Quick Actions ──────────────────────────────────────────────────
-        quick_row = QHBoxLayout()
-        quick_row.setSpacing(4)
-        repeat_btn = QPushButton("↻ Repeat Last Tool / Son aracı tekrarla")
-        repeat_btn.setToolTip("Restart last activated tool [Ctrl+Shift+Space] / Son aktif aracı tekrar başlatır")
-        repeat_btn.setMinimumHeight(24)
-        repeat_btn.setStyleSheet(
-            "QPushButton { background: #eef6f4; color: #0f766e; font-size: 9px;"
-            "border: 1px solid #bfe8dc; border-radius: 4px; padding: 2px 6px; }"
-            "QPushButton:hover { background: #dce9ed; border-color: #0f766e; }"
-        )
-        repeat_btn.clicked.connect(lambda: self.tool_activated.emit("__repeat__"))
-        quick_row.addWidget(repeat_btn)
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.setToolTip("Cancel active tool / Aktif araci iptal et")
-        cancel_btn.setMinimumHeight(24)
-        cancel_btn.setStyleSheet(
-            "QPushButton { background: #fff1f2; color: #9f1239; font-size: 9px;"
-            "border: 1px solid #fecdd3; border-radius: 4px; padding: 2px 6px; }"
-            "QPushButton:hover { background: #ffe4e6; border-color: #be123c; }"
-        )
-        cancel_btn.clicked.connect(lambda: self.cancel_requested.emit())
-        quick_row.addWidget(cancel_btn)
-        start_btn = QPushButton("Start")
-        start_btn.setToolTip("Open quick start / Hizli baslangic")
-        start_btn.setMinimumHeight(24)
-        start_btn.setStyleSheet(
-            "QPushButton { background: #fef9c3; color: #854d0e; font-size: 9px;"
-            "border: 1px solid #fde68a; border-radius: 4px; padding: 2px 6px; }"
-            "QPushButton:hover { background: #fef08a; border-color: #854d0e; }"
-        )
-        start_btn.clicked.connect(lambda: self.quick_start_requested.emit())
-        quick_row.addWidget(start_btn)
-        edit_btn = QPushButton("Edit ON/OFF")
-        edit_btn.setToolTip("Toggle active layer editing / Aktif katman duzenlemeyi ac-kapat")
-        edit_btn.setMinimumHeight(24)
-        edit_btn.setStyleSheet(
-            "QPushButton { background: #eff6ff; color: #1d4ed8; font-size: 9px;"
-            "border: 1px solid #bfdbfe; border-radius: 4px; padding: 2px 6px; }"
-            "QPushButton:hover { background: #dbeafe; border-color: #1d4ed8; }"
-        )
-        edit_btn.clicked.connect(lambda: self.edit_toggle_requested.emit())
-        quick_row.addWidget(edit_btn)
-        docs_btn = QPushButton("Docs")
-        docs_btn.setToolTip("Open detailed command reference")
-        docs_btn.setMinimumHeight(24)
-        docs_btn.setStyleSheet(
-            "QPushButton { background: #0f766e; color: white; font-size: 9px;"
-            "border: 1px solid #0f766e; border-radius: 4px; padding: 2px 6px; font-weight: bold; }"
-            "QPushButton:hover { background: #115e59; border-color: #115e59; }"
-        )
-        docs_btn.clicked.connect(lambda: self.docs_requested.emit())
-        quick_row.addWidget(docs_btn)
+        # ── Quick Actions — 3 × 4 compact grid (fits 160 px minimum dock) ──
+        # Each row is a themed group: workflow | docs | diagnostics.
+        # Less-frequently-used actions (Key Audit, Help Tool, Reset Filter)
+        # remain accessible via the plugin menu and keyboard shortcuts.
+        qa_grid = QGridLayout()
+        qa_grid.setSpacing(3)
+        qa_grid.setContentsMargins(2, 2, 2, 2)
+        for _col in range(4):
+            qa_grid.setColumnStretch(_col, 1)
 
-        keys_btn = QPushButton("Keys")
-        keys_btn.setToolTip("Open shortcut guide")
-        keys_btn.setMinimumHeight(24)
-        keys_btn.setStyleSheet(
-            "QPushButton { background: #f8fafc; color: #0f766e; font-size: 9px;"
-            "border: 1px solid #bfe8dc; border-radius: 4px; padding: 2px 6px; }"
-            "QPushButton:hover { background: #eef6f4; border-color: #0f766e; }"
-        )
-        keys_btn.clicked.connect(lambda: self.shortcuts_requested.emit())
-        quick_row.addWidget(keys_btn)
-        reset_btn = QPushButton("Reset")
-        reset_btn.setToolTip("Reset tool filter / Arac filtresini sifirla")
-        reset_btn.setMinimumHeight(24)
-        reset_btn.setStyleSheet(
-            "QPushButton { background: #f8fafc; color: #0f766e; font-size: 9px;"
-            "border: 1px solid #bfe8dc; border-radius: 4px; padding: 2px 6px; }"
-            "QPushButton:hover { background: #eef6f4; border-color: #0f766e; }"
-        )
-        reset_btn.clicked.connect(self.reset_filter)
-        quick_row.addWidget(reset_btn)
-        preflight_btn = QPushButton("Preflight")
-        preflight_btn.setToolTip("Run quick setup checks / Hizli kurulum kontrolu")
-        preflight_btn.setMinimumHeight(24)
-        preflight_btn.setStyleSheet(
-            "QPushButton { background: #ecfeff; color: #0f766e; font-size: 9px;"
-            "border: 1px solid #99f6e4; border-radius: 4px; padding: 2px 6px; }"
-            "QPushButton:hover { background: #ccfbf1; border-color: #0f766e; }"
-        )
+        def _mk_qa(label, tip, bg, fg, border, hover_bg):
+            b = QPushButton(label)
+            b.setToolTip(tip)
+            b.setMinimumHeight(24)
+            b.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            b.setStyleSheet(
+                f"QPushButton{{background:{bg};color:{fg};font-size:9px;"
+                f"border:1px solid {border};border-radius:4px;padding:2px 2px;}}"
+                f"QPushButton:hover{{background:{hover_bg};border-color:{border};}}"
+            )
+            return b
+
+        # Row 0 — layer & tool workflow controls
+        edit_btn = _mk_qa(
+            "Edit", "Toggle layer editing [Ctrl+Alt+E] / Katman duzenlemeyi ac-kapat",
+            "#eff6ff", "#1d4ed8", "#bfdbfe", "#dbeafe")
+        edit_btn.clicked.connect(lambda: self.edit_toggle_requested.emit())
+        qa_grid.addWidget(edit_btn, 0, 0)
+
+        cancel_btn = _mk_qa(
+            "Cancel", "Cancel active tool [Ctrl+Alt+C] / Aktif araci iptal et",
+            "#fff1f2", "#9f1239", "#fecdd3", "#ffe4e6")
+        cancel_btn.clicked.connect(lambda: self.cancel_requested.emit())
+        qa_grid.addWidget(cancel_btn, 0, 1)
+
+        repeat_btn = _mk_qa(
+            "↻ Last", "Repeat last tool [Ctrl+Shift+Space] / Son araci tekrarla",
+            "#eef6f4", "#0f766e", "#bfe8dc", "#dce9ed")
+        repeat_btn.clicked.connect(lambda: self.tool_activated.emit("__repeat__"))
+        qa_grid.addWidget(repeat_btn, 0, 2)
+
+        preflight_btn = _mk_qa(
+            "Preflight", "Readiness check [Ctrl+Alt+F] / Hazirlik kontrolu",
+            "#ecfeff", "#0f766e", "#99f6e4", "#ccfbf1")
         preflight_btn.clicked.connect(self.run_preflight)
-        quick_row.addWidget(preflight_btn)
-        pin_btn = QPushButton("Pin Last")
-        pin_btn.setToolTip("Pin last activated tool / Son kullanilan araci sabitle")
-        pin_btn.setMinimumHeight(24)
-        pin_btn.setStyleSheet(
-            "QPushButton { background: #fef3c7; color: #92400e; font-size: 9px;"
-            "border: 1px solid #fde68a; border-radius: 4px; padding: 2px 6px; }"
-            "QPushButton:hover { background: #fde68a; border-color: #92400e; }"
-        )
-        pin_btn.clicked.connect(self.pin_last_tool)
-        quick_row.addWidget(pin_btn)
-        reset_workspace_btn = QPushButton("Reset WS")
-        reset_workspace_btn.setToolTip("Reset workspace state / Calisma alani durumunu sifirla")
-        reset_workspace_btn.setMinimumHeight(24)
-        reset_workspace_btn.setStyleSheet(
-            "QPushButton { background: #fff7ed; color: #9a3412; font-size: 9px;"
-            "border: 1px solid #fed7aa; border-radius: 4px; padding: 2px 6px; }"
-            "QPushButton:hover { background: #ffedd5; border-color: #9a3412; }"
-        )
-        reset_workspace_btn.clicked.connect(lambda: self.workspace_reset_requested.emit())
-        quick_row.addWidget(reset_workspace_btn)
-        stats_btn = QPushButton("Stats")
-        stats_btn.setToolTip("Open usage statistics / Kullanim istatistiklerini ac")
-        stats_btn.setMinimumHeight(24)
-        stats_btn.setStyleSheet(
-            "QPushButton { background: #eff6ff; color: #1e3a8a; font-size: 9px;"
-            "border: 1px solid #bfdbfe; border-radius: 4px; padding: 2px 6px; }"
-            "QPushButton:hover { background: #dbeafe; border-color: #1e3a8a; }"
-        )
-        stats_btn.clicked.connect(lambda: self.usage_stats_requested.emit())
-        quick_row.addWidget(stats_btn)
-        health_btn = QPushButton("Health")
-        health_btn.setToolTip("Run runtime health checks / Calisma saglik kontrollerini calistir")
-        health_btn.setMinimumHeight(24)
-        health_btn.setStyleSheet(
-            "QPushButton { background: #f0fdf4; color: #166534; font-size: 9px;"
-            "border: 1px solid #bbf7d0; border-radius: 4px; padding: 2px 6px; }"
-            "QPushButton:hover { background: #dcfce7; border-color: #166534; }"
-        )
+        qa_grid.addWidget(preflight_btn, 0, 3)
+
+        # Row 1 — help & onboarding
+        docs_btn = _mk_qa(
+            "Docs", "Command reference [Ctrl+Alt+H] / Komut kilavuzu",
+            "#0f766e", "white", "#0f766e", "#115e59")
+        docs_btn.clicked.connect(lambda: self.docs_requested.emit())
+        qa_grid.addWidget(docs_btn, 1, 0)
+
+        keys_btn = _mk_qa(
+            "Keys", "Shortcut guide [Ctrl+Shift+/] / Kisayol rehberi",
+            "#f8fafc", "#0f766e", "#bfe8dc", "#eef6f4")
+        keys_btn.clicked.connect(lambda: self.shortcuts_requested.emit())
+        qa_grid.addWidget(keys_btn, 1, 1)
+
+        start_btn = _mk_qa(
+            "Start", "Quick start guide [Ctrl+Alt+Q] / Hizli baslangic",
+            "#fef9c3", "#854d0e", "#fde68a", "#fef08a")
+        start_btn.clicked.connect(lambda: self.quick_start_requested.emit())
+        qa_grid.addWidget(start_btn, 1, 2)
+
+        health_btn = _mk_qa(
+            "Health", "Runtime health check [Ctrl+Alt+W] / Saglik kontrolu",
+            "#f0fdf4", "#166534", "#bbf7d0", "#dcfce7")
         health_btn.clicked.connect(lambda: self.health_check_requested.emit())
-        quick_row.addWidget(health_btn)
-        keys_audit_btn = QPushButton("Key Audit")
-        keys_audit_btn.setToolTip("Check shortcut conflicts / Kisayol cakismalarini kontrol et")
-        keys_audit_btn.setMinimumHeight(24)
-        keys_audit_btn.setStyleSheet(
-            "QPushButton { background: #fefce8; color: #854d0e; font-size: 9px;"
-            "border: 1px solid #fde68a; border-radius: 4px; padding: 2px 6px; }"
-            "QPushButton:hover { background: #fef9c3; border-color: #854d0e; }"
-        )
-        keys_audit_btn.clicked.connect(lambda: self.shortcut_audit_requested.emit())
-        quick_row.addWidget(keys_audit_btn)
-        help_tool_btn = QPushButton("Help Tool")
-        help_tool_btn.setToolTip("Open docs for active tool / Aktif arac icin dokuman ac")
-        help_tool_btn.setMinimumHeight(24)
-        help_tool_btn.setStyleSheet(
-            "QPushButton { background: #ecfdf5; color: #166534; font-size: 9px;"
-            "border: 1px solid #bbf7d0; border-radius: 4px; padding: 2px 6px; }"
-            "QPushButton:hover { background: #dcfce7; border-color: #166534; }"
-        )
-        help_tool_btn.clicked.connect(self.open_help_for_last_tool)
-        quick_row.addWidget(help_tool_btn)
-        diag_btn = QPushButton("Diag")
-        diag_btn.setToolTip("Open diagnostics report / Tani raporunu ac")
-        diag_btn.setMinimumHeight(24)
-        diag_btn.setStyleSheet(
-            "QPushButton { background: #ede9fe; color: #5b21b6; font-size: 9px;"
-            "border: 1px solid #c4b5fd; border-radius: 4px; padding: 2px 6px; }"
-            "QPushButton:hover { background: #ddd6fe; border-color: #5b21b6; }"
-        )
+        qa_grid.addWidget(health_btn, 1, 3)
+
+        # Row 2 — diagnostics & workspace
+        stats_btn = _mk_qa(
+            "Stats", "Usage statistics [Ctrl+Alt+T] / Kullanim istatistikleri",
+            "#eff6ff", "#1e3a8a", "#bfdbfe", "#dbeafe")
+        stats_btn.clicked.connect(lambda: self.usage_stats_requested.emit())
+        qa_grid.addWidget(stats_btn, 2, 0)
+
+        diag_btn = _mk_qa(
+            "Diag", "Diagnostics report [Ctrl+Alt+D] / Tani raporu",
+            "#ede9fe", "#5b21b6", "#c4b5fd", "#ddd6fe")
         diag_btn.clicked.connect(lambda: self.diagnostics_requested.emit())
-        quick_row.addWidget(diag_btn)
-        layout.addLayout(quick_row)
+        qa_grid.addWidget(diag_btn, 2, 1)
+
+        pin_btn = _mk_qa(
+            "Pin", "Pin last tool to favorites [Ctrl+Alt+Z] / Son araci sabitle",
+            "#fef3c7", "#92400e", "#fde68a", "#fde68a")
+        pin_btn.clicked.connect(self.pin_last_tool)
+        qa_grid.addWidget(pin_btn, 2, 2)
+
+        reset_ws_btn = _mk_qa(
+            "Reset WS", "Reset workspace [Ctrl+Alt+R] / Calisma alanini sifirla",
+            "#fff7ed", "#9a3412", "#fed7aa", "#ffedd5")
+        reset_ws_btn.clicked.connect(lambda: self.workspace_reset_requested.emit())
+        qa_grid.addWidget(reset_ws_btn, 2, 3)
+
+        layout.addLayout(qa_grid)
 
         recent_row = QHBoxLayout()
         recent_label = QLabel("Recent / Son:")

@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.18.0] - 2026-05-26
+
+### Improvements
+- **Compact GUI**: Replaced the 15-button single-row overflow layout (broken at 160px dock width) with a semantic 3×4 `QGridLayout`. Buttons are grouped by function: workflow controls (Edit / Cancel / Repeat / Preflight), help & docs (Docs / Keys / Start / Health), and diagnostics (Stats / Diag / Pin / Reset WS).
+- **Static smoke test**: Added `tests/smoke_compat.py` — an 8-check static compatibility smoke test runnable without a QGIS installation (`py -3 tests/smoke_compat.py`). Verifies Qt6 enum safety, split-geometry unpack safety, metadata correctness, icon existence, classFactory presence, and qgis.PyQt import discipline.
+
 ## [1.17.7] - 2026-05-26
 
 - Qt6 compatibility fixes (DialogCode/EditTrigger/NoWrap), Help Tool fallback behavior, and compact dock spacing refresh.

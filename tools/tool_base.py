@@ -9,7 +9,7 @@ from qgis.PyQt.QtCore import Qt, pyqtSignal
 from qgis.PyQt.QtGui import QColor, QCursor, QPixmap, QPainter, QPen, QBrush
 from qgis.core import (
     QgsWkbTypes, QgsPointXY, QgsGeometry, QgsFeature,
-    QgsProject, QgsVectorLayer, QgsRectangle
+    QgsProject, QgsVectorLayer, QgsRectangle, QgsCoordinateTransform
 )
 from qgis.gui import QgsMapTool, QgsRubberBand, QgsVertexMarker
 
@@ -237,7 +237,24 @@ class tool_base(QgsMapTool):
 
     def _search_layer(self, layer, search_rect, point):
         """Bir katmanda feature ara."""
-        features = layer.getFeatures(search_rect)
+        query_rect = search_rect
+        query_point = point
+
+        # QGIS 4 projelerinde map CRS ile layer CRS ayrisabildigi icin
+        # secim penceresini layer CRS'e tasiyoruz; aksi halde secim/preview
+        # hic feature bulamiyor gibi gorunur.
+        try:
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            layer_crs = layer.crs()
+            if canvas_crs.isValid() and layer_crs.isValid() and canvas_crs != layer_crs:
+                transform = QgsCoordinateTransform(canvas_crs, layer_crs, QgsProject.instance())
+                query_rect = transform.transformBoundingBox(search_rect)
+                query_point = transform.transform(point)
+        except Exception:
+            query_rect = search_rect
+            query_point = point
+
+        features = layer.getFeatures(query_rect)
         best_dist = float('inf')
         best_feat = None
 
@@ -245,7 +262,7 @@ class tool_base(QgsMapTool):
             geom = feat.geometry()
             if geom.isEmpty():
                 continue
-            dist = geom.distance(QgsGeometry.fromPointXY(point))
+            dist = geom.distance(QgsGeometry.fromPointXY(query_point))
             if dist < best_dist:
                 best_dist = dist
                 best_feat = feat
