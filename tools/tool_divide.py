@@ -110,7 +110,7 @@ class tool_divide(tool_base):
 
         # Open dialog
         dlg = DivideDialog(self.iface.mainWindow())
-        if dlg.exec() != QDialog.Accepted:
+        if dlg.exec() != QDialog.DialogCode.Accepted:
             self.tool_message.emit("⚠️ Divide — Cancelled / İptal edildi")
             self._reset()
             return

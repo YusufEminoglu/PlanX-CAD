@@ -165,7 +165,7 @@ class tool_array(tool_base):
 
     def on_entity_selected(self, layer, feature, point):
         dlg = ArrayDialog(self.iface.mainWindow())
-        if dlg.exec() != QDialog.Accepted:
+        if dlg.exec() != QDialog.DialogCode.Accepted:
             self.tool_message.emit("⏹ Array — cancelled")
             self._reset()
             return

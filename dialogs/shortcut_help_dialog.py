@@ -4,7 +4,7 @@
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
-    QPushButton, QLineEdit, QHBoxLayout, QComboBox
+    QPushButton, QLineEdit, QHBoxLayout, QComboBox, QAbstractItemView
 )
 
 
@@ -46,8 +46,8 @@ class ShortcutHelpDialog(QDialog):
         self.table.setHorizontalHeaderLabels(["Command", "Komut", "Shortcut", "Category"])
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setSelectionMode(QTableWidget.NoSelection)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
         self.table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.table)

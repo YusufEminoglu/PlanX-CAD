@@ -13,6 +13,7 @@ Oluşturulan katmanlar:
 
 import math
 from qgis.PyQt.QtCore import Qt, pyqtSignal
+from qgis.PyQt.QtWidgets import QDialog
 from qgis.core import (
     QgsWkbTypes, QgsGeometry, QgsPointXY, QgsFeature,
     QgsProject, QgsVectorLayer
@@ -57,7 +58,7 @@ class JunctionSketcher(QgsMapTool):
 
         # Parametre dialog'u
         dlg = JunctionDialog(self.iface.mainWindow())
-        if dlg.exec() != JunctionDialog.Accepted:
+        if dlg.exec() != QDialog.DialogCode.Accepted:
             self.sketcher_message.emit("🔵 Kavşak — İptal edildi")
             self.sketcher_finished.emit()
             return

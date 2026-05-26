@@ -2,7 +2,9 @@
 """Health check dialog for PlanX CAD."""
 
 from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtWidgets import QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem, QPushButton, QLabel
+from qgis.PyQt.QtWidgets import (
+    QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem, QPushButton, QLabel, QAbstractItemView
+)
 
 
 class HealthCheckDialog(QDialog):
@@ -21,8 +23,8 @@ class HealthCheckDialog(QDialog):
         table.setHorizontalHeaderLabels(["Check", "Status", "Value", "Hint"])
         table.verticalHeader().setVisible(False)
         table.setAlternatingRowColors(True)
-        table.setEditTriggers(QTableWidget.NoEditTriggers)
-        table.setSelectionMode(QTableWidget.NoSelection)
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
         table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         table.horizontalHeader().setStretchLastSection(True)
         table.setRowCount(len(checks))

@@ -3,7 +3,7 @@
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import (
-    QDialog, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QPushButton
+    QDialog, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QPushButton, QAbstractItemView
 )
 
 
@@ -27,8 +27,8 @@ class UsageStatsDialog(QDialog):
         table.setHorizontalHeaderLabels(["Tool", "Count", "Share %"])
         table.verticalHeader().setVisible(False)
         table.setAlternatingRowColors(True)
-        table.setEditTriggers(QTableWidget.NoEditTriggers)
-        table.setSelectionMode(QTableWidget.NoSelection)
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
         table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         table.horizontalHeader().setStretchLastSection(True)
 

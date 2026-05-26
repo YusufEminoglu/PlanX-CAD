@@ -214,7 +214,7 @@ class tool_hatch(tool_base):
                 return
 
         dlg = HatchDialog(self.iface.mainWindow())
-        if dlg.exec() != QDialog.Accepted:
+        if dlg.exec() != QDialog.DialogCode.Accepted:
             self.tool_message.emit("⧗ Hatch — cancelled")
             self._reset()
             return

@@ -94,6 +94,8 @@ class CollapsibleGroupBox(QGroupBox):
 
 class CADDockWidget(QDockWidget):
     """planX CAD main dockable panel."""
+    _GRID_ROW_SPACING = 2
+    _GRID_COL_SPACING = 4
 
     # Emitted when a tool is activated: (tool_key,)
     tool_activated = pyqtSignal(str)
@@ -198,6 +200,12 @@ class CADDockWidget(QDockWidget):
     def _on_button_clicked(self, key):
         self.tool_activated.emit(key)
 
+    def _configure_compact_grid(self, grid: QGridLayout) -> None:
+        """Keep the dock compact while preserving clear column separation."""
+        grid.setVerticalSpacing(self._GRID_ROW_SPACING)
+        grid.setHorizontalSpacing(self._GRID_COL_SPACING)
+        grid.setContentsMargins(2, 2, 2, 2)
+
     def _setup_ui(self):
         scroll = QScrollArea(self)
         scroll.setWidgetResizable(True)
@@ -211,7 +219,7 @@ class CADDockWidget(QDockWidget):
         self.setWidget(scroll)
 
         layout = QVBoxLayout(main_widget)
-        layout.setSpacing(4)
+        layout.setSpacing(3)
         layout.setContentsMargins(4, 4, 4, 4)
 
         # ── Header / Başlık ───────────────────────────────────────────────
@@ -244,8 +252,7 @@ class CADDockWidget(QDockWidget):
         # ── Drawing Tools / Çizim Araçları ─────────────────────────────────
         draw_group = CollapsibleGroupBox("✏️ Drawing / Çizim")
         draw_grid = QGridLayout()
-        draw_grid.setSpacing(3)
-        draw_grid.setContentsMargins(2, 2, 2, 2)
+        self._configure_compact_grid(draw_grid)
 
         draw_tools = [
             ("line",      "cad_line.svg",      "Line / Çizgi"),
@@ -271,8 +278,7 @@ class CADDockWidget(QDockWidget):
         # ── Editing Tools / Düzenleme Araçları ──────────────────────────────
         edit_group = CollapsibleGroupBox("🔨 Editing / Düzenleme")
         edit_grid = QGridLayout()
-        edit_grid.setSpacing(3)
-        edit_grid.setContentsMargins(2, 2, 2, 2)
+        self._configure_compact_grid(edit_grid)
 
         edit_tools = [
             ("offset",       "cad_offset.svg",       "Offset / Öteleme"),
@@ -306,8 +312,7 @@ class CADDockWidget(QDockWidget):
         # ── Transform Tools / Dönüşüm Araçları ──────────────────────────────
         transform_group = CollapsibleGroupBox("🔄 Transform / Dönüşüm")
         transform_grid = QGridLayout()
-        transform_grid.setSpacing(3)
-        transform_grid.setContentsMargins(2, 2, 2, 2)
+        self._configure_compact_grid(transform_grid)
 
         transform_tools = [
             ("move",    "cad_move.svg",    "Move / Taşı"),
@@ -332,8 +337,7 @@ class CADDockWidget(QDockWidget):
         # ── Measurement Tools / Ölçüm Araçları ──────────────────────────────
         measure_group = CollapsibleGroupBox("📐 Measurement / Ölçüm")
         measure_grid = QGridLayout()
-        measure_grid.setSpacing(3)
-        measure_grid.setContentsMargins(2, 2, 2, 2)
+        self._configure_compact_grid(measure_grid)
 
         self._add_tool_button(measure_grid, 0, 0, "measure", "cad_measure.svg", "Measure Distance / Mesafe Ölç")
         self._add_tool_button(measure_grid, 0, 1, "measure_area", "cad_measure_area.svg", "Measure Area / Alan Ölç")
@@ -355,8 +359,7 @@ class CADDockWidget(QDockWidget):
         # ── Urban Planning Tools / Şehir Planlama Araçları ────────────────────
         urban_group = CollapsibleGroupBox("🏙️ Urban Planning / Şehir Planlama")
         urban_grid = QGridLayout()
-        urban_grid.setSpacing(3)
-        urban_grid.setContentsMargins(2, 2, 2, 2)
+        self._configure_compact_grid(urban_grid)
 
         # Draw Road button
         road_btn = QPushButton("🛣️ Draw Road / Yol Çiz")
@@ -434,6 +437,7 @@ class CADDockWidget(QDockWidget):
 
         # ── Quick Actions ──────────────────────────────────────────────────
         quick_row = QHBoxLayout()
+        quick_row.setSpacing(4)
         repeat_btn = QPushButton("↻ Repeat Last Tool / Son aracı tekrarla")
         repeat_btn.setToolTip("Restart last activated tool [Ctrl+Shift+Space] / Son aktif aracı tekrar başlatır")
         repeat_btn.setMinimumHeight(24)
@@ -478,9 +482,9 @@ class CADDockWidget(QDockWidget):
         docs_btn.setToolTip("Open detailed command reference")
         docs_btn.setMinimumHeight(24)
         docs_btn.setStyleSheet(
-            "QPushButton { background: #f8fafc; color: #0f766e; font-size: 9px;"
-            "border: 1px solid #bfe8dc; border-radius: 4px; padding: 2px 6px; }"
-            "QPushButton:hover { background: #eef6f4; border-color: #0f766e; }"
+            "QPushButton { background: #0f766e; color: white; font-size: 9px;"
+            "border: 1px solid #0f766e; border-radius: 4px; padding: 2px 6px; font-weight: bold; }"
+            "QPushButton:hover { background: #115e59; border-color: #115e59; }"
         )
         docs_btn.clicked.connect(lambda: self.docs_requested.emit())
         quick_row.addWidget(docs_btn)
@@ -902,6 +906,7 @@ class CADDockWidget(QDockWidget):
 
     def open_help_for_last_tool(self):
         if not self._last_activated_key:
-            self.set_status("No active tool for help / Yardim icin aktif arac yok")
+            self.set_status("No active tool; opening docs / Aktif arac yok; dokuman aciliyor")
+            self.docs_requested.emit()
             return
         self.tool_help_requested.emit(self._last_activated_key)

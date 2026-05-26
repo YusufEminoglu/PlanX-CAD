@@ -5,6 +5,7 @@ planX CAD — Yol Çiz (Road Sketcher)
 """
 
 from qgis.PyQt.QtCore import Qt, pyqtSignal
+from qgis.PyQt.QtWidgets import QDialog
 from qgis.core import QgsWkbTypes, QgsGeometry
 from qgis.gui import QgsMapTool
 
@@ -43,7 +44,7 @@ class RoadSketcher(QgsMapTool):
 
         # Parametre dialog'unu göster
         dlg = RoadDialog(self.iface.mainWindow())
-        if dlg.exec() == RoadDialog.Accepted:
+        if dlg.exec() == QDialog.DialogCode.Accepted:
             self.params = dlg.get_params()
             self.rb = create_sketcher_rubberband(
                 self.canvas, QgsWkbTypes.LineGeometry, COLOR_ACCENT, 3

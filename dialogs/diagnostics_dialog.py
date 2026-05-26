@@ -28,7 +28,7 @@ class DiagnosticsDialog(QDialog):
         self.report_box = QPlainTextEdit(self)
         self.report_box.setReadOnly(True)
         self.report_box.setPlainText(report_text)
-        self.report_box.setLineWrapMode(QPlainTextEdit.NoWrap)
+        self.report_box.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         layout.addWidget(self.report_box)
 
         row = QHBoxLayout()

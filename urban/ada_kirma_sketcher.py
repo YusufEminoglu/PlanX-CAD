@@ -10,6 +10,7 @@ planX CAD — Ada Kırma (Köşe Chamfer/Fillet) Aracı
 
 import math
 from qgis.PyQt.QtCore import Qt, pyqtSignal
+from qgis.PyQt.QtWidgets import QDialog
 from qgis.core import (
     QgsWkbTypes, QgsGeometry, QgsPointXY, QgsFeature,
     QgsProject, QgsVectorLayer, QgsRectangle
@@ -51,7 +52,7 @@ class AdaKirmaSketcher(QgsMapTool):
 
         # Dialog
         dlg = AdaKirmaDialog(self.iface.mainWindow())
-        if dlg.exec() != AdaKirmaDialog.Accepted:
+        if dlg.exec() != QDialog.DialogCode.Accepted:
             self.sketcher_message.emit("🔶 Ada Kırma — İptal edildi")
             self.sketcher_finished.emit()
             return

@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.17.7] - 2026-05-26
+
+- Qt6 compatibility fixes (DialogCode/EditTrigger/NoWrap), Help Tool fallback behavior, and compact dock spacing refresh.
+
 ## [1.17.6] - 2026-05-26
 
 - Qt5/Qt6 compatibility hardening for dock UI, rich-text enum fixes, and QGIS 3.40+/4 runtime validation.

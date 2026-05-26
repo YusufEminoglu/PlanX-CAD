@@ -116,7 +116,7 @@ class tool_multi_offset(tool_base):
 
         # Open dialog
         dlg = MultiOffsetDialog(self.iface.mainWindow(), self.distances_str, self.side_mode)
-        if dlg.exec() != QDialog.Accepted:
+        if dlg.exec() != QDialog.DialogCode.Accepted:
             self.tool_message.emit("⚠️ Multi-Offset — Cancelled / İptal edildi")
             self._reset()
             return

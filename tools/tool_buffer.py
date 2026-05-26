@@ -104,7 +104,7 @@ class tool_buffer(tool_base):
     def activate(self):
         super().activate()
         dlg = BufferDialog(self.iface.mainWindow(), self.distance)
-        if dlg.exec() == QDialog.Accepted:
+        if dlg.exec() == QDialog.DialogCode.Accepted:
             params = dlg.get_params()
             self.distance = params["distance"]
             self.join_style = params["join_style"]
