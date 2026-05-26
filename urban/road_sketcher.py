@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-planX CAD â€” Yol Ã‡iz (Road Sketcher)
-Ä°nteraktif yol orta Ã§izgisi Ã§izimi + platform Ã¼retme.
+planX CAD — Yol Çiz (Road Sketcher)
+İnteraktif yol orta çizgisi çizimi + platform üretme.
 """
 
 from qgis.PyQt.QtCore import Qt, pyqtSignal
@@ -17,11 +17,11 @@ from .road_generator import RoadGenerator
 
 
 class RoadSketcher(QgsMapTool):
-    """Yol orta Ã§izgisi Ã§izip platform Ã¼retir.
+    """Yol orta çizgisi çizip platform üretir.
 
-    1. Dialog aÃ§Ä±lÄ±r â†’ parametreler girilir
-    2. Haritada orta Ã§izgi Ã§izilir (polyline)
-    3. Ã‡izim bittiÄŸinde â†’ RoadGenerator ile platform Ã¼retilir
+    1. Dialog açılır → parametreler girilir
+    2. Haritada orta çizgi çizilir (polyline)
+    3. Çizim bittiğinde → RoadGenerator ile platform üretilir
     """
 
     sketcher_finished = pyqtSignal()
@@ -41,7 +41,7 @@ class RoadSketcher(QgsMapTool):
         super().activate()
         self.vertices = []
 
-        # Parametre dialog'unu gÃ¶ster
+        # Parametre dialog'unu göster
         dlg = RoadDialog(self.iface.mainWindow())
         if dlg.exec() == RoadDialog.Accepted:
             self.params = dlg.get_params()
@@ -52,12 +52,12 @@ class RoadSketcher(QgsMapTool):
                 self.canvas, QgsWkbTypes.LineGeometry
             )
             self.sketcher_message.emit(
-                f"ðŸ›£ï¸ Yol Ã‡iz ({self.params['yol_tipi']}, "
-                f"Toplam: {self.params['toplam_genislik']:.1f}m) â€” "
-                f"Orta Ã§izgiyi Ã§izin | SaÄŸ tÄ±k: Bitir"
+                f"🛣️ Yol Çiz ({self.params['yol_tipi']}, "
+                f"Toplam: {self.params['toplam_genislik']:.1f}m) — "
+                f"Orta çizgiyi çizin | Sağ tık: Bitir"
             )
         else:
-            self.sketcher_message.emit("ðŸ›£ï¸ Yol Ã‡iz â€” Ä°ptal edildi")
+            self.sketcher_message.emit("🛣️ Yol Çiz — İptal edildi")
             self.sketcher_finished.emit()
 
     def deactivate(self):
@@ -89,8 +89,8 @@ class RoadSketcher(QgsMapTool):
             if self.rb:
                 self.rb.addPoint(point)
             self.sketcher_message.emit(
-                f"ðŸ›£ï¸ Yol Ã‡iz â€” {len(self.vertices)} nokta | "
-                f"SaÄŸ tÄ±k: Bitir | Esc: Ä°ptal"
+                f"🛣️ Yol Çiz — {len(self.vertices)} nokta | "
+                f"Sağ tık: Bitir | Esc: İptal"
             )
 
         elif event.button() == Qt.MouseButton.RightButton:
@@ -120,7 +120,7 @@ class RoadSketcher(QgsMapTool):
             self.preview_rb = create_preview_rubberband(
                 self.canvas, QgsWkbTypes.LineGeometry
             )
-            self.sketcher_message.emit("ðŸ›£ï¸ Yol Ã‡iz â€” Ä°ptal edildi")
+            self.sketcher_message.emit("🛣️ Yol Çiz — İptal edildi")
         elif event.key() == Qt.Key.Key_Backspace:
             if len(self.vertices) > 0:
                 self.vertices.pop()
@@ -133,7 +133,7 @@ class RoadSketcher(QgsMapTool):
                 self._finish()
 
     def _finish(self):
-        """Orta Ã§izgiyi oluÅŸtur ve yol platformunu Ã¼ret."""
+        """Orta çizgiyi oluştur ve yol platformunu üret."""
         if len(self.vertices) < 2 or self.params is None:
             return
 
@@ -142,15 +142,15 @@ class RoadSketcher(QgsMapTool):
 
         if count > 0:
             self.sketcher_message.emit(
-                f"âœ… Yol Ã‡iz â€” {count} bileÅŸen Ã¼retildi "
-                f"(planx_yol_platformu katmanÄ±na eklendi)"
+                f"✅ Yol Çiz — {count} bileşen üretildi "
+                f"(planx_yol_platformu katmanına eklendi)"
             )
             self.iface.messageBar().pushSuccess(
                 "planX CAD",
-                f"Yol platformu oluÅŸturuldu: {count} bileÅŸen"
+                f"Yol platformu oluşturuldu: {count} bileşen"
             )
         else:
-            self.sketcher_message.emit("âš ï¸ Yol Ã‡iz â€” Platform Ã¼retilemedi")
+            self.sketcher_message.emit("⚠️ Yol Çiz — Platform üretilemedi")
 
         self._cleanup()
         self.rb = create_sketcher_rubberband(

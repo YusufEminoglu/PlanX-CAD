@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-planX CAD â€” Tool Base Class
-DÃ¼zenleme ve dÃ¶nÃ¼ÅŸÃ¼m araÃ§larÄ±nÄ±n temel sÄ±nÄ±fÄ±.
-Feature seÃ§imi, preview, undo desteÄŸi.
+planX CAD — Tool Base Class
+Düzenleme ve dönüşüm araçlarının temel sınıfı.
+Feature seçimi, preview, undo desteği.
 """
 
 from qgis.PyQt.QtCore import Qt, pyqtSignal
@@ -20,19 +20,19 @@ from ..core.sketcher_feedback import (
 
 
 class tool_base(QgsMapTool):
-    """Edit/Transform araÃ§larÄ±nÄ±n temel sÄ±nÄ±fÄ±.
+    """Edit/Transform araçlarının temel sınıfı.
 
-    Alt sÄ±nÄ±flar ÅŸunlarÄ± override etmelidir:
+    Alt sınıflar şunları override etmelidir:
         - tool_name(): str
-        - on_entity_selected(layer, feature, point): feature seÃ§ildiÄŸinde
-        - on_click(point, button): ek tÄ±klama iÅŸlemi
+        - on_entity_selected(layer, feature, point): feature seçildiğinde
+        - on_click(point, button): ek tıklama işlemi
         - on_move(point): fare hareketi (opsiyonel)
     """
 
     tool_finished = pyqtSignal()
     tool_message = pyqtSignal(str)
 
-    # Feature seÃ§im toleransÄ± (piksel)
+    # Feature seçim toleransı (piksel)
     PICK_TOLERANCE = 10
 
     def __init__(self, canvas, iface):
@@ -43,10 +43,10 @@ class tool_base(QgsMapTool):
         self.selected_feature = None
         self.selected_point = None
         self.preview_rb = None
-        self._step = 0  # AraÃ§ adÄ±mÄ±
-        self.require_editable = True  # VarsayÄ±lan olarak dÃ¼zenlenebilir katmanlarda ara
+        self._step = 0  # Araç adımı
+        self.require_editable = True  # Varsayılan olarak düzenlenebilir katmanlarda ara
 
-        # GÃ¶rsel geri bildirimler (Snap Marker ve Obje Vurgusu)
+        # Görsel geri bildirimler (Snap Marker ve Obje Vurgusu)
         self.snap_marker = QgsVertexMarker(self.canvas)
         self.snap_marker.setIconType(QgsVertexMarker.ICON_CIRCLE)
         self.snap_marker.setColor(QColor(13, 148, 136))
@@ -61,7 +61,7 @@ class tool_base(QgsMapTool):
         self._set_cursor()
 
     def _set_cursor(self):
-        """EasyFillet stili ÅŸeffaf pembe dolgulu yeÅŸil halkalÄ± cursor (Aperture)."""
+        """EasyFillet stili şeffaf pembe dolgulu yeşil halkalı cursor (Aperture)."""
         size = 32
         pixmap = QPixmap(size, size)
         pixmap.fill(Qt.GlobalColor.transparent)
@@ -76,24 +76,24 @@ class tool_base(QgsMapTool):
         painter.end()
         self.setCursor(QCursor(pixmap))
 
-    # â”€â”€ Override edilecek â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Override edilecek ─────────────────────────────────────────────────
 
     def tool_name(self):
-        return "AraÃ§"
+        return "Araç"
 
     def on_entity_selected(self, layer, feature, point):
-        """Feature seÃ§ildiÄŸinde Ã§aÄŸrÄ±lÄ±r."""
+        """Feature seçildiğinde çağrılır."""
         pass
 
     def on_click(self, point, button):
-        """TÄ±klama iÅŸlemi."""
+        """Tıklama işlemi."""
         pass
 
     def on_move(self, point):
         """Fare hareketi."""
         pass
 
-    # â”€â”€ YaÅŸam DÃ¶ngÃ¼sÃ¼ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Yaşam Döngüsü ───────────────────────────────────────────────────
 
     def activate(self):
         super().activate()
@@ -116,7 +116,7 @@ class tool_base(QgsMapTool):
         self._set_cursor()
 
         self.tool_message.emit(
-            f"ðŸ”§ {self.tool_name()} â€” Bir obje seÃ§in"
+            f"🔧 {self.tool_name()} — Bir obje seçin"
         )
 
     def deactivate(self):
@@ -141,7 +141,7 @@ class tool_base(QgsMapTool):
         self.selected_point = None
         self._step = 0
 
-    # â”€â”€ Olay Ä°ÅŸleyiciler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Olay İşleyiciler ─────────────────────────────────────────────────
 
     def canvasPressEvent(self, event):
         point = self.toMapCoordinates(event.pos())
@@ -152,7 +152,7 @@ class tool_base(QgsMapTool):
             point = snapped
 
         if self._step == 0 and event.button() == Qt.MouseButton.LeftButton:
-            # Feature seÃ§
+            # Feature seç
             result = self._pick_feature(event.pos())
             if result:
                 layer, feature = result
@@ -169,7 +169,7 @@ class tool_base(QgsMapTool):
                 self.on_entity_selected(layer, feature, point)
             else:
                 self.tool_message.emit(
-                    f"âš ï¸ {self.tool_name()} â€” Obje bulunamadÄ±, tekrar deneyin"
+                    f"⚠️ {self.tool_name()} — Obje bulunamadı, tekrar deneyin"
                 )
         else:
             self.on_click(point, event.button())
@@ -186,15 +186,15 @@ class tool_base(QgsMapTool):
             if self.snap_marker:
                 self.snap_marker.hide()
 
-        # Obje Ã¼zerine gelince vurgulama (Opsiyonel hover efekti eklenebilir)
-        # Åžimdilik sadece on_move tetikliyoruz.
+        # Obje üzerine gelince vurgulama (Opsiyonel hover efekti eklenebilir)
+        # Şimdilik sadece on_move tetikliyoruz.
         self.on_move(point)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Escape:
             self._reset()
 
-    # â”€â”€ YardÄ±mcÄ± â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Yardımcı ─────────────────────────────────────────────────────────
 
     def _snap_point(self, pos):
         snapper = self.canvas.snappingUtils()
@@ -206,7 +206,7 @@ class tool_base(QgsMapTool):
         return None
 
     def _pick_feature(self, pos):
-        """TÄ±klanan noktadaki feature'Ä± bul."""
+        """Tıklanan noktadaki feature'ı bul."""
         point = self.toMapCoordinates(pos)
 
         # Tolerans hesapla
@@ -216,7 +216,7 @@ class tool_base(QgsMapTool):
             point.x() + map_tol, point.y() + map_tol
         )
 
-        # Aktif katmanda ara (Aktif layer her zaman Ã¶nceliklidir)
+        # Aktif katmanda ara (Aktif layer her zaman önceliklidir)
         layer = self.iface.activeLayer()
         if layer and isinstance(layer, QgsVectorLayer):
             if not self.require_editable or layer.isEditable():
@@ -224,7 +224,7 @@ class tool_base(QgsMapTool):
                 if result:
                     return result
 
-        # TÃ¼m vektÃ¶r katmanlarÄ±nda ara
+        # Tüm vektör katmanlarında ara
         for lyr in QgsProject.instance().mapLayers().values():
             if isinstance(lyr, QgsVectorLayer):
                 if self.require_editable and not lyr.isEditable():
@@ -255,13 +255,13 @@ class tool_base(QgsMapTool):
         return None
 
     def _reset(self):
-        """AracÄ± sÄ±fÄ±rla."""
+        """Aracı sıfırla."""
         self._cleanup()
         self.preview_rb = create_preview_rubberband(self.canvas)
-        self.tool_message.emit(f"ðŸ”§ {self.tool_name()} â€” Bir obje seÃ§in")
+        self.tool_message.emit(f"🔧 {self.tool_name()} — Bir obje seçin")
 
     def _apply_edit(self, layer, feature, new_geometry):
-        """Feature geometrisini gÃ¼ncelle."""
+        """Feature geometrisini güncelle."""
         if layer is None or feature is None:
             return False
 
@@ -270,7 +270,7 @@ class tool_base(QgsMapTool):
 
         layer.changeGeometry(feature.id(), new_geometry)
         layer.triggerRepaint()
-        self.tool_message.emit(f"âœ… {self.tool_name()} â€” DÃ¼zenleme uygulandÄ±")
+        self.tool_message.emit(f"✅ {self.tool_name()} — Düzenleme uygulandı")
         return True
 
     def _add_feature(self, layer, geometry, source_feature=None):

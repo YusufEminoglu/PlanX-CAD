@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD â€” Hatch / Pattern Fill.
+"""planX CAD — Hatch / Pattern Fill.
 
 Workflow:
   1. Click a closed polygon feature (or a polyline that closes its own ring).
@@ -9,7 +9,7 @@ Workflow:
 
 This is a planning-grade visualisation tool. It writes the hatch lines as
 geometry (clipped to the source polygon) rather than relying on a fill
-symbol â€” so the result survives export to other GIS or CAD formats.
+symbol — so the result survives export to other GIS or CAD formats.
 """
 from __future__ import annotations
 
@@ -95,7 +95,7 @@ def _generate_hatch_lines(
 class HatchDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("â§— Hatch / Pattern Fill")
+        self.setWindowTitle("⧗ Hatch / Pattern Fill")
         self.setModal(True)
         self.setMinimumWidth(340)
         self._color = QColor("#1a237e")
@@ -104,7 +104,7 @@ class HatchDialog(QDialog):
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
-        title = QLabel("â§— Hatch / Pattern Fill")
+        title = QLabel("⧗ Hatch / Pattern Fill")
         f = QFont()
         f.setBold(True)
         f.setPointSize(11)
@@ -128,14 +128,14 @@ class HatchDialog(QDialog):
         self.spn_angle.setRange(-180.0, 180.0)
         self.spn_angle.setValue(45.0)
         self.spn_angle.setDecimals(1)
-        self.spn_angle.setSuffix(" Â°")
+        self.spn_angle.setSuffix(" °")
         form.addRow("Angle:", self.spn_angle)
 
         color_row = QHBoxLayout()
         self.lbl_color = QLabel()
         self.lbl_color.setFixedSize(32, 22)
         self._update_color_swatch()
-        btn_color = QPushButton("Choose colourâ€¦")
+        btn_color = QPushButton("Choose colour…")
         btn_color.clicked.connect(self._pick_color)
         color_row.addWidget(self.lbl_color)
         color_row.addWidget(btn_color)
@@ -143,7 +143,7 @@ class HatchDialog(QDialog):
         layout.addLayout(form)
 
         btn_row = QHBoxLayout()
-        ok = QPushButton("âœ… Apply")
+        ok = QPushButton("✅ Apply")
         ok.setMinimumHeight(32)
         ok.setStyleSheet(
             "QPushButton { background: #1a237e; color: white; font-weight: bold;"
@@ -190,7 +190,7 @@ class tool_hatch(tool_base):
     def on_entity_selected(self, layer, feature, point):
         geom = feature.geometry()
         if geom is None or geom.isEmpty():
-            self.tool_message.emit("âš ï¸ Hatch â€” empty geometry")
+            self.tool_message.emit("⚠️ Hatch — empty geometry")
             self._reset()
             return
         if geom.type() != QgsWkbTypes.PolygonGeometry:
@@ -200,22 +200,22 @@ class tool_hatch(tool_base):
                 try:
                     converted = _G.fromPolygonXY([geom.asPolyline()]) if not geom.isMultipart() else None
                     if converted is None or converted.isEmpty():
-                        self.tool_message.emit("âš ï¸ Hatch â€” input must be a polygon")
+                        self.tool_message.emit("⚠️ Hatch — input must be a polygon")
                         self._reset()
                         return
                     geom = converted
                 except Exception:
-                    self.tool_message.emit("âš ï¸ Hatch â€” input must be a polygon")
+                    self.tool_message.emit("⚠️ Hatch — input must be a polygon")
                     self._reset()
                     return
             else:
-                self.tool_message.emit("âš ï¸ Hatch â€” point input not supported")
+                self.tool_message.emit("⚠️ Hatch — point input not supported")
                 self._reset()
                 return
 
         dlg = HatchDialog(self.iface.mainWindow())
         if dlg.exec() != QDialog.Accepted:
-            self.tool_message.emit("â§— Hatch â€” cancelled")
+            self.tool_message.emit("⧗ Hatch — cancelled")
             self._reset()
             return
 
@@ -239,7 +239,7 @@ class tool_hatch(tool_base):
             lines.extend(_generate_hatch_lines(geom, spacing, ang))
 
         if not lines:
-            self.tool_message.emit("âš ï¸ Hatch â€” no lines generated")
+            self.tool_message.emit("⚠️ Hatch — no lines generated")
             self._reset()
             return
 
@@ -255,7 +255,7 @@ class tool_hatch(tool_base):
             ],
         )
         if hatch_layer is None:
-            self.tool_message.emit("âš ï¸ Hatch â€” could not create layer")
+            self.tool_message.emit("⚠️ Hatch — could not create layer")
             self._reset()
             return
 
@@ -276,6 +276,6 @@ class tool_hatch(tool_base):
         hatch_layer.triggerRepaint()
 
         self.tool_message.emit(
-            f"âœ… Hatch â€” {len(lines)} lines added ({pattern}, {spacing} m, {base_angle:.1f}Â°)"
+            f"✅ Hatch — {len(lines)} lines added ({pattern}, {spacing} m, {base_angle:.1f}°)"
         )
         self._reset()

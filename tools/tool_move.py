@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD â€” TaÅŸÄ± (Move) AracÄ±"""
+"""planX CAD — Taşı (Move) Aracı"""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry, QgsPointXY
@@ -8,8 +8,8 @@ from ..core.sketcher_feedback import create_preview_rubberband
 
 
 class tool_move(tool_base):
-    """Objeyi taÅŸÄ±ma aracÄ±.
-    1. Objeyi seÃ§ | 2. BaÅŸlangÄ±Ã§ noktasÄ± | 3. Hedef nokta
+    """Objeyi taşıma aracı.
+    1. Objeyi seç | 2. Başlangıç noktası | 3. Hedef nokta
     """
 
     def __init__(self, canvas, iface):
@@ -17,12 +17,12 @@ class tool_move(tool_base):
         self.base_point = None
 
     def tool_name(self):
-        return "TaÅŸÄ±"
+        return "Taşı"
 
     def on_entity_selected(self, layer, feature, point):
         self.base_point = point
         self._step = 2
-        self.tool_message.emit("â†”ï¸ TaÅŸÄ± â€” Hedef noktayÄ± tÄ±klayÄ±n")
+        self.tool_message.emit("↔️ Taşı — Hedef noktayı tıklayın")
 
     def on_click(self, point, button):
         if self._step == 2 and button == Qt.MouseButton.LeftButton:

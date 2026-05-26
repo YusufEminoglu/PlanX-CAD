@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD â€” Vertex Edit (insert / move / delete) for polylines & polygons.
+"""planX CAD — Vertex Edit (insert / move / delete) for polylines & polygons.
 
 Workflow:
   1. Click a feature to pick it. All vertices are rendered as round handles.
@@ -39,23 +39,23 @@ class tool_vertex_edit(tool_base):
     def tool_name(self):
         return "Vertex Edit"
 
-    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ tool_base hooks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ───────────────────────── tool_base hooks ─────────────────────────
 
     def on_entity_selected(self, layer, feature, point):
         geom = feature.geometry()
         if geom is None or geom.isEmpty():
-            self.tool_message.emit("âš ï¸ Vertex Edit â€” empty geometry")
+            self.tool_message.emit("⚠️ Vertex Edit — empty geometry")
             self._reset()
             return
         if geom.type() not in (QgsWkbTypes.LineGeometry, QgsWkbTypes.PolygonGeometry):
-            self.tool_message.emit("âš ï¸ Vertex Edit â€” pick a line or polygon")
+            self.tool_message.emit("⚠️ Vertex Edit — pick a line or polygon")
             self._reset()
             return
         self._geom = QgsGeometry(geom)
         self._render_handles()
         self._step = 2
         self.tool_message.emit(
-            "âœï¸ Vertex Edit â€” drag a handle to move | right-click handle to delete | "
+            "✏️ Vertex Edit — drag a handle to move | right-click handle to delete | "
             "click on the line to insert | Esc to finish"
         )
 
@@ -91,7 +91,7 @@ class tool_vertex_edit(tool_base):
             self._commit()
             self._dragging_index = None
 
-    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Internals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ───────────────────────── Internals ─────────────────────────
 
     def _clear_handles(self):
         for m in self._handles:
@@ -175,14 +175,14 @@ class tool_vertex_edit(tool_base):
         self.preview_rb.reset(self._geom.type())
         self.preview_rb.setToGeometry(self._geom, None)
         self._commit()
-        self.tool_message.emit("âœ… Vertex Edit â€” vertex inserted")
+        self.tool_message.emit("✅ Vertex Edit — vertex inserted")
 
     def _delete_vertex(self, handle_index: int) -> None:
         if self._geom is None:
             return
         part_idx, v_idx = self._part_indices[handle_index]
         # Refuse if it would invalidate the ring
-        min_required = 2 if self._geom.type() == QgsWkbTypes.LineGeometry else 4  # ring needs â‰¥4 (closed)
+        min_required = 2 if self._geom.type() == QgsWkbTypes.LineGeometry else 4  # ring needs ≥4 (closed)
         # crude per-part length check
         if self._geom.isMultipart():
             if self._geom.type() == QgsWkbTypes.LineGeometry:
@@ -196,14 +196,14 @@ class tool_vertex_edit(tool_base):
             else:
                 ring_len = len(self._geom.asPolygon()[part_idx])
         if ring_len <= min_required:
-            self.tool_message.emit("âš ï¸ Vertex Edit â€” cannot delete (too few vertices)")
+            self.tool_message.emit("⚠️ Vertex Edit — cannot delete (too few vertices)")
             return
         self._geom.deleteVertex(self._vertex_id_for(part_idx, v_idx))
         self._render_handles()
         self.preview_rb.reset(self._geom.type())
         self.preview_rb.setToGeometry(self._geom, None)
         self._commit()
-        self.tool_message.emit("âœ… Vertex Edit â€” vertex deleted")
+        self.tool_message.emit("✅ Vertex Edit — vertex deleted")
 
     def _commit(self) -> None:
         if self._geom is None or self.selected_layer is None or self.selected_feature is None:

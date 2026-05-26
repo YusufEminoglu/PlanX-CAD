@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD â€” Ã‡oklu Ã–teleme (Multi-Offset) AracÄ±
+"""planX CAD — Çoklu Öteleme (Multi-Offset) Aracı
 
 Allows offsetting selected lines/polylines multiple times with custom distances and side settings.
 Bilingual: English (Primary) and Turkish (Secondary).
@@ -24,7 +24,7 @@ class MultiOffsetDialog(QDialog):
 
     def __init__(self, parent=None, last_distances="3.0, 6.0", last_side=2):
         super().__init__(parent)
-        self.setWindowTitle("Multi-Offset / Ã‡oklu Ã–teleme")
+        self.setWindowTitle("Multi-Offset / Çoklu Öteleme")
         self.setMinimumWidth(320)
         self.setModal(True)
         self._last_distances = last_distances
@@ -34,7 +34,7 @@ class MultiOffsetDialog(QDialog):
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
-        title = QLabel("Multi-Offset Parameters / Ã‡oklu Ã–teleme Parametreleri")
+        title = QLabel("Multi-Offset Parameters / Çoklu Öteleme Parametreleri")
         f = QFont()
         f.setBold(True)
         f.setPointSize(10)
@@ -47,23 +47,23 @@ class MultiOffsetDialog(QDialog):
         self.txt_distances = QLineEdit()
         self.txt_distances.setText(self._last_distances)
         self.txt_distances.setPlaceholderText("e.g. 3.0, 6.0, 9.0")
-        self.txt_distances.setToolTip("Enter comma-separated distances / VirgÃ¼lle ayrÄ±lmÄ±ÅŸ mesafeler girin")
+        self.txt_distances.setToolTip("Enter comma-separated distances / Virgülle ayrılmış mesafeler girin")
         form.addRow("Distances / Mesafeler (m):", self.txt_distances)
 
         self.cmb_side = QComboBox()
         self.cmb_side.addItems([
             "Left / Sol",
-            "Right / SaÄŸ",
-            "Both / Her Ä°ki Taraf",
-            "Mouse Click / TÄ±klanan Taraf"
+            "Right / Sağ",
+            "Both / Her İki Taraf",
+            "Mouse Click / Tıklanan Taraf"
         ])
         self.cmb_side.setCurrentIndex(self._last_side)
-        form.addRow("Direction / YÃ¶n:", self.cmb_side)
+        form.addRow("Direction / Yön:", self.cmb_side)
 
         layout.addLayout(form)
 
         btn_row = QHBoxLayout()
-        ok = QPushButton("âœ… Apply / Uygula")
+        ok = QPushButton("✅ Apply / Uygula")
         ok.setMinimumHeight(34)
         ok.setStyleSheet(
             "QPushButton { background: #1a237e; color: white; font-weight: bold;"
@@ -71,7 +71,7 @@ class MultiOffsetDialog(QDialog):
             "QPushButton:hover { background: #283593; }"
         )
         ok.clicked.connect(self.accept)
-        cancel = QPushButton("Cancel / Ä°ptal")
+        cancel = QPushButton("Cancel / İptal")
         cancel.setMinimumHeight(34)
         cancel.clicked.connect(self.reject)
         btn_row.addWidget(ok)
@@ -95,29 +95,29 @@ class tool_multi_offset(tool_base):
         self.parsed_distances: list[float] = []
 
     def tool_name(self):
-        return "Multi-Offset / Ã‡oklu Ã–teleme"
+        return "Multi-Offset / Çoklu Öteleme"
 
     def activate(self):
         super().activate()
         self.parsed_distances = []
-        self.tool_message.emit("ðŸ”§ Multi-Offset â€” Select line to offset / Ã‡oklu Ã–teleme â€” Ã–telenecek Ã§izgiyi seÃ§in")
+        self.tool_message.emit("🔧 Multi-Offset — Select line to offset / Çoklu Öteleme — Ötelenecek çizgiyi seçin")
 
     def on_entity_selected(self, layer, feature, point):
         geom = feature.geometry()
         if geom is None or geom.isEmpty():
-            self.tool_message.emit("âš ï¸ Multi-Offset â€” Empty geometry / BoÅŸ geometri")
+            self.tool_message.emit("⚠️ Multi-Offset — Empty geometry / Boş geometri")
             self._reset()
             return
 
         if geom.type() != QgsWkbTypes.LineGeometry:
-            self.tool_message.emit("âš ï¸ Multi-Offset â€” Only lines can be offset / Sadece Ã§izgiler Ã¶telenebilir")
+            self.tool_message.emit("⚠️ Multi-Offset — Only lines can be offset / Sadece çizgiler ötelenebilir")
             self._reset()
             return
 
         # Open dialog
         dlg = MultiOffsetDialog(self.iface.mainWindow(), self.distances_str, self.side_mode)
         if dlg.exec() != QDialog.Accepted:
-            self.tool_message.emit("âš ï¸ Multi-Offset â€” Cancelled / Ä°ptal edildi")
+            self.tool_message.emit("⚠️ Multi-Offset — Cancelled / İptal edildi")
             self._reset()
             return
 
@@ -135,7 +135,7 @@ class tool_multi_offset(tool_base):
                 pass
 
         if not parsed:
-            self.tool_message.emit("âš ï¸ Multi-Offset â€” Invalid distance format / GeÃ§ersiz mesafe formatÄ±")
+            self.tool_message.emit("⚠️ Multi-Offset — Invalid distance format / Geçersiz mesafe formatı")
             self._reset()
             return
 
@@ -153,7 +153,7 @@ class tool_multi_offset(tool_base):
         else:  # Clicked Side
             self._step = 2
             self.tool_message.emit(
-                "ðŸ”§ Multi-Offset â€” Move mouse to select side and click / Ã‡oklu Ã–teleme â€” Mouse ile tarafÄ± seÃ§ip tÄ±klayÄ±n"
+                "🔧 Multi-Offset — Move mouse to select side and click / Çoklu Öteleme — Mouse ile tarafı seçip tıklayın"
             )
 
     def _apply_offsets(self, layer, feature, geom, side):
@@ -170,7 +170,7 @@ class tool_multi_offset(tool_base):
                     offset_geoms.append(offset_g)
 
         if not offset_geoms:
-            self.tool_message.emit("âš ï¸ Multi-Offset â€” Failed to generate offset geometry / Ã–teleme geometrisi Ã¼retilemedi")
+            self.tool_message.emit("⚠️ Multi-Offset — Failed to generate offset geometry / Öteleme geometrisi üretilemedi")
             return
 
         # Start edit block
@@ -182,8 +182,8 @@ class tool_multi_offset(tool_base):
 
         layer.triggerRepaint()
         self.tool_message.emit(
-            f"âœ… Multi-Offset â€” Added {len(offset_geoms)} parallel lines / "
-            f"Ã‡oklu Ã–teleme â€” {len(offset_geoms)} adet paralel Ã§izgi eklendi"
+            f"✅ Multi-Offset — Added {len(offset_geoms)} parallel lines / "
+            f"Çoklu Öteleme — {len(offset_geoms)} adet paralel çizgi eklendi"
         )
 
     def _get_closer_side(self, geom, point) -> str:

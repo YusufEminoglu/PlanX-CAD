@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD â€” Ã‡izgi (Line) Sketcher"""
+"""planX CAD — Çizgi (Line) Sketcher"""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry
@@ -7,10 +7,10 @@ from .sketcher_base import sketcher_base
 
 
 class sketcher_line(sketcher_base):
-    """Ä°ki noktalÄ± dÃ¼z Ã§izgi Ã§izer."""
+    """İki noktalı düz çizgi çizer."""
 
     def tool_name(self):
-        return "Ã‡izgi"
+        return "Çizgi"
 
     def geom_type(self):
         return QgsWkbTypes.LineGeometry

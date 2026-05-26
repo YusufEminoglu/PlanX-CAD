@@ -22,7 +22,7 @@ class LiveCoordWidget(QWidget):
             self.canvas.xyCoordinates.connect(self._on_xy)
             self.canvas.scaleChanged.connect(self._on_scale)
         except Exception:
-            # Signal API differs across QGIS minor versions â€” fail safe.
+            # Signal API differs across QGIS minor versions — fail safe.
             pass
         self._on_scale(self.canvas.scale())
 
@@ -32,7 +32,7 @@ class LiveCoordWidget(QWidget):
         outer.setSpacing(2)
 
         box = QFrame(self)
-        box.setFrameShape(QFrame.StyledPanel)
+        box.setFrameShape(QFrame.Shape.StyledPanel)
         box.setStyleSheet(
             "QFrame { background: #f4f7fb; border: 1px solid #d8e0ea;"
             " border-radius: 4px; padding: 2px 4px; }"
@@ -42,7 +42,7 @@ class LiveCoordWidget(QWidget):
         box_layout.setContentsMargins(0, 0, 0, 0)
         box_layout.setSpacing(0)
 
-        self.lbl_xy = QLabel("X: â€”   Y: â€”")
+        self.lbl_xy = QLabel("X: —   Y: —")
         xy_font = QFont()
         xy_font.setPointSize(9)
         xy_font.setBold(True)
@@ -50,9 +50,9 @@ class LiveCoordWidget(QWidget):
         self.lbl_xy.setAlignment(Qt.AlignmentFlag.AlignCenter)
         box_layout.addWidget(self.lbl_xy)
 
-        self.lbl_meta = QLabel("CRS: â€”    1: â€”")
+        self.lbl_meta = QLabel("CRS: —    1: —")
         meta_font = QFont()
-        meta_font.setPointSize(7.5)
+        meta_font.setPointSizeF(7.5)
         self.lbl_meta.setFont(meta_font)
         self.lbl_meta.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_meta.setStyleSheet("color: #546e7a;")
@@ -69,7 +69,7 @@ class LiveCoordWidget(QWidget):
     def _on_scale(self, scale: float) -> None:
         try:
             crs = self.canvas.mapSettings().destinationCrs()
-            crs_id = crs.authid() or "â€”"
+            crs_id = crs.authid() or "—"
             self.lbl_meta.setText(f"CRS: {crs_id}    1: {scale:,.0f}")
         except Exception:
             pass

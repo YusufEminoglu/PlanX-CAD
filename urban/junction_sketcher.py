@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-planX CAD â€” KavÅŸak OluÅŸturma AracÄ± (GeliÅŸmiÅŸ)
-NetCAD tarzÄ± kavÅŸak Ã§Ã¶zÃ¼mÃ¼:
- - DÄ±ÅŸ kaldÄ±rÄ±mlar: dÃ¼z Ã§izgi ile kÄ±rma (chamfer)
- - Ä°Ã§ kaldÄ±rÄ±mlar: radius ile yay (fillet) baÄŸlantÄ±sÄ±
- - KavÅŸak adasÄ±: yuvarlak veya su damlasÄ±
+planX CAD — Kavşak Oluşturma Aracı (Gelişmiş)
+NetCAD tarzı kavşak çözümü:
+ - Dış kaldırımlar: düz çizgi ile kırma (chamfer)
+ - İç kaldırımlar: radius ile yay (fillet) bağlantısı
+ - Kavşak adası: yuvarlak veya su damlası
 
-OluÅŸturulan katmanlar:
- - kavsak (LineString): kÄ±rma ve baÄŸlantÄ± Ã§izgileri
- - kavsak_ada (Polygon): kavÅŸak adalarÄ±
+Oluşturulan katmanlar:
+ - kavsak (LineString): kırma ve bağlantı çizgileri
+ - kavsak_ada (Polygon): kavşak adaları
 """
 
 import math
@@ -28,16 +28,16 @@ from .junction_dialog import JunctionDialog
 
 
 class JunctionSketcher(QgsMapTool):
-    """KavÅŸak oluÅŸturma aracÄ±.
+    """Kavşak oluşturma aracı.
 
-    Ä°ÅŸ akÄ±ÅŸÄ±:
-    1. Dialog aÃ§Ä±lÄ±r â†’ parametreler girilir
-    2. KavÅŸak merkezi tÄ±klanÄ±r
+    İş akışı:
+    1. Dialog açılır → parametreler girilir
+    2. Kavşak merkezi tıklanır
     3. Otomatik olarak:
-       a) Etki yarÄ±Ã§apÄ± iÃ§indeki Ã§izgiler trimlenir
-       b) DÄ±ÅŸ kaldÄ±rÄ±m kÃ¶ÅŸeleri dÃ¼z Ã§izgi ile kÄ±rÄ±lÄ±r (chamfer)
-       c) Ä°Ã§ kaldÄ±rÄ±m kÃ¶ÅŸeleri radius ile baÄŸlanÄ±r (fillet)
-       d) KavÅŸak adasÄ± oluÅŸturulur (yuvarlak/su damlasÄ±)
+       a) Etki yarıçapı içindeki çizgiler trimlenir
+       b) Dış kaldırım köşeleri düz çizgi ile kırılır (chamfer)
+       c) İç kaldırım köşeleri radius ile bağlanır (fillet)
+       d) Kavşak adası oluşturulur (yuvarlak/su damlası)
     """
 
     sketcher_finished = pyqtSignal()
@@ -58,7 +58,7 @@ class JunctionSketcher(QgsMapTool):
         # Parametre dialog'u
         dlg = JunctionDialog(self.iface.mainWindow())
         if dlg.exec() != JunctionDialog.Accepted:
-            self.sketcher_message.emit("ðŸ”µ KavÅŸak â€” Ä°ptal edildi")
+            self.sketcher_message.emit("🔵 Kavşak — İptal edildi")
             self.sketcher_finished.emit()
             return
 
@@ -68,10 +68,10 @@ class JunctionSketcher(QgsMapTool):
         )
         self._step = 1
         self.sketcher_message.emit(
-            f"ðŸ”µ KavÅŸak (R={self.params['radius']}m, "
-            f"KÄ±rma={self.params['chamfer_dist']}m, "
-            f"Fillet R={self.params['fillet_radius']}m) â€” "
-            f"KavÅŸak merkezini tÄ±klayÄ±n"
+            f"🔵 Kavşak (R={self.params['radius']}m, "
+            f"Kırma={self.params['chamfer_dist']}m, "
+            f"Fillet R={self.params['fillet_radius']}m) — "
+            f"Kavşak merkezini tıklayın"
         )
 
     def deactivate(self):
@@ -104,7 +104,7 @@ class JunctionSketcher(QgsMapTool):
             if match.isValid():
                 point = match.point()
 
-        # Daire Ã¶nizleme
+        # Daire önizleme
         pts = self._make_circle(point, self.params["radius"], 48)
         self.preview_rb.reset(QgsWkbTypes.PolygonGeometry)
         for pt in pts:
@@ -114,15 +114,15 @@ class JunctionSketcher(QgsMapTool):
         if event.key() == Qt.Key.Key_Escape:
             cleanup_sketcher_rubberband(self.canvas, self.preview_rb)
             self.preview_rb = None
-            self.sketcher_message.emit("ðŸ”µ KavÅŸak â€” Ä°ptal edildi")
+            self.sketcher_message.emit("🔵 Kavşak — İptal edildi")
             self.sketcher_finished.emit()
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    # KavÅŸak OluÅŸturma
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ════════════════════════════════════════════════════════════════════════
+    # Kavşak Oluşturma
+    # ════════════════════════════════════════════════════════════════════════
 
     def _create_junction(self, center):
-        """Ana kavÅŸak oluÅŸturma iÅŸlemi."""
+        """Ana kavşak oluşturma işlemi."""
         p = self.params
         radius = p["radius"]
         chamfer_dist = p["chamfer_dist"]
@@ -133,19 +133,19 @@ class JunctionSketcher(QgsMapTool):
         center_geom = QgsGeometry.fromPointXY(center)
         junction_buffer = center_geom.buffer(radius, 48)
 
-        # â”€â”€ KatmanlarÄ± hazÄ±rla â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── Katmanları hazırla ───────────────────────────────────────────
         kavsak_line_layer = get_road_platform_layer()
         kavsak_ada_layer = self._get_kavsak_ada_layer()
 
         if not kavsak_line_layer or not kavsak_ada_layer:
-            self.sketcher_message.emit("âš ï¸ KavÅŸak â€” Katmanlar oluÅŸturulamadÄ±")
+            self.sketcher_message.emit("⚠️ Kavşak — Katmanlar oluşturulamadı")
             return
 
         kavsak_id = self._next_id(kavsak_line_layer, "yol_id")
 
-        # â”€â”€ 1. TÃ¼m Ã§izgi katmanlarÄ±nÄ± trimle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── 1. Tüm çizgi katmanlarını trimle ────────────────────────────
         trimmed_count = 0
-        cut_endpoints = []  # Trimlenen Ã§izgilerin kesilme noktalarÄ±nÄ± topla
+        cut_endpoints = []  # Trimlenen çizgilerin kesilme noktalarını topla
 
         for layer in QgsProject.instance().mapLayers().values():
             if not isinstance(layer, QgsVectorLayer):
@@ -167,7 +167,7 @@ class JunctionSketcher(QgsMapTool):
             if not features_hit:
                 continue
 
-            # KullanÄ±cÄ± katmanÄ± zaten edit moddaysa commit'i ona bÄ±rak.
+            # Kullanıcı katmanı zaten edit moddaysa commit'i ona bırak.
             layer_was_editing = layer.isEditable()
             if not layer_was_editing:
                 layer.startEditing()
@@ -175,8 +175,8 @@ class JunctionSketcher(QgsMapTool):
             for feat in features_hit:
                 geom = feat.geometry()
                 
-                # 1 Metrelik split Ã¶zelliÄŸi eklendi:
-                # DÄ±ÅŸ yollar (R + 1m den baÅŸlayan) ve 1m'lik parÃ§alar (R ile R+1 arasÄ±)
+                # 1 Metrelik split özelliği eklendi:
+                # Dış yollar (R + 1m den başlayan) ve 1m'lik parçalar (R ile R+1 arası)
                 outer_buffer = center_geom.buffer(radius + 1.0, 48)
                 trimmed_roads = geom.difference(outer_buffer)
                 one_meter_segments = geom.intersection(outer_buffer).difference(junction_buffer)
@@ -195,7 +195,7 @@ class JunctionSketcher(QgsMapTool):
                         parts.append(one_meter_segments)
 
                 if parts:
-                    # Kesilme noktalarÄ±nÄ± union Ã¼zerinden bul
+                    # Kesilme noktalarını union üzerinden bul
                     all_trimmed = geom.difference(junction_buffer)
                     if all_trimmed and not all_trimmed.isEmpty():
                         endpoints = self._find_cut_endpoints(
@@ -214,7 +214,7 @@ class JunctionSketcher(QgsMapTool):
                         for ep in endpoints:
                             cut_endpoints.append((ep, bilesen, yol_id))
 
-                    # Geometrileri parÃ§a parÃ§a ekle/gÃ¼ncelle
+                    # Geometrileri parça parça ekle/güncelle
                     layer.changeGeometry(feat.id(), parts[0])
                     for part in parts[1:]:
                         if part.isEmpty() or part.type() != QgsWkbTypes.LineGeometry:
@@ -231,7 +231,7 @@ class JunctionSketcher(QgsMapTool):
                 layer.commitChanges()
             layer.triggerRepaint()
 
-        # Endpoint'leri bileÅŸenlerine gÃ¶re ayÄ±r (ep, yol_id) formatÄ±nda
+        # Endpoint'leri bileşenlerine göre ayır (ep, yol_id) formatında
         kaldirim_pts = []
         refuj_pts = []
         for point, bilesen, yol_id in cut_endpoints:
@@ -240,7 +240,7 @@ class JunctionSketcher(QgsMapTool):
             elif bilesen == "refuj":
                 refuj_pts.append((point, yol_id))
 
-        # â”€â”€ 2. DÄ±ÅŸ kaldÄ±rÄ±m kÄ±rma Ã§izgileri (chamfer) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── 2. Dış kaldırım kırma çizgileri (chamfer) ───────────────────
         chamfer_lines = self._create_chamfer_lines(
             center, kaldirim_pts, chamfer_dist
         )
@@ -254,8 +254,8 @@ class JunctionSketcher(QgsMapTool):
             feat.setAttribute("bilesen", "dis_kirma")
             kavsak_line_layer.addFeature(feat)
 
-        # â”€â”€ 3. Ä°Ã§ kaldÄ±rÄ±m baÄŸlantÄ± yaylarÄ± (fillet) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        # EÄŸre dÄ±ÅŸ kÄ±rma yapÄ±lacaksa iÃ§ baÄŸlantÄ±ya gerek yok (kullanÄ±cÄ± talebi)
+        # ── 3. İç kaldırım bağlantı yayları (fillet) ────────────────────
+        # Eğre dış kırma yapılacaksa iç bağlantıya gerek yok (kullanıcı talebi)
         fillet_arcs = []
         if chamfer_dist <= 0:
             fillet_arcs = self._create_fillet_arcs(
@@ -269,7 +269,7 @@ class JunctionSketcher(QgsMapTool):
                 feat.setAttribute("bilesen", "ic_baglanti")
                 kavsak_line_layer.addFeature(feat)
 
-        # â”€â”€ 3.5 RefÃ¼j Kapatma YaylarÄ± (Yuvarlak kavÅŸaklar iÃ§in) â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── 3.5 Refüj Kapatma Yayları (Yuvarlak kavşaklar için) ─────────
         if ada_tipi != "yok" and refuj_pts:
             refuj_caps = self._create_refuj_caps(center, refuj_pts)
             for cap_line in refuj_caps:
@@ -278,13 +278,13 @@ class JunctionSketcher(QgsMapTool):
                 feat.setAttribute("yol_id", kavsak_id)
                 feat.setAttribute("yol_tipi", "kavsak")
                 feat.setAttribute("bilesen", "refuj_baglanti")
-                feat.setAttribute("gorunur", 1)  # Kapatma iÃ§in gÃ¶rÃ¼nÃ¼r
+                feat.setAttribute("gorunur", 1)  # Kapatma için görünür
                 kavsak_line_layer.addFeature(feat)
 
         kavsak_line_layer.commitChanges()
         kavsak_line_layer.triggerRepaint()
 
-        # â”€â”€ 4. KavÅŸak adasÄ± â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── 4. Kavşak adası ──────────────────────────────────────────────
         if ada_tipi != "yok":
             kavsak_ada_layer.startEditing()
 
@@ -308,10 +308,10 @@ class JunctionSketcher(QgsMapTool):
             kavsak_ada_layer.commitChanges()
             kavsak_ada_layer.triggerRepaint()
 
-        # â”€â”€ SonuÃ§ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── Sonuç ────────────────────────────────────────────────────────
         msg = (
-            f"âœ… KavÅŸak â€” {trimmed_count} Ã§izgi trimlendi | "
-            f"{len(chamfer_lines)} kÄ±rma + {len(fillet_arcs)} baÄŸlantÄ±"
+            f"✅ Kavşak — {trimmed_count} çizgi trimlendi | "
+            f"{len(chamfer_lines)} kırma + {len(fillet_arcs)} bağlantı"
         )
         if ada_tipi != "yok":
             msg += f" | Ada: {ada_tipi}"
@@ -326,19 +326,19 @@ class JunctionSketcher(QgsMapTool):
         )
         self.sketcher_finished.emit()
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    # Geometri Ä°ÅŸlemleri
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ════════════════════════════════════════════════════════════════════════
+    # Geometri İşlemleri
+    # ════════════════════════════════════════════════════════════════════════
 
     def _find_cut_endpoints(self, original_geom, trimmed_geom, buffer_geom):
-        """Trimlenen Ã§izginin kesilme noktalarÄ±nÄ± bul.
+        """Trimlenen çizginin kesilme noktalarını bul.
 
         Returns:
-            list[QgsPointXY] â€” kavÅŸak alanÄ± sÄ±nÄ±rÄ±ndaki kesilme noktalarÄ±
+            list[QgsPointXY] — kavşak alanı sınırındaki kesilme noktaları
         """
         endpoints = []
 
-        # TrimlenmiÅŸ geometrinin uÃ§ noktalarÄ±nÄ± al
+        # Trimlenmiş geometrinin uç noktalarını al
         parts = [trimmed_geom]
         if trimmed_geom.isMultipart():
             parts = trimmed_geom.asGeometryCollection()
@@ -359,7 +359,7 @@ class JunctionSketcher(QgsMapTool):
                         endpoints.append(QgsPointXY(line[0]))
                         endpoints.append(QgsPointXY(line[-1]))
 
-        # Sadece kavÅŸak sÄ±nÄ±rÄ±na yakÄ±n olanlarÄ± filtrele
+        # Sadece kavşak sınırına yakın olanları filtrele
         buffer_boundary = buffer_geom.convertToType(QgsWkbTypes.LineGeometry)
         filtered = []
         for pt in endpoints:
@@ -374,10 +374,10 @@ class JunctionSketcher(QgsMapTool):
         return filtered
 
     def _create_chamfer_lines(self, center, endpoints, chamfer_dist):
-        """DÄ±ÅŸ kaldÄ±rÄ±m kÄ±rma Ã§izgileri oluÅŸtur.
+        """Dış kaldırım kırma çizgileri oluştur.
 
-        KarÅŸÄ±lÄ±klÄ± uÃ§ noktalarÄ± dÃ¼z Ã§izgi ile baÄŸla (chamfer).
-        Merkezden daha uzak olan nokta Ã§iftleri dÄ±ÅŸ kaldÄ±rÄ±ma ait.
+        Karşılıklı uç noktaları düz çizgi ile bağla (chamfer).
+        Merkezden daha uzak olan nokta çiftleri dış kaldırıma ait.
         """
         if len(endpoints) < 2:
             return []
@@ -389,7 +389,7 @@ class JunctionSketcher(QgsMapTool):
             angle = math.atan2(pt.y() - center.y(), pt.x() - center.x())
             dist = center.distance(pt)
             item = (angle, dist, pt, y_id)
-            # None yol_id'leri ayrÄ± gruplamak iÃ§in angle bazlÄ± geÃ§ici ID
+            # None yol_id'leri ayrı gruplamak için angle bazlı geçici ID
             safe_id = y_id if y_id is not None else f"unknown_{round(angle, 1)}"
             if safe_id not in groups_dict:
                 groups_dict[safe_id] = []
@@ -397,23 +397,23 @@ class JunctionSketcher(QgsMapTool):
 
         groups = self._order_groups_circularly(groups_dict)
 
-        # Her kolun ucundaki en dÄ±ÅŸtaki noktalarÄ± bul
+        # Her kolun ucundaki en dıştaki noktaları bul
         outer_points = []
         for group in groups:
             if len(group) >= 2:
-                # En uzak noktalarÄ± al (dÄ±ÅŸ kaldÄ±rÄ±m)
+                # En uzak noktaları al (dış kaldırım)
                 group.sort(key=lambda x: x[1], reverse=True)
                 outer_points.append(group[0][2])
                 if len(group) >= 2:
                     outer_points.append(group[1][2])
 
-        # KomÅŸu kol dÄ±ÅŸlarÄ± arasÄ±na chamfer Ã§izgileri
+        # Komşu kol dışları arasına chamfer çizgileri
         if len(groups) >= 2:
             for i in range(len(groups)):
                 g1 = groups[i]
                 g2 = groups[(i + 1) % len(groups)]
 
-                # Her grup Ã§iftinden en yakÄ±n dÄ±ÅŸ noktalarÄ± bul
+                # Her grup çiftinden en yakın dış noktaları bul
                 best_pair = self._find_closest_pair_between_groups(g1, g2)
                 if best_pair:
                     p1, p2 = best_pair
@@ -423,10 +423,10 @@ class JunctionSketcher(QgsMapTool):
         return chamfer_lines
 
     def _create_fillet_arcs(self, center, endpoints, fillet_radius):
-        """Ä°Ã§ kaldÄ±rÄ±m baÄŸlantÄ± yaylarÄ± oluÅŸtur.
+        """İç kaldırım bağlantı yayları oluştur.
 
-        Merkezden daha yakÄ±n olan nokta Ã§iftleri iÃ§ kaldÄ±rÄ±ma ait.
-        BunlarÄ± ark ile baÄŸla.
+        Merkezden daha yakın olan nokta çiftleri iç kaldırıma ait.
+        Bunları ark ile bağla.
         """
         if len(endpoints) < 2 or fillet_radius <= 0:
             return []
@@ -445,13 +445,13 @@ class JunctionSketcher(QgsMapTool):
 
         groups = self._order_groups_circularly(groups_dict)
 
-        # KomÅŸu kol iÃ§leri arasÄ±na fillet yay
+        # Komşu kol içleri arasına fillet yay
         if len(groups) >= 2:
             for i in range(len(groups)):
                 g1 = groups[i]
                 g2 = groups[(i + 1) % len(groups)]
 
-                # Her grup Ã§iftinden en yakÄ±n iÃ§ noktalarÄ± bul
+                # Her grup çiftinden en yakın iç noktaları bul
                 pair = self._find_closest_pair_between_groups(
                     g1, g2, prefer_inner=True
                 )
@@ -465,7 +465,7 @@ class JunctionSketcher(QgsMapTool):
         return fillet_arcs
 
     def _create_refuj_caps(self, center, endpoints):
-        """KavÅŸaÄŸa giren refÃ¼j Ã§izgilerini kapatÄ±r."""
+        """Kavşağa giren refüj çizgilerini kapatır."""
         caps = []
         if len(endpoints) < 2:
             return caps
@@ -484,7 +484,7 @@ class JunctionSketcher(QgsMapTool):
 
         for group in groups:
             if len(group) >= 2:
-                # Bir koldan gelen en az 2 refÃ¼j ucu varsa onlarÄ± dÃ¼z Ã§izgiyle birleÅŸtir.
+                # Bir koldan gelen en az 2 refüj ucu varsa onları düz çizgiyle birleştir.
                 p1 = group[0][2]
                 p2 = group[-1][2]
                 caps.append(QgsGeometry.fromPolylineXY([p1, p2]))
@@ -492,7 +492,7 @@ class JunctionSketcher(QgsMapTool):
         return caps
 
     def _order_groups_circularly(self, groups_dict):
-        """AynÄ± yol kollarÄ±na ait olan noktalarÄ± aÃ§Ä±sal sÄ±raya dizer."""
+        """Aynı yol kollarına ait olan noktaları açısal sıraya dizer."""
         groups_list = []
         for y_id, pts in groups_dict.items():
             if not pts: continue
@@ -508,7 +508,7 @@ class JunctionSketcher(QgsMapTool):
         return [g[1] for g in groups_list]
 
     def _find_closest_pair_between_groups(self, g1, g2, prefer_inner=False):
-        """Ä°ki grup arasÄ±ndaki en yakÄ±n (veya en uzak) nokta Ã§iftini bul."""
+        """İki grup arasındaki en yakın (veya en uzak) nokta çiftini bul."""
         best_dist = float('inf')
         best_pair = None
 
@@ -522,43 +522,43 @@ class JunctionSketcher(QgsMapTool):
         return best_pair
 
     def _calc_fillet_arc(self, center, p1, p2, radius, segments=16):
-        """Ä°ki nokta arasÄ±nda doÄŸru teÄŸet arkÄ± (calc_tangent_fillet_arc ile)."""
-        # P1 ve P2 kavÅŸak sÄ±nÄ±rÄ±nda.
-        # Bu noktalarÄ±n merkezden geliÅŸ aÃ§Ä±sÄ±nÄ± bulalÄ±m ve calc_tangent_fillet_arc kullanalÄ±m.
+        """İki nokta arasında doğru teğet arkı (calc_tangent_fillet_arc ile)."""
+        # P1 ve P2 kavşak sınırında.
+        # Bu noktaların merkezden geliş açısını bulalım ve calc_tangent_fillet_arc kullanalım.
         dir1 = math.atan2(p1.y() - center.y(), p1.x() - center.x())
         dir2 = math.atan2(p2.y() - center.y(), p2.x() - center.x())
         
-        # calc_tangent_fillet_arc aslÄ±nda merkezden uzaklaÅŸan (p1, p2) iÃ§in.
-        # Bizde p1 ve p2 kavÅŸak noktasÄ±nda bitiyor. Ama sorun deÄŸil, fillet arc'yi Ã§izip dÃ¶ndÃ¼rÃ¼r.
-        # Sanal bir kesiÅŸim noktasÄ± gerekiyor fillet iÃ§in!
-        # DÄ±ÅŸ Ã§izgilerin uzantÄ±larÄ±nÄ±n kesiÅŸimi neresi?
-        # Bu biraz karmaÅŸÄ±k olabilir, calc_tangent_fillet_arc direkt olarak intersection point istiyor.
-        # KesiÅŸim noktasÄ±nÄ± bulalÄ±m.
+        # calc_tangent_fillet_arc aslında merkezden uzaklaşan (p1, p2) için.
+        # Bizde p1 ve p2 kavşak noktasında bitiyor. Ama sorun değil, fillet arc'yi çizip döndürür.
+        # Sanal bir kesişim noktası gerekiyor fillet için!
+        # Dış çizgilerin uzantılarının kesişimi neresi?
+        # Bu biraz karmaşık olabilir, calc_tangent_fillet_arc direkt olarak intersection point istiyor.
+        # Kesişim noktasını bulalım.
         
-        # P1'den dir1 yÃ¶nÃ¼nde ve P2'den dir2 yÃ¶nÃ¼nde giden Ã§izgilerin kesiÅŸimi (merkeze doÄŸru)
-        # AslÄ±nda en basit yÃ¶ntem, _create_fillet_arcs iÃ§inde calc_tangent_fillet_arc kullanmaktÄ±r.
+        # P1'den dir1 yönünde ve P2'den dir2 yönünde giden çizgilerin kesişimi (merkeze doğru)
+        # Aslında en basit yöntem, _create_fillet_arcs içinde calc_tangent_fillet_arc kullanmaktır.
         
-        # BasitleÅŸtirilmiÅŸ: TeÄŸet arc Ã§izebilmek iÃ§in center'Ä± kullanabiliriz, ama merkezde deÄŸil.
+        # Basitleştirilmiş: Teğet arc çizebilmek için center'ı kullanabiliriz, ama merkezde değil.
         # calc_tangent_fillet_arc(int_pt, angle1, angle2, radius)
         
-        # YollarÄ± merkeze doÄŸrultuyoruz
+        # Yolları merkeze doğrultuyoruz
         arc_pts, _ = calc_tangent_fillet_arc(center, dir1, dir2, radius, segments)
         return arc_pts
 
     def _create_teardrop(self, center, radius, length):
-        """Su damlasÄ± ÅŸeklinde ada oluÅŸtur."""
+        """Su damlası şeklinde ada oluştur."""
         pts = []
-        # DamlacÄ±k: yarÄ±m daire + sivri uÃ§
+        # Damlacık: yarım daire + sivri uç
         segments = 32
 
-        # Ãœst yarÄ±m daire
+        # Üst yarım daire
         for i in range(segments + 1):
             angle = math.pi / 2 + math.pi * i / segments
             x = center.x() + radius * math.cos(angle)
             y = center.y() + radius * math.sin(angle)
             pts.append(QgsPointXY(x, y))
 
-        # Sivri uÃ§ (aÅŸaÄŸÄ±da)
+        # Sivri uç (aşağıda)
         pts.append(QgsPointXY(center.x(), center.y() - length))
 
         # Kapatma
@@ -566,13 +566,13 @@ class JunctionSketcher(QgsMapTool):
 
         return QgsGeometry.fromPolygonXY([pts])
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    # Katman YÃ¶netimi
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ════════════════════════════════════════════════════════════════════════
+    # Katman Yönetimi
+    # ════════════════════════════════════════════════════════════════════════
 
 
     def _get_kavsak_ada_layer(self):
-        """kavsak_ada (Polygon) katmanÄ±nÄ± bul veya oluÅŸtur."""
+        """kavsak_ada (Polygon) katmanını bul veya oluştur."""
         return get_or_create_layer(
             "kavsak_ada",
             geom_type="Polygon",

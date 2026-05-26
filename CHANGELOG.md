@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.17.4] - 2026-05-26
+
+- Repair mojibake in CAD UI text and tool messages.
+
+## [1.17.3] - 2026-05-26
+
+- Fix QGIS 4 / Qt6 enum compatibility for the CAD dock and dialogs.
+
 ## [1.17.2] - 2026-05-26
 
 - fix: Qt.ApplicationShortcut to Qt.ShortcutContext.ApplicationShortcut for PyQt6/QGIS 4
@@ -153,11 +161,11 @@ Beta completion release candidate for high-speed CAD workflows.
 Hatch / Pattern Fill + Construction Lines.
 
 ### Added
-- **Hatch tool** (`tools/tool_hatch.py`): pick a closed polygon, configure pattern (parallel, cross, diagonal up/down), spacing (m), angle (Â°) and colour. Hatch lines are computed by sweeping the polygon's bounding box and clipping each line to the polygon, then written to the auto-created `planx_hatch` layer with attributes `source_layer`, `pattern`, `spacing_m`, `angle_deg`, `color`. Multipart-safe (multi-line intersections are split per part).
+- **Hatch tool** (`tools/tool_hatch.py`): pick a closed polygon, configure pattern (parallel, cross, diagonal up/down), spacing (m), angle (°) and colour. Hatch lines are computed by sweeping the polygon's bounding box and clipping each line to the polygon, then written to the auto-created `planx_hatch` layer with attributes `source_layer`, `pattern`, `spacing_m`, `angle_deg`, `color`. Multipart-safe (multi-line intersections are split per part).
 - **Construction Line tool** (`tools/tool_construction_line.py`): 2-click reference line with three dispatch modes:
-  - `construction_inf` â€” extends `_INF_EXTEND_FACTOR Ã— canvas diagonal` past both reference points (infinite reference).
-  - `construction_ray` â€” extends only past the second point.
-  - `construction_seg` â€” bounded segment.
+  - `construction_inf` — extends `_INF_EXTEND_FACTOR × canvas diagonal` past both reference points (infinite reference).
+  - `construction_ray` — extends only past the second point.
+  - `construction_seg` — bounded segment.
   Writes to the auto-created `planx_construction` layer; the dashed cyan style is applied on first use.
 - New icons `cad_hatch.svg` and `cad_construction.svg` registered in the dock's Edit group.
 - Shortcuts: Hatch = `Ctrl+Shift+H`, Construction (infinite) = `Ctrl+Shift+K`.
@@ -167,7 +175,7 @@ Hatch / Pattern Fill + Construction Lines.
 - Add Join, Divide, Multi-Offset tools and make UI bilingual/compact
 
 All notable changes to **PlanX CAD Toolset** are documented here.
-Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) Â· versioning: [SemVer](https://semver.org/).
+Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
 ## [1.5.0] - 2026-05-20
 
@@ -196,9 +204,9 @@ Keyboard shortcuts framework + tool history.
   - Drawing: `L`ine, `P`olyline, `R`ectangle, polyGon (`G`), `C`ircle, `A`rc
   - Editing: `O`ffset, `T`rim, `E`xtend, `F`illet, `B`uffer, arra`Y`
   - Transform: `M`ove
-  - Measure: `D`imension, `I` (mesafe Ã¶lÃ§)
+  - Measure: `D`imension, `I` (mesafe ölç)
 - **`Ctrl+Shift+Space`**: repeat the last activated tool (CAD convention).
-- Dock: new **"â†» Son aracÄ± tekrarla"** button next to the status bar.
+- Dock: new **"↻ Son aracı tekrarla"** button next to the status bar.
 - Tool-button tooltips now show their keyboard shortcut as a `[Ctrl+Shift+X]` suffix.
 
 ### Changed
@@ -212,7 +220,7 @@ Two new tools added to the dock.
 
 ### Added
 - **Array tool** (`tools/tool_array.py`):
-  - Rectangular mode: rows Ã— cols with independent Î”x / Î”y spacing
+  - Rectangular mode: rows × cols with independent Δx / Δy spacing
   - Polar mode: count + sweep angle, with on-canvas center click and live preview of all rotated copies
   - Copies inherit source attributes; uses `rotate_geometry` (multipart-safe)
 - **Linear Dimension tool** (`tools/tool_dimension.py`):
@@ -233,21 +241,21 @@ UI overhaul + correctness pass.
 - Dock panel now scrolls (vertical `QScrollArea`) so all categories fit on small/narrow screens; min width 180 px.
 
 ### Fixed
-- **Trim:** `splitGeometry` 3-tuple unpack error on QGIS 3.x â€” now handles 2- and 3-return-value APIs.
+- **Trim:** `splitGeometry` 3-tuple unpack error on QGIS 3.x — now handles 2- and 3-return-value APIs.
 - **Fillet:** `create_fillet_and_trims` always drew the counter-clockwise (long) arc; now picks the shortest arc between tangent points.
 - **Scale / Mirror:** multipart polygons (with holes or multi-rings) were silently flattened to a single ring. New `_transform_vertices` helper preserves topology for point/line/polygon, single- and multi-part.
 - **Extend:** crashed on multi-part input (`asPolyline` on multi); now reads the first part safely. Multi-intersection chooses the closest landing point to the line's tip.
 - **add_feature_to_layer:** committed unconditionally, prematurely persisting the user's in-progress edits. Now commits only if it started the edit session.
-- **Buffer:** attributes were written via "last feature in `getFeatures()`" which is order-fragile â€” attributes are now set on the `QgsFeature` before insert.
-- **QInputDialog** parent set to QGIS main window for Fillet, Offset, Polygon (previously `None` â†’ off-screen positioning on multi-monitor setups).
+- **Buffer:** attributes were written via "last feature in `getFeatures()`" which is order-fragile — attributes are now set on the `QgsFeature` before insert.
+- **QInputDialog** parent set to QGIS main window for Fillet, Offset, Polygon (previously `None` → off-screen positioning on multi-monitor setups).
 
 ### Fixed (urban)
-- **Ada KÄ±rma** & **KavÅŸak**: premature `commitChanges` could persist the user's open edits on their own road layers. All three sites now use the "preserve user's edit session" pattern (`was_editing` guard).
+- **Ada Kırma** & **Kavşak**: premature `commitChanges` could persist the user's open edits on their own road layers. All three sites now use the "preserve user's edit session" pattern (`was_editing` guard).
 
 ### Removed
 - `sketcher_utils.trim_geometry_at_point` (broken: `click_point` was unused, function returned the input unchanged).
 - `sketcher_utils.fillet_corner` (broken: used `smooth()` not a real fillet; `vertex_index` was unused).
-- Dead helpers in `tool_fillet`: `_get_line_points`, `_find_direction_from_intersection`, `_trim_line_at_point` â€” superseded by `create_fillet_and_trims` / `trim_line_to_point`.
+- Dead helpers in `tool_fillet`: `_get_line_points`, `_find_direction_from_intersection`, `_trim_line_at_point` — superseded by `create_fillet_and_trims` / `trim_line_to_point`.
 
 ## [1.1.1] - 2026
 

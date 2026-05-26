@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD â€” Array (Rectangular + Polar) tool.
+"""planX CAD — Array (Rectangular + Polar) tool.
 
 Pick one feature, choose a mode + parameters in a dialog, see a live preview,
 then commit: the source feature is duplicated N times along a grid or around a
@@ -39,7 +39,7 @@ class ArrayDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("â¹ Array")
+        self.setWindowTitle("⏹ Array")
         self.setMinimumWidth(340)
         self.setModal(True)
         self._build_ui()
@@ -47,7 +47,7 @@ class ArrayDialog(QDialog):
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
-        title = QLabel("â¹ Array Parameters")
+        title = QLabel("⏹ Array Parameters")
         f = QFont()
         f.setBold(True)
         f.setPointSize(11)
@@ -56,7 +56,7 @@ class ArrayDialog(QDialog):
         layout.addWidget(title)
 
         self.cmb_mode = QComboBox()
-        self.cmb_mode.addItems(["Rectangular (rows Ã— cols)", "Polar (around center)"])
+        self.cmb_mode.addItems(["Rectangular (rows × cols)", "Polar (around center)"])
         layout.addWidget(self.cmb_mode)
 
         self.pages = QStackedWidget()
@@ -66,7 +66,7 @@ class ArrayDialog(QDialog):
         self.cmb_mode.currentIndexChanged.connect(self.pages.setCurrentIndex)
 
         btn_row = QHBoxLayout()
-        ok = QPushButton("âœ… Generate")
+        ok = QPushButton("✅ Generate")
         ok.setMinimumHeight(34)
         ok.setStyleSheet(
             "QPushButton { background: #1a237e; color: white; font-weight: bold;"
@@ -122,7 +122,7 @@ class ArrayDialog(QDialog):
         self.spn_sweep = QDoubleSpinBox()
         self.spn_sweep.setRange(-360.0, 360.0)
         self.spn_sweep.setValue(360.0)
-        self.spn_sweep.setSuffix(" Â°")
+        self.spn_sweep.setSuffix(" °")
         self.spn_sweep.setDecimals(1)
         form.addRow("Total sweep angle:", self.spn_sweep)
 
@@ -166,7 +166,7 @@ class tool_array(tool_base):
     def on_entity_selected(self, layer, feature, point):
         dlg = ArrayDialog(self.iface.mainWindow())
         if dlg.exec() != QDialog.Accepted:
-            self.tool_message.emit("â¹ Array â€” cancelled")
+            self.tool_message.emit("⏹ Array — cancelled")
             self._reset()
             return
         self.params = dlg.params()
@@ -175,7 +175,7 @@ class tool_array(tool_base):
             self._reset()
         else:
             self._step = 2
-            self.tool_message.emit("â¹ Array (polar) â€” click the center point")
+            self.tool_message.emit("⏹ Array (polar) — click the center point")
 
     def on_click(self, point, button):
         if self._step == 2 and self.params and self.params["mode"] == "polar" and button == Qt.MouseButton.LeftButton:
@@ -186,12 +186,12 @@ class tool_array(tool_base):
         if self._step == 2 and self.params and self.preview_rb and self.selected_feature:
             self._render_polar_preview(point)
 
-    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Rectangular â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ───────────────────────── Rectangular ─────────────────────────
 
     def _do_rectangular(self, layer, feature):
         geom = feature.geometry()
         if geom is None or geom.isEmpty():
-            self.tool_message.emit("âš ï¸ Array â€” empty source geometry")
+            self.tool_message.emit("⚠️ Array — empty source geometry")
             return
 
         rows, cols = self.params["rows"], self.params["cols"]
@@ -205,14 +205,14 @@ class tool_array(tool_base):
                 offset.translate(c * dx, r * dy)
                 self._add_feature(layer, offset, feature)
                 n_added += 1
-        self.tool_message.emit(f"âœ… Array (rect) â€” {n_added} copies added ({rows}Ã—{cols})")
+        self.tool_message.emit(f"✅ Array (rect) — {n_added} copies added ({rows}×{cols})")
 
-    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Polar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ───────────────────────── Polar ─────────────────────────
 
     def _do_polar(self, layer, feature, center: QgsPointXY):
         geom = feature.geometry()
         if geom is None or geom.isEmpty():
-            self.tool_message.emit("âš ï¸ Array â€” empty source geometry")
+            self.tool_message.emit("⚠️ Array — empty source geometry")
             return
 
         count = self.params["count"]
@@ -226,12 +226,12 @@ class tool_array(tool_base):
         for i in range(steps):
             angle = step_angle * (i + 1 if full_circle else i)
             if not full_circle and i == 0:
-                continue  # source stays at 0Â°
+                continue  # source stays at 0°
             rotated = rotate_geometry(geom, center, angle)
             if rotated is not None and not rotated.isEmpty():
                 self._add_feature(layer, rotated, feature)
                 n_added += 1
-        self.tool_message.emit(f"âœ… Array (polar) â€” {n_added} copies around center ({sweep:.0f}Â°)")
+        self.tool_message.emit(f"✅ Array (polar) — {n_added} copies around center ({sweep:.0f}°)")
 
     def _render_polar_preview(self, center: QgsPointXY) -> None:
         """Show all rotated copies as a single preview rubberband."""

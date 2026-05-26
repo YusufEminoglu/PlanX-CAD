@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD â€” Ark (Arc) Sketcher"""
+"""planX CAD — Ark (Arc) Sketcher"""
 
 import math
 from qgis.PyQt.QtCore import Qt
@@ -8,8 +8,8 @@ from .sketcher_base import sketcher_base
 
 
 class sketcher_arc(sketcher_base):
-    """3 nokta ile yay (ark) Ã§izer.
-    1. tÄ±k: BaÅŸlangÄ±Ã§ | 2. tÄ±k: Ara nokta | 3. tÄ±k: BitiÅŸ
+    """3 nokta ile yay (ark) çizer.
+    1. tık: Başlangıç | 2. tık: Ara nokta | 3. tık: Bitiş
     """
 
     ARC_SEGMENTS = 32
@@ -25,11 +25,11 @@ class sketcher_arc(sketcher_base):
             self.add_vertex(point)
             if len(self.vertices) == 1:
                 self.sketcher_message.emit(
-                    "âœï¸ Ark â€” Ara noktayÄ± tÄ±klayÄ±n"
+                    "✏️ Ark — Ara noktayı tıklayın"
                 )
             elif len(self.vertices) == 2:
                 self.sketcher_message.emit(
-                    "âœï¸ Ark â€” BitiÅŸ noktasÄ±nÄ± tÄ±klayÄ±n"
+                    "✏️ Ark — Bitiş noktasını tıklayın"
                 )
             elif len(self.vertices) == 3:
                 self._finish()
@@ -52,14 +52,14 @@ class sketcher_arc(sketcher_base):
         return None
 
     def _calc_arc(self, p1, p2, p3):
-        """3 noktadan yay hesapla (circumscribed circle yÃ¶ntemi)."""
+        """3 noktadan yay hesapla (circumscribed circle yöntemi)."""
         ax, ay = p1.x(), p1.y()
         bx, by = p2.x(), p2.y()
         cx, cy = p3.x(), p3.y()
 
         D = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by))
         if abs(D) < 1e-10:
-            # DoÄŸrusal â€” dÃ¼z Ã§izgi
+            # Doğrusal — düz çizgi
             return [p1, p2, p3]
 
         ux = ((ax * ax + ay * ay) * (by - cy) +
@@ -72,12 +72,12 @@ class sketcher_arc(sketcher_base):
         center = QgsPointXY(ux, uy)
         radius = math.sqrt((ax - ux) ** 2 + (ay - uy) ** 2)
 
-        # AÃ§Ä±larÄ± hesapla
+        # Açıları hesapla
         a1 = math.atan2(ay - uy, ax - ux)
         a2 = math.atan2(by - uy, bx - ux)
         a3 = math.atan2(cy - uy, cx - ux)
 
-        # YÃ¶nÃ¼ belirle (saat yÃ¶nÃ¼ veya tersi)
+        # Yönü belirle (saat yönü veya tersi)
         def normalize(a):
             while a < 0:
                 a += 2 * math.pi
@@ -89,7 +89,7 @@ class sketcher_arc(sketcher_base):
         a2 = normalize(a2)
         a3 = normalize(a3)
 
-        # a1'den a3'e giderken a2'yi geÃ§ecek yÃ¶nÃ¼ bul
+        # a1'den a3'e giderken a2'yi geçecek yönü bul
         ccw = self._is_ccw(a1, a2, a3)
 
         pts = []
@@ -113,7 +113,7 @@ class sketcher_arc(sketcher_base):
         return pts
 
     def _is_ccw(self, a1, a2, a3):
-        """a1â†’a2â†’a3 sÄ±rasÄ±nÄ±n CCW (counter-clockwise) olup olmadÄ±ÄŸÄ±nÄ± kontrol et."""
+        """a1→a2→a3 sırasının CCW (counter-clockwise) olup olmadığını kontrol et."""
         def normalize(a):
             return a % (2 * math.pi)
 

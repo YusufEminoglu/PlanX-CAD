@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD â€” Polyline Sketcher"""
+"""planX CAD — Polyline Sketcher"""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry
@@ -7,8 +7,8 @@ from .sketcher_base import sketcher_base
 
 
 class sketcher_polyline(sketcher_base):
-    """Ã‡oklu baÄŸlÄ± Ã§izgi segmentleri Ã§izer.
-    Sol tÄ±k: Nokta ekle | SaÄŸ tÄ±k / Enter: Bitir
+    """Çoklu bağlı çizgi segmentleri çizer.
+    Sol tık: Nokta ekle | Sağ tık / Enter: Bitir
     """
 
     def tool_name(self):

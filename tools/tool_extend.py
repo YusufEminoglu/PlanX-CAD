@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD â€” Extend AracÄ±"""
+"""planX CAD — Extend Aracı"""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry, QgsPointXY
@@ -8,8 +8,8 @@ from ..core.sketcher_utils import extend_geometry_to_boundary
 
 
 class tool_extend(tool_base):
-    """Ã‡izgiyi sÄ±nÄ±r objesine kadar uzatÄ±r.
-    1. SÄ±nÄ±r objesini seÃ§ | 2. UzatÄ±lacak Ã§izgiyi seÃ§
+    """Çizgiyi sınır objesine kadar uzatır.
+    1. Sınır objesini seç | 2. Uzatılacak çizgiyi seç
     """
 
     def __init__(self, canvas, iface):
@@ -22,13 +22,13 @@ class tool_extend(tool_base):
 
     def activate(self):
         super().activate()
-        self.tool_message.emit("â†—ï¸ Extend â€” SÄ±nÄ±r objesini seÃ§in")
+        self.tool_message.emit("↗️ Extend — Sınır objesini seçin")
 
     def on_entity_selected(self, layer, feature, point):
         self.boundary_layer = layer
         self.boundary_feature = feature
         self._step = 2
-        self.tool_message.emit("â†—ï¸ Extend â€” UzatÄ±lacak Ã§izgiyi seÃ§in")
+        self.tool_message.emit("↗️ Extend — Uzatılacak çizgiyi seçin")
 
     def on_click(self, point, button):
         if self._step == 2 and button == Qt.MouseButton.LeftButton:
@@ -42,7 +42,7 @@ class tool_extend(tool_base):
                 if new_geom:
                     self._apply_edit(layer, feature, new_geom)
                 else:
-                    self.tool_message.emit("âš ï¸ Extend â€” Uzatma yapÄ±lamadÄ±")
+                    self.tool_message.emit("⚠️ Extend — Uzatma yapılamadı")
 
             self._reset()
             self.boundary_layer = None

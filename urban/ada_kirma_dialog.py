@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-planX CAD â€” Ada KÄ±rma (KÃ¶ÅŸe Chamfer) Dialog'u
-Ä°mar adasÄ± kÃ¶ÅŸe kÄ±rma parametreleri.
+planX CAD — Ada Kırma (Köşe Chamfer) Dialog'u
+İmar adası köşe kırma parametreleri.
 """
 
 from qgis.PyQt.QtCore import Qt
@@ -14,11 +14,11 @@ from qgis.PyQt.QtGui import QFont, QPixmap, QPainter, QColor, QPen, QBrush
 
 
 class AdaKirmaDialog(QDialog):
-    """Ada kÄ±rma parametreleri dialog'u."""
+    """Ada kırma parametreleri dialog'u."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("ðŸ”¶ Ada KÄ±rma (KÃ¶ÅŸe Chamfer)")
+        self.setWindowTitle("🔶 Ada Kırma (Köşe Chamfer)")
         self.setMinimumWidth(400)
         self.setModal(True)
         self._setup_ui()
@@ -27,8 +27,8 @@ class AdaKirmaDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
 
-        # â”€â”€ BaÅŸlÄ±k â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        title = QLabel("ðŸ”¶ Ada KÄ±rma â€” KÃ¶ÅŸe DÃ¼zleÅŸtirme")
+        # ── Başlık ───────────────────────────────────────────────────────
+        title = QLabel("🔶 Ada Kırma — Köşe Düzleştirme")
         f = QFont()
         f.setPointSize(12)
         f.setBold(True)
@@ -38,15 +38,15 @@ class AdaKirmaDialog(QDialog):
         layout.addWidget(title)
 
         desc = QLabel(
-            "YollarÄ±n dÄ±ÅŸ kaldÄ±rÄ±m Ã§izgilerinin kesiÅŸtiÄŸi kÃ¶ÅŸeler\n"
-            "kÄ±rÄ±lÄ±r ve arta kalan Ã§izgi parÃ§alarÄ± temizlenir."
+            "Yolların dış kaldırım çizgilerinin kesiştiği köşeler\n"
+            "kırılır ve arta kalan çizgi parçaları temizlenir."
         )
         desc.setWordWrap(True)
         desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
         desc.setStyleSheet("color: #546e7a; font-size: 10px;")
         layout.addWidget(desc)
 
-        # â”€â”€ Åžematik Ã‡izim â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── Şematik Çizim ────────────────────────────────────────────────
         self.schema_label = QLabel()
         self.schema_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.schema_label.setMinimumHeight(130)
@@ -54,24 +54,24 @@ class AdaKirmaDialog(QDialog):
         layout.addWidget(self.schema_label)
 
         sep = QFrame()
-        sep.setFrameShape(QFrame.HLine)
+        sep.setFrameShape(QFrame.Shape.HLine)
         layout.addWidget(sep)
 
-        # â”€â”€ KÄ±rma Tipi â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        tip_group = QGroupBox("KÄ±rma Tipi")
+        # ── Kırma Tipi ───────────────────────────────────────────────────
+        tip_group = QGroupBox("Kırma Tipi")
         tip_form = QFormLayout(tip_group)
 
         self.cmb_tip = QComboBox()
         self.cmb_tip.addItems([
-            "EÄŸri (Radius ile yuvarlatma)",
-            "DÃ¼z (Chamfer â€” dÃ¼z Ã§izgi ile kÄ±rma)",
+            "Eğri (Radius ile yuvarlatma)",
+            "Düz (Chamfer — düz çizgi ile kırma)",
         ])
         self.cmb_tip.currentIndexChanged.connect(self._on_tip_changed)
-        tip_form.addRow("KÄ±rma tipi:", self.cmb_tip)
+        tip_form.addRow("Kırma tipi:", self.cmb_tip)
 
         layout.addWidget(tip_group)
 
-        # â”€â”€ Parametre â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── Parametre ────────────────────────────────────────────────────
         param_group = QGroupBox("Parametreler")
         param_form = QFormLayout(param_group)
 
@@ -81,9 +81,9 @@ class AdaKirmaDialog(QDialog):
         self.spn_mesafe.setSuffix(" m")
         self.spn_mesafe.setSingleStep(0.5)
         self.spn_mesafe.setToolTip(
-            "KesiÅŸim noktasÄ±ndan bu mesafe kadar geriye kesilir.\n"
-            "EÄŸri modda: ark yarÄ±Ã§apÄ± olarak kullanÄ±lÄ±r.\n"
-            "DÃ¼z modda: her iki Ã§izgiden bu kadar kesilir."
+            "Kesişim noktasından bu mesafe kadar geriye kesilir.\n"
+            "Eğri modda: ark yarıçapı olarak kullanılır.\n"
+            "Düz modda: her iki çizgiden bu kadar kesilir."
         )
         self.lbl_mesafe = QLabel("Radius (m):")
         param_form.addRow(self.lbl_mesafe, self.spn_mesafe)
@@ -94,11 +94,11 @@ class AdaKirmaDialog(QDialog):
         self.spn_tolerans.setSuffix(" m")
         self.spn_tolerans.setSingleStep(0.1)
         self.spn_tolerans.setToolTip(
-            "KesiÅŸim noktasÄ± arama toleransÄ±.\n"
-            "TÄ±klanan noktanÄ±n bu mesafe etrafÄ±ndaki\n"
-            "Ã§izgi kesiÅŸimleri aranÄ±r."
+            "Kesişim noktası arama toleransı.\n"
+            "Tıklanan noktanın bu mesafe etrafındaki\n"
+            "çizgi kesişimleri aranır."
         )
-        param_form.addRow("Arama toleransÄ±:", self.spn_tolerans)
+        param_form.addRow("Arama toleransı:", self.spn_tolerans)
 
         self.spn_artik_temizle = QDoubleSpinBox()
         self.spn_artik_temizle.setRange(0.0, 20.0)
@@ -106,18 +106,18 @@ class AdaKirmaDialog(QDialog):
         self.spn_artik_temizle.setSuffix(" m")
         self.spn_artik_temizle.setSingleStep(0.5)
         self.spn_artik_temizle.setToolTip(
-            "KÄ±rma sonrasÄ± arta kalan Ã§ok kÄ±sa Ã§izgi\n"
-            "parÃ§alarÄ±nÄ± otomatik silme eÅŸiÄŸi.\n"
-            "Bu uzunluktan kÄ±sa parÃ§alar silinir."
+            "Kırma sonrası arta kalan çok kısa çizgi\n"
+            "parçalarını otomatik silme eşiği.\n"
+            "Bu uzunluktan kısa parçalar silinir."
         )
-        param_form.addRow("ArtÄ±k temizleme:", self.spn_artik_temizle)
+        param_form.addRow("Artık temizleme:", self.spn_artik_temizle)
 
         layout.addWidget(param_group)
 
-        # â”€â”€ Butonlar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── Butonlar ─────────────────────────────────────────────────────
         btn_layout = QHBoxLayout()
 
-        btn_ok = QPushButton("âœ… KÄ±r")
+        btn_ok = QPushButton("✅ Kır")
         btn_ok.setMinimumHeight(40)
         btn_ok.setStyleSheet(
             "QPushButton { background: #e65100; color: white; "
@@ -128,7 +128,7 @@ class AdaKirmaDialog(QDialog):
         btn_ok.clicked.connect(self.accept)
         btn_layout.addWidget(btn_ok)
 
-        btn_cancel = QPushButton("Ä°ptal")
+        btn_cancel = QPushButton("İptal")
         btn_cancel.setMinimumHeight(40)
         btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(btn_cancel)
@@ -139,56 +139,56 @@ class AdaKirmaDialog(QDialog):
         if index == 0:
             self.lbl_mesafe.setText("Radius (m):")
         else:
-            self.lbl_mesafe.setText("KÄ±rma mesafesi (m):")
+            self.lbl_mesafe.setText("Kırma mesafesi (m):")
 
     def _draw_schema(self):
-        """KÃ¶ÅŸe kÄ±rma ÅŸemasÄ±nÄ± Ã§iz."""
+        """Köşe kırma şemasını çiz."""
         px = QPixmap(380, 120)
         px.fill(QColor(255, 248, 240))
         p = QPainter(px)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # â”€â”€ Ã–NCE (sol taraf) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        # Ä°ki Ã§izgi kesiÅŸiyor â€” kÃ¶ÅŸe keskin
+        # ── ÖNCE (sol taraf) ─────────────────────────────────────
+        # İki çizgi kesişiyor — köşe keskin
         p.setPen(QPen(QColor(120, 120, 120), 2))
-        p.drawLine(20, 100, 90, 30)   # Ã‡izgi 1
-        p.drawLine(20, 30, 90, 100)  # Ã‡izgi 2
+        p.drawLine(20, 100, 90, 30)   # Çizgi 1
+        p.drawLine(20, 30, 90, 100)  # Çizgi 2
 
-        # KesiÅŸim noktasÄ±
+        # Kesişim noktası
         p.setPen(QPen(QColor(255, 0, 0), 6))
         p.drawPoint(55, 65)
 
         # Etiket
         p.setPen(QColor(120, 120, 120))
-        font = QFont("Arial", 8, QFont.Bold)
+        font = QFont("Arial", 8, QFont.Weight.Bold)
         p.setFont(font)
-        p.drawText(30, 115, "Ã–NCE")
+        p.drawText(30, 115, "ÖNCE")
 
-        # â”€â”€ OK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── OK ───────────────────────────────────────────────────
         p.setPen(QPen(QColor(100, 100, 100), 2))
         p.drawLine(120, 65, 150, 65)
         p.drawLine(145, 60, 150, 65)
         p.drawLine(145, 70, 150, 65)
 
-        # â”€â”€ SONRA: DÃ¼z kÄ±rma (orta) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── SONRA: Düz kırma (orta) ─────────────────────────────
         p.setPen(QPen(QColor(26, 35, 126), 2))
-        p.drawLine(170, 100, 200, 55)   # KÄ±rpÄ±lmÄ±ÅŸ Ã§izgi 1
-        p.drawLine(170, 30, 200, 75)   # KÄ±rpÄ±lmÄ±ÅŸ Ã§izgi 2
+        p.drawLine(170, 100, 200, 55)   # Kırpılmış çizgi 1
+        p.drawLine(170, 30, 200, 75)   # Kırpılmış çizgi 2
 
-        # Chamfer Ã§izgisi
+        # Chamfer çizgisi
         p.setPen(QPen(QColor(255, 109, 0), 3))
         p.drawLine(200, 55, 200, 75)
 
         font2 = QFont("Arial", 7)
         p.setFont(font2)
         p.setPen(QColor(255, 109, 0))
-        p.drawText(204, 68, "dÃ¼z")
+        p.drawText(204, 68, "düz")
 
         p.setPen(QColor(26, 35, 126))
         p.setFont(font)
-        p.drawText(170, 115, "DÃœZ")
+        p.drawText(170, 115, "DÜZ")
 
-        # â”€â”€ SONRA: EÄŸri kÄ±rma (saÄŸ) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── SONRA: Eğri kırma (sağ) ─────────────────────────────
         p.setPen(QPen(QColor(26, 35, 126), 2))
         p.drawLine(270, 100, 300, 55)
         p.drawLine(270, 30, 300, 75)
@@ -196,22 +196,22 @@ class AdaKirmaDialog(QDialog):
         # Ark
         from qgis.PyQt.QtCore import QRectF
         p.setPen(QPen(QColor(76, 175, 80), 3))
-        # Basit ark Ã§izimi
+        # Basit ark çizimi
         p.drawArc(QRectF(285, 50, 30, 30).toRect(), 60 * 16, 60 * 16)
 
         p.setPen(QColor(76, 175, 80))
         p.setFont(font2)
-        p.drawText(310, 68, "eÄŸri")
+        p.drawText(310, 68, "eğri")
 
         p.setPen(QColor(26, 35, 126))
         p.setFont(font)
-        p.drawText(270, 115, "EÄžRÄ°")
+        p.drawText(270, 115, "EĞRİ")
 
         p.end()
         self.schema_label.setPixmap(px)
 
     def get_params(self):
-        """Dialog parametrelerini dÃ¶ndÃ¼r."""
+        """Dialog parametrelerini döndür."""
         return {
             "tip": "egri" if self.cmb_tip.currentIndex() == 0 else "duz",
             "mesafe": self.spn_mesafe.value(),

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD â€” Daire (Circle) Sketcher"""
+"""planX CAD — Daire (Circle) Sketcher"""
 
 import math
 from qgis.PyQt.QtCore import Qt
@@ -8,11 +8,11 @@ from .sketcher_base import sketcher_base
 
 
 class sketcher_circle(sketcher_base):
-    """Merkez + yarÄ±Ã§ap ile daire Ã§izer.
-    1. tÄ±k: Merkez | 2. tÄ±k: YarÄ±Ã§ap
+    """Merkez + yarıçap ile daire çizer.
+    1. tık: Merkez | 2. tık: Yarıçap
     """
 
-    SEGMENTS = 64  # Daire segment sayÄ±sÄ±
+    SEGMENTS = 64  # Daire segment sayısı
 
     def __init__(self, canvas, iface):
         super().__init__(canvas, iface)
@@ -30,7 +30,7 @@ class sketcher_circle(sketcher_base):
                 self.center = point
                 self.add_vertex(point)
                 self.sketcher_message.emit(
-                    "âœï¸ Daire â€” YarÄ±Ã§apÄ± belirlemek iÃ§in tÄ±klayÄ±n"
+                    "✏️ Daire — Yarıçapı belirlemek için tıklayın"
                 )
             else:
                 self.add_vertex(point)
@@ -50,13 +50,13 @@ class sketcher_circle(sketcher_base):
                 (radius_pt.x() - self.center.x()) ** 2 +
                 (radius_pt.y() - self.center.y()) ** 2
             )
-            # QgsGeometry.fromPointXY + buffer ile mÃ¼kemmel daire
+            # QgsGeometry.fromPointXY + buffer ile mükemmel daire
             center_geom = QgsGeometry.fromPointXY(self.center)
             return center_geom.buffer(radius, self.SEGMENTS)
         return None
 
     def _calc_circle(self, center, edge_point):
-        """Daire noktalarÄ±nÄ± hesapla (Ã¶nizleme iÃ§in)."""
+        """Daire noktalarını hesapla (önizleme için)."""
         radius = math.sqrt(
             (edge_point.x() - center.x()) ** 2 +
             (edge_point.y() - center.y()) ** 2
