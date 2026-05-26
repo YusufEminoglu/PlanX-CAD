@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.17.5] - 2026-05-26
+
+- Maintenance release: refreshed Plugin Hub package with QGIS 4 compatibility fixes and repaired CAD UI text encoding.
+
 ## [1.17.4] - 2026-05-26
 
 - Repair mojibake in CAD UI text and tool messages.
