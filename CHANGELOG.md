@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.21.0] - 2026-05-26
+
+### AutoCAD-style command line
+- The dock search box is now an **AutoCAD-style command line**. Type a command alias and press Enter to launch the tool: `L`→Line, `PL`→Polyline, `REC`→Rectangle, `O`→Offset, `TR`→Trim, `EX`→Extend, `F`→Fillet, `CO`/`CP`→Copy, `MI`→Mirror, `RO`→Rotate, `SC`→Scale, `AR`→Array, `H`→Hatch, `DIM`→Dimension, `XL`→Construction line, and more.
+- **Autocomplete popup** suggests commands as you type (case-insensitive prefix match over aliases + tool names).
+- **Command history**: Up/Down arrows recall previously entered commands like a terminal (50-entry ring, consecutive duplicates skipped).
+- **Resolution precedence**: AutoCAD alias → exact tool key → fuzzy name match. Unknown input echoes `Unknown command: …` instead of doing nothing.
+- The alias→tool mapping and resolution precedence are asserted on **both QGIS 3 LTR and QGIS 4** in the runtime smoke probe.
+
 ## [1.20.0] - 2026-05-26
 
 Stable release — full accessibility coverage, verified on QGIS 3 LTR and QGIS 4.

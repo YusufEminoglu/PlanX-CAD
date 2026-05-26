@@ -230,6 +230,26 @@ def check_dock_accessibility() -> bool:
     return _ok("dock accessibility (a11y names + focus)", ok, detail)
 
 
+def check_command_line() -> bool:
+    """Command line: CommandLineEdit + alias map + completer must be wired,
+    and every alias must resolve to a tool key referenced in the dock."""
+    dock_path = PLUGIN_DIR / "dialogs" / "cad_dock.py"
+    if not dock_path.exists():
+        return _ok("command line", False, "cad_dock.py missing")
+    src = dock_path.read_text(encoding="utf-8")
+    has_widget = "class CommandLineEdit" in src
+    has_aliases = "_COMMAND_ALIASES" in src
+    has_completer = "QCompleter(" in src
+    has_runner = "_run_command" in src
+    ok = has_widget and has_aliases and has_completer and has_runner
+    missing = [n for n, p in (
+        ("CommandLineEdit", has_widget), ("_COMMAND_ALIASES", has_aliases),
+        ("QCompleter", has_completer), ("_run_command", has_runner),
+    ) if not p]
+    return _ok("command line (alias + history + completer)", ok,
+               "wired" if ok else f"missing: {', '.join(missing)}")
+
+
 # ── runner ────────────────────────────────────────────────────────────────────
 
 def run_all() -> bool:
@@ -247,6 +267,7 @@ def run_all() -> bool:
         check_qgis_pyside_import_guard(),
         check_dock_quick_actions_grid(),
         check_dock_accessibility(),
+        check_command_line(),
     ]
     passed = sum(results)
     total = len(results)

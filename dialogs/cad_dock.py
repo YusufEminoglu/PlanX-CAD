@@ -14,7 +14,7 @@ from qgis.PyQt.QtWidgets import (
     QDockWidget, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QGroupBox, QGridLayout,
     QFrame, QSizePolicy, QToolButton, QButtonGroup,
-    QScrollArea, QLineEdit
+    QScrollArea, QLineEdit, QCompleter
 )
 
 
@@ -60,6 +60,55 @@ class CadToolButton(QToolButton):
                 background: #99f6e4;
             }
         """)
+
+
+class CommandLineEdit(QLineEdit):
+    """AutoCAD-style command input.
+
+    Behaves like a normal line edit but adds a recallable command history:
+    Up/Down arrows cycle through previously entered commands (newest last),
+    exactly like the AutoCAD command line. Enter still fires returnPressed.
+    """
+
+    _MAX_HISTORY = 50
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._history: list[str] = []
+        self._hist_index = 0  # points one past the last entry (= live input)
+
+    def add_history(self, text: str) -> None:
+        text = (text or "").strip()
+        if not text:
+            self._hist_index = len(self._history)
+            return
+        # Skip consecutive duplicates so Up doesn't repeat the same entry.
+        if not (self._history and self._history[-1].lower() == text.lower()):
+            self._history.append(text)
+            self._history = self._history[-self._MAX_HISTORY:]
+        self._hist_index = len(self._history)
+
+    def history(self) -> list[str]:
+        return list(self._history)
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        if key == Qt.Key.Key_Up and self._history:
+            self._hist_index = max(0, self._hist_index - 1)
+            self.setText(self._history[self._hist_index])
+            self.selectAll()
+            event.accept()
+            return
+        if key == Qt.Key.Key_Down and self._history:
+            self._hist_index = min(len(self._history), self._hist_index + 1)
+            if self._hist_index >= len(self._history):
+                self.clear()
+            else:
+                self.setText(self._history[self._hist_index])
+                self.selectAll()
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
 
 class CollapsibleGroupBox(QGroupBox):
@@ -152,6 +201,41 @@ class CADDockWidget(QDockWidget):
     def _icon(self, name):
         """Get icon file absolute path."""
         return os.path.join(self.icon_dir, name)
+
+    # AutoCAD-style command aliases -> internal tool key. Used by the command
+    # line (search box) to resolve typed commands on Enter. Short forms mirror
+    # AutoCAD muscle memory (L=Line, O=Offset, TR=Trim, CO=Copy, MI=Mirror...).
+    _COMMAND_ALIASES = {
+        "l": "line", "line": "line",
+        "pl": "polyline", "pline": "polyline", "polyline": "polyline",
+        "rec": "rectangle", "rectang": "rectangle", "rectangle": "rectangle",
+        "pol": "polygon", "polygon": "polygon",
+        "c": "circle", "circle": "circle",
+        "a": "arc", "arc": "arc",
+        "o": "offset", "offset": "offset",
+        "tr": "trim", "trim": "trim",
+        "ex": "extend", "extend": "extend",
+        "f": "fillet", "fillet": "fillet",
+        "b": "buffer", "buffer": "buffer",
+        "m": "move", "move": "move",
+        "co": "copy", "cp": "copy", "copy": "copy",
+        "ro": "rotate", "rotate": "rotate",
+        "sc": "scale", "scale": "scale",
+        "mi": "mirror", "mirror": "mirror",
+        "ar": "array", "array": "array",
+        "div": "divide", "divide": "divide",
+        "j": "join", "join": "join",
+        "h": "hatch", "hatch": "hatch",
+        "mo": "multi_offset", "moff": "multi_offset",
+        "ve": "vertex_edit", "vertex": "vertex_edit",
+        "xl": "construction_inf", "xline": "construction_inf", "construction": "construction_inf",
+        "ray": "construction_ray",
+        "seg": "construction_seg",
+        "di": "measure", "dist": "measure", "measure": "measure",
+        "aa": "measure_area", "area": "measure_area",
+        "dim": "dimension", "dimension": "dimension",
+        "road": "road", "junction": "junction", "ada": "ada_kirma",
+    }
 
     # Tool key -> visible shortcut for tooltip badge. Mirrors main_plugin._SHORTCUTS.
     _SHORTCUT_BADGES = {
@@ -250,20 +334,22 @@ class CADDockWidget(QDockWidget):
         )
         layout.addWidget(header)
 
-        self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Find tool / Araç ara (Enter)")
+        self.search_input = CommandLineEdit()
+        self.search_input.setPlaceholderText("Command / Komut: L, O, TR… (Enter)")
         self.search_input.setClearButtonEnabled(True)
-        self.search_input.setAccessibleName("Tool search")
+        self.search_input.setAccessibleName("Command line")
         self.search_input.setAccessibleDescription(
-            "Filter CAD tools by name; press Enter to activate the first match"
+            "AutoCAD-style command line. Type a command or alias (L, O, TR, "
+            "F, CO, MI...) and press Enter to run it. Up/Down recalls history."
         )
         self.search_input.setStyleSheet(
             "QLineEdit { border: 1px solid #d8e0ea; border-radius: 4px; padding: 4px 6px; "
+            "font-family: 'Consolas','Courier New',monospace; "
             "font-size: 10px; background: white; color: #12343b; }"
             "QLineEdit:focus { border: 1px solid #0f766e; }"
         )
         self.search_input.textChanged.connect(self._apply_tool_filter)
-        self.search_input.returnPressed.connect(self._activate_first_match)
+        self.search_input.returnPressed.connect(self._run_command)
         layout.addWidget(self.search_input)
 
         # ── Drawing Tools / Çizim Araçları ─────────────────────────────────
@@ -657,7 +743,7 @@ class CADDockWidget(QDockWidget):
             self.coord_widget = None
 
         # ── Status Bar / Durum Çubuğu ──────────────────────────────────────
-        self.status_label = QLabel("Ready — shortcuts: Ctrl+Shift+<letter> / Hazır — kısayollar: Ctrl+Shift+<harf>")
+        self.status_label = QLabel("Ready — type a command (L, O, TR…) or use Ctrl+Shift+<letter> / Hazır — komut yazın veya kısayol kullanın")
         self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet(
             "color: #64748b; font-size: 9px; padding: 2px 4px; "
@@ -666,8 +752,18 @@ class CADDockWidget(QDockWidget):
         layout.addWidget(self.status_label)
 
         layout.addStretch()
+        self._install_command_completer()
         self._load_state()
         self.refresh_layer_state()
+
+    def _install_command_completer(self):
+        """Attach an autocomplete popup to the command line, listing every
+        AutoCAD alias plus each canonical tool key (built after buttons exist)."""
+        words = sorted(set(self._COMMAND_ALIASES.keys()) | set(self.buttons.keys()))
+        completer = QCompleter(words, self.search_input)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.search_input.setCompleter(completer)
 
     def unload(self):
         self._save_state()
@@ -767,15 +863,39 @@ class CADDockWidget(QDockWidget):
             visible = (not query) or (query in terms)
             btn.setVisible(visible)
 
-    def _activate_first_match(self):
-        query = (self.search_input.text() or "").strip().lower()
-        if not query:
+    def _resolve_command(self, text):
+        """Map typed command text to a tool key. AutoCAD alias > exact key >
+        fuzzy search-term match. Returns the tool key or None."""
+        token = (text or "").strip().lower()
+        if not token:
+            return None
+        key = self._COMMAND_ALIASES.get(token)
+        if key and key in self.buttons:
+            return key
+        if token in self.buttons:
+            return token
+        for k in self.buttons.keys():
+            terms = self._tool_search_terms.get(k, k)
+            if token in terms:
+                return k
+        return None
+
+    def _run_command(self):
+        """Resolve and run the command currently typed in the command line."""
+        raw = (self.search_input.text() or "").strip()
+        if not raw:
             return
-        for key in self.buttons.keys():
-            terms = self._tool_search_terms.get(key, key)
-            if query in terms:
-                self.tool_activated.emit(key)
-                return
+        self.search_input.add_history(raw)
+        key = self._resolve_command(raw)
+        if key:
+            self.set_status(f"> {key.replace('_', ' ').upper()} / Komut calistirildi")
+            self.tool_activated.emit(key)
+        else:
+            self.set_status(f"Unknown command: {raw} / Bilinmeyen komut: {raw}")
+
+    def _activate_first_match(self):
+        """Backward-compatible alias for the command-line Enter handler."""
+        self._run_command()
 
     def uncheck_all(self):
         checked = self.button_group.checkedButton()

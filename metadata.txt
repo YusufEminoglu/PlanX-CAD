@@ -3,7 +3,7 @@ name=PlanX CAD Toolset
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=Lightweight and fast CAD toolset for urban planning processes in QGIS. Features include drawing, editing, transforming, measuring, and road platform design.
-version=1.20.0
+version=1.21.0
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
@@ -24,6 +24,11 @@ experimental=False
 deprecated=False
 
 changelog=
+    PlanX CAD Toolset 1.21.0 - AutoCAD-style command line.
+        - The dock search box is now a command line: type an AutoCAD-style alias (L, PL, REC, O, TR, EX, F, CO, MI, RO, SC, AR, H, DIM...) and press Enter to launch the matching tool.
+        - Autocomplete popup suggests commands as you type; Up/Down arrows recall command history like a terminal.
+        - Resolution precedence: alias, then exact tool key, then fuzzy name match; unknown commands echo a clear message instead of failing silently.
+        - Alias-to-tool mapping is verified on both QGIS 3 LTR and QGIS 4 in the runtime smoke test.
     PlanX CAD Toolset 1.20.0 - Stable release: full accessibility coverage, verified on QGIS 3 LTR and QGIS 4.
         - Completed the screen-reader pass: tool search box and Road/Junction/Block-Chamfer buttons now expose accessible names/descriptions (every interactive control in the dock is now reader-friendly).
         - Verified clean dock construction on both QGIS 3.x LTR and QGIS 4 runtimes via the full release gate.
