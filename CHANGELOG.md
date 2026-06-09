@@ -2,10 +2,6 @@
 
 ## [1.23.0] - 2026-06-09
 
-- Accurate AutoCAD-style pick aperture, Fillet/Trim/Extend self-pick exclusion, new PNG icon
-
-## [1.23.0] - 2026-06-09
-
 ### Fixed
 - **Pick aperture is now enforced.** `_pick_feature` filtered candidates only by bounding-box intersection, so a long diagonal line or large polygon could be selected even when the click was far from its actual geometry (its bbox covered the click). The 10-px aperture (`PICK_TOLERANCE`) is now also enforced on the real geometry distance — picks behave like AutoCAD's pickbox.
 - **Two-step tools can no longer operate a feature on itself.** In Fillet, Trim and Extend, the second pick could return the *first* feature again (click near the first line → fillet/trim a line with itself, producing garbage geometry or a confusing failure). The second pick now excludes the first feature (`_pick_feature(..., exclude=...)`); Fillet's hover preview uses the same layer-aware exclusion instead of a fragile id-only comparison.
