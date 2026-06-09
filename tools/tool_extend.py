@@ -32,7 +32,11 @@ class tool_extend(tool_base):
 
     def on_click(self, point, button):
         if self._step == 2 and button == Qt.MouseButton.LeftButton:
-            result = self._pick_feature(self.canvas.mouseLastXY())
+            # Sınır objesi dışlanır — çizgi kendi sınırına uzatılamaz
+            result = self._pick_feature(
+                self.canvas.mouseLastXY(),
+                exclude=(self.boundary_layer, self.boundary_feature),
+            )
             if result:
                 layer, feature = result
                 target_geom = feature.geometry()

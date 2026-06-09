@@ -205,8 +205,12 @@ class tool_base(QgsMapTool):
             return match.point()
         return None
 
-    def _pick_feature(self, pos):
-        """Tıklanan noktadaki feature'ı bul."""
+    def _pick_feature(self, pos, exclude=None):
+        """Tıklanan noktadaki feature'ı bul.
+
+        exclude: (layer, feature) — iki adımlı araçlarda (Fillet/Trim/Extend)
+        ikinci seçimde birinci objenin yeniden seçilmesini engeller.
+        """
         point = self.toMapCoordinates(pos)
 
         # Tolerans hesapla
@@ -220,7 +224,7 @@ class tool_base(QgsMapTool):
         layer = self.iface.activeLayer()
         if layer and isinstance(layer, QgsVectorLayer):
             if not self.require_editable or layer.isEditable():
-                result = self._search_layer(layer, search_rect, point)
+                result = self._search_layer(layer, search_rect, point, exclude)
                 if result:
                     return result
 
@@ -229,13 +233,13 @@ class tool_base(QgsMapTool):
             if isinstance(lyr, QgsVectorLayer):
                 if self.require_editable and not lyr.isEditable():
                     continue
-                result = self._search_layer(lyr, search_rect, point)
+                result = self._search_layer(lyr, search_rect, point, exclude)
                 if result:
                     return result
 
         return None
 
-    def _search_layer(self, layer, search_rect, point):
+    def _search_layer(self, layer, search_rect, point, exclude=None):
         """Bir katmanda feature ara."""
         query_rect = search_rect
         query_point = point
@@ -258,16 +262,28 @@ class tool_base(QgsMapTool):
         best_dist = float('inf')
         best_feat = None
 
+        exclude_id = None
+        if exclude is not None and exclude[0] is not None and exclude[1] is not None:
+            if exclude[0] is layer or exclude[0].id() == layer.id():
+                exclude_id = exclude[1].id()
+
+        click_geom = QgsGeometry.fromPointXY(query_point)
         for feat in features:
+            if exclude_id is not None and feat.id() == exclude_id:
+                continue
             geom = feat.geometry()
             if geom.isEmpty():
                 continue
-            dist = geom.distance(QgsGeometry.fromPointXY(query_point))
+            dist = geom.distance(click_geom)
             if dist < best_dist:
                 best_dist = dist
                 best_feat = feat
 
-        if best_feat is not None:
+        # getFeatures(rect) bbox kesişimine bakar; uzun/çapraz bir objenin
+        # bbox'ı tıklanan noktayı kapsayıp geometrisi uzakta kalabilir.
+        # Aperture (PICK_TOLERANCE) gerçek geometri mesafesinde de uygulanır.
+        pick_tol = max(query_rect.width(), query_rect.height()) / 2.0
+        if best_feat is not None and best_dist <= pick_tol:
             return (layer, best_feat)
         return None
 

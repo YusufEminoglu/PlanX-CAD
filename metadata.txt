@@ -3,7 +3,7 @@ name=PlanX CAD Toolset
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=Lightweight and fast CAD toolset for urban planning processes in QGIS. Features include drawing, editing, transforming, measuring, and road platform design.
-version=1.22.0
+version=1.23.0
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
@@ -15,7 +15,7 @@ repository=https://github.com/YusufEminoglu/PlanX-CAD
 hasProcessingProvider=no
 
 tags=cad, sketcher, drawing, editing, urban planning, road, city planning
-icon=icons/icon_main.svg
+icon=icons/icon.png
 
 homepage=https://github.com/YusufEminoglu/PlanX-CAD
 category=Vector
@@ -24,6 +24,11 @@ experimental=False
 deprecated=False
 
 changelog=
+    PlanX CAD Toolset 1.23.0 - Accurate AutoCAD-style picking + self-pick safety + new PNG icon.
+        - Pick aperture is now enforced on real geometry distance: previously a long diagonal line or large polygon could be selected from far away because only its bounding box covered the click. Picks now respect the 10-pixel pickbox like AutoCAD.
+        - Fillet, Trim and Extend can no longer operate a feature on itself: the second pick excludes the first selected feature, so clicking near the first line cannot fillet/trim it against itself.
+        - New crisp 256x256 PNG icon replaces the SVG (SVG icons render blank in some QGIS builds).
+        - Static smoke test extended to lock the new pick behaviour (11 checks).
     PlanX CAD Toolset 1.22.0 - QGIS 4 drawing fix + command-loop and fillet preview polish.
         - Fixed a QGIS 4 crash that stopped Line/Polyline from finishing: an unscoped Qt.Key_Z enum raised AttributeError in the key handler before Enter could complete a sketch. Drawing now works on both QGIS 3 and QGIS 4.
         - Fillet preview now reliably shows: the preview rubber band is recreated if missing and drawn as a bold orange dashed arc (the old thin blue line was easy to miss / silently failed).

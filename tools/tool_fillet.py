@@ -56,7 +56,11 @@ class tool_fillet(tool_base):
 
     def on_click(self, point, button):
         if self._step == 2 and button == Qt.MouseButton.LeftButton:
-            result = self._pick_feature(self.canvas.mouseLastXY())
+            # Birinci çizgi dışlanır — çizgi kendisiyle fillet edilemez
+            result = self._pick_feature(
+                self.canvas.mouseLastXY(),
+                exclude=(self.first_layer, self.first_feature),
+            )
             if result:
                 layer, feature = result
                 self._do_fillet(layer, feature, point)
@@ -111,13 +115,12 @@ class tool_fillet(tool_base):
         self.preview_rb.reset(QgsWkbTypes.LineGeometry)
 
         pos = self.canvas.mouseLastXY()
-        result = self._pick_feature(pos)
+        result = self._pick_feature(
+            pos, exclude=(self.first_layer, self.first_feature)
+        )
         if not result:
             return
         layer, feature = result
-        # Kendisi değilse
-        if feature.id() == self.first_feature.id():
-            return
         geom1 = self.first_feature.geometry()
         geom2 = feature.geometry()
         fillet_result = create_fillet_and_trims(geom1, geom2, self.radius)

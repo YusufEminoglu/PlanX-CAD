@@ -36,7 +36,11 @@ class tool_trim(tool_base):
 
     def on_click(self, point, button):
         if self._step == 2 and button == Qt.MouseButton.LeftButton:
-            result = self._pick_feature(self.canvas.mouseLastXY())
+            # Kesme sınırı dışlanır — sınır kendisiyle kırpılamaz
+            result = self._pick_feature(
+                self.canvas.mouseLastXY(),
+                exclude=(self.cutting_layer, self.cutting_feature),
+            )
             if result:
                 layer, feature = result
                 self._do_trim(layer, feature, point)

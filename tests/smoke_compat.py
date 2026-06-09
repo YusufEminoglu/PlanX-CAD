@@ -254,6 +254,30 @@ def check_dock_accessibility() -> bool:
     return _ok("dock accessibility (a11y names + focus)", ok, detail)
 
 
+def check_pick_aperture_and_exclusion() -> bool:
+    """tool_base must enforce the pick aperture (PICK_TOLERANCE) on real
+    geometry distance, and the two-step tools (Fillet/Trim/Extend) must
+    exclude the first feature on the second pick."""
+    base = PLUGIN_DIR / "tools" / "tool_base.py"
+    if not base.exists():
+        return _ok("pick aperture + exclusion", False, "tool_base.py missing")
+    base_src = base.read_text(encoding="utf-8")
+    has_tol = "best_dist <= pick_tol" in base_src
+    has_excl_param = "def _pick_feature(self, pos, exclude=None)" in base_src
+
+    missing: list[str] = []
+    if not has_tol:
+        missing.append("aperture check in _search_layer")
+    if not has_excl_param:
+        missing.append("exclude param in _pick_feature")
+    for tool in ("tool_fillet.py", "tool_trim.py", "tool_extend.py"):
+        src = (PLUGIN_DIR / "tools" / tool).read_text(encoding="utf-8")
+        if "exclude=(" not in src:
+            missing.append(f"{tool}: second pick has no exclusion")
+    return _ok("pick aperture + self-pick exclusion", not missing,
+               "enforced" if not missing else f"missing: {', '.join(missing)}")
+
+
 def check_command_line() -> bool:
     """Command line: CommandLineEdit + alias map + completer must be wired,
     and every alias must resolve to a tool key referenced in the dock."""
@@ -292,6 +316,7 @@ def run_all() -> bool:
         check_dock_quick_actions_grid(),
         check_dock_accessibility(),
         check_command_line(),
+        check_pick_aperture_and_exclusion(),
     ]
     passed = sum(results)
     total = len(results)

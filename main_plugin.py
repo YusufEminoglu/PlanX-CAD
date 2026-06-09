@@ -49,7 +49,7 @@ class PlanXCADPlugin:
         self.iface.addToolBar(self.toolbar)
 
         # ── Ana Panel Toggle ─────────────────────────────────────────────
-        main_icon = os.path.join(self.icon_dir, "icon_main.svg")
+        main_icon = os.path.join(self.icon_dir, "icon.png")
         self.panel_action = self._add_action(
             main_icon,
             "planX CAD Panel / Paneli",
