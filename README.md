@@ -1,89 +1,201 @@
-﻿# PlanX CAD Toolset
+<div align="center">
 
-**A lightweight, fast CAD toolset for urban planning in QGIS - part of the PlanX suite**
+![PlanX CAD Toolset](media/banner.png)
 
-PlanX CAD Toolset brings 18+ CAD-like drawing and editing operations directly into QGIS through a modern dockable panel. Designed for urban planners and GIS professionals who need drafting-grade tools without leaving QGIS.
+# PlanX CAD Toolset
+
+**Drafting-grade CAD for urban planning — inside QGIS.**
+
+[![Release](https://img.shields.io/github/v/release/YusufEminoglu/PlanX-CAD?color=0d9488&label=release)](https://github.com/YusufEminoglu/PlanX-CAD/releases)
+[![License: GPL v3](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
+[![QGIS](https://img.shields.io/badge/QGIS-3.28%20LTR%20%E2%86%92%204.x-589632?logo=qgis&logoColor=white)](https://qgis.org)
+[![Plugin Hub](https://img.shields.io/badge/QGIS-Plugin%20Hub-589632)](https://plugins.qgis.org/)
+[![Part of PlanX](https://img.shields.io/badge/suite-PlanX-ff8a3d)](https://github.com/YusufEminoglu/PlanX)
+
+Type `L` ↵, draw a line. Type `F` ↵, fillet a corner.
+**25+ CAD tools, an AutoCAD-style command line, and road-platform design — without ever leaving QGIS.**
+
+[Install](#-installation) · [Tools](#-tool-catalog) · [Command line](#-autocad-style-command-line) · [Urban tools](#-urban-planning-tools) · [Shortcuts](#-keyboard-shortcuts) · [Türkçe](#-türkçe-özet)
+
+</div>
 
 ---
 
-## Features
+## ✨ Why PlanX CAD?
 
-### Drawing Tools
-- Line, Polyline, Rectangle, Polygon, Circle, Arc
+| | |
+|---|---|
+| ⚡ **Muscle-memory friendly** | AutoCAD-style command aliases (`L`, `PL`, `TR`, `F`, `CO`…), empty-Enter repeats the last command, Up/Down recalls history — a real command loop. |
+| 📐 **Drafting-grade picking** | A true 10-px pickbox with snap markers, hover highlighting, and self-pick protection in two-step tools (Fillet/Trim/Extend). |
+| 🏙️ **Built for planners** | Interactive road platform generator, junction topology fixer, and block-corner chamfering — tools you won't find in generic CAD plugins. |
+| 🧩 **Zero friction** | Pure QGIS API — no external dependencies, no build step. One dockable panel, native snapping, works on **QGIS 3.28 LTR through QGIS 4**. |
 
-### Editing Tools
-- Offset, Trim, Extend, Fillet, Buffer, Hatch, Construction Line, Divide, Join, Multi-Offset, Vertex Edit
+Developed with feedback from educational workflows at **Dokuz Eylül University, Department of City and Regional Planning**.
 
-### Transform Tools
-- Move, Copy, Rotate, Scale, Mirror, Array
+---
 
-### Measurement Tools
-- Distance and area measurement (standalone and selection-based)
-- Persistent linear dimensions with label attributes
+## 🛠 Tool Catalog
 
-### Urban Planning Tools
-- **Road Platform Generator** - interactive road cross-section design with lane configuration
-- **Block Chamfering** - EasyFillet-powered corner rounding for urban blocks
-- **Junction Topology Fixer** - clean A-B road intersection connections
+### Draw
 
-### UI and Productivity
-- Modern dockable panel with icon-based toolbar
-- Native QGIS snapping support and custom precision cursor
-- Quick tool search (`Find tool / Arac ara`) with Enter-to-activate
-- Last-3 recent tools strip for rapid tool switching
-- Favorites row with `Pin Last` for persistent one-click access
-- Ctrl+Shift keyboard workflow with repeat-last-tool action
-- Dedicated construction modes in dock (infinite/ray/segment) and built-in shortcut guide dialog
-- Built-in HTML command manual and separate shortcut reference page (open via Docs/Keys buttons)
-- English-primary / Turkish-secondary documentation standard
-- Searchable shortcut center with category filtering
-- Live per-tool workflow hints in dock and global docs shortcut (`Ctrl+Alt+H`)
-- Global command palette (`Ctrl+Alt+P`) for type-to-activate command access
-- Dock quick reset controls (Reset filter + Clear recent)
-- Active-layer editing toggle action (`Ctrl+Alt+E` + Edit ON/OFF button)
-- Dock preflight checks for vector/editable readiness (`Ctrl+Alt+F`)
-- Cancel active tool action (`Ctrl+Alt+C`) for immediate safe exit
-- Quick Start onboarding dialog (`Ctrl+Alt+Q`) and dock Start button
-- Runtime diagnostics dialog (`Ctrl+Alt+D`) with copyable support report
-- Workspace state reset (`Ctrl+Alt+R`) to clear search/recent/favorites/usage in one step
-- Usage analytics dialog (`Ctrl+Alt+T`) with per-tool session distribution
-- Context help jump (`Help Tool`) that opens the relevant command-reference section
-- Runtime health check (`Ctrl+Alt+W`) for layer/edit/snap/workflow readiness
-- Shortcut audit (`Ctrl+Alt+Y`) for conflict visibility and safer keymap evolution
-- Activation guardrails that block invalid starts (no layer/non-vector/read-only) with guided status messages
-- Session checklist (`Ctrl+Alt+G`) to run beta-start controls from one window
-- Command palette upgraded with category filter, TR aliases, and usage-priority sorting
-- Built-in QGIS smoke test checklist tab in docs for release-candidate verification
-- Direct smoke-test opener (`Ctrl+Alt+M`) for one-click QGIS RC validation flow
-- Issue template dialog (`Ctrl+Alt+N`) with diagnostics payload for consistent bug reports
-- Release readiness dashboard (`Ctrl+Alt+V`) for beta acceptance checks in one view
-- Live usage counter in dock for session activity tracking
-- Active-layer editability indicator in dock (editable/read-only awareness)
-- Dock state persistence between sessions (search/recent/favorites/usage)
+| Tool | Command | Shortcut | Notes |
+|---|---|---|---|
+| Line | `L` | `Ctrl+Shift+L` | Click-click, Enter to finish |
+| Polyline | `PL` `PLINE` | `Ctrl+Shift+P` | Backspace undoes last vertex |
+| Rectangle | `REC` | `Ctrl+Shift+R` | Two-corner |
+| Polygon | `POL` | `Ctrl+Shift+G` | N-vertex closed ring |
+| Circle | `C` | `Ctrl+Shift+C` | Centre + radius |
+| Arc | `A` | `Ctrl+Shift+A` | 3-point arc |
+| Construction line | `XL` / `RAY` / `SEG` | `Ctrl+Shift+K` | Infinite / ray / segment reference, dashed cyan layer |
 
-## Installation
+### Modify
 
-1. Download the latest `.zip` from [Releases](https://github.com/YusufEminoglu/PlanX-CAD/releases).
-2. In QGIS: **Plugins -> Manage and Install Plugins -> Install from ZIP**.
-3. Activate **PlanX CAD Toolset** from the plugin list.
+| Tool | Command | Shortcut | Notes |
+|---|---|---|---|
+| Offset | `O` | `Ctrl+Shift+O` | Side-aware parallel copy |
+| Multi-offset | `MO` `MOFF` | `Ctrl+Shift+X` | N offsets in one pass |
+| Trim | `TR` | `Ctrl+Shift+T` | Click the side to remove |
+| Extend | `EX` | `Ctrl+Shift+E` | To nearest boundary intersection |
+| Fillet | `F` | `Ctrl+Shift+F` | Radius arc + auto-trim, live hover preview |
+| Buffer | `B` | `Ctrl+Shift+B` | Attribute-preserving |
+| Hatch | `H` | `Ctrl+Shift+H` | Parallel/cross/diagonal pattern fill, export-safe attributes |
+| Divide | `DIV` | `Ctrl+Shift+U` | Equal-length segmentation |
+| Join | `J` | `Ctrl+Shift+J` | Weld touching polylines |
+| Vertex edit | `VE` | `Ctrl+Shift+V` | Drag to move, click to insert, right-click to delete |
 
-## Compatibility
+### Transform
+
+| Tool | Command | Shortcut |
+|---|---|---|
+| Move | `M` | `Ctrl+Shift+M` |
+| Copy | `CO` `CP` | — |
+| Rotate | `RO` | — |
+| Scale | `SC` | — |
+| Mirror | `MI` | — |
+| Array (rect + polar) | `AR` | `Ctrl+Shift+Y` |
+
+All transforms are **multipart-safe** — holes and multi-rings survive.
+
+### Measure & Annotate
+
+| Tool | Command | Shortcut | Notes |
+|---|---|---|---|
+| Distance | `DI` `DIST` | `Ctrl+Shift+I` | Snap-aware running total |
+| Area | `AA` `AREA` | — | Polygon area on canvas |
+| Measure by selection | — | — | Length/area totals of selected features |
+| Linear dimension | `DIM` | `Ctrl+Shift+D` | Permanent dimension layer with distance attributes + labels |
+
+---
+
+## ⌨ AutoCAD-style Command Line
+
+The dock's search box **is** a command line:
+
+```text
+Command:  L ⏎          → Line starts
+Command:  ⏎            → repeats the last command (AutoCAD muscle memory)
+Command:  ↑ / ↓        → recall command history
+Command:  fil…         → autocomplete popup suggests Fillet
+```
+
+Resolution precedence: **alias → exact tool key → fuzzy name match**. Unknown commands echo a clear message instead of failing silently. There is also a global **command palette** (`Ctrl+Alt+P`) with category filtering, Turkish aliases, and usage-based ordering.
+
+---
+
+## 🏙 Urban Planning Tools
+
+| | |
+|---|---|
+| 🛣 **Road Platform Generator** | Interactive road cross-section design: draw an axis, configure carriageway and lane widths, get a ready platform polygon. |
+| ➕ **Junction Topology Fixer** | Cleans A–B road intersection connections so your network stays topologically sound. |
+| 🔲 **Block Chamfering** *(Ada Kırma)* | EasyFillet-powered corner rounding for urban blocks — one click per corner. |
+
+---
+
+## 📦 Installation
+
+**From QGIS Plugin Hub** *(recommended)*
+> `Plugins → Manage and Install Plugins…` → search for **PlanX CAD Toolset** → Install.
+
+**From ZIP**
+> Download the latest `planX_CAD_arac_Seti.zip` from [Releases](https://github.com/YusufEminoglu/PlanX-CAD/releases), then `Plugins → Install from ZIP`.
+
+**From source** *(development)*
+```text
+git clone https://github.com/YusufEminoglu/PlanX-CAD.git
+set QGIS_PLUGINPATH=<clone parent dir>   →  restart QGIS
+```
 
 | Requirement | Value |
 |---|---|
-| QGIS minimum | 3.28 |
-| License | GPL-3.0 |
+| QGIS | **3.28 LTR → 4.x** (PyQt5 **and** PyQt6 verified) |
+| Dependencies | None — pure `qgis.core` / `qgis.gui` / `qgis.PyQt` |
+| License | [GPL-3.0](LICENSE) |
 
-## Changelog
+---
 
-- **1.16.0** - Quick Start onboarding, usage metrics panel, Ctrl+Alt+Q shortcut
-- **1.15.0** - Edit ON/OFF + Preflight controls, Ctrl+Alt+F shortcut, layer-state lifecycle hardening
-- **1.14.0** - Layer editing toggle, preflight checks, auto layer-state refresh
-- **1.13.0** - Cancel active tool, layer edit-state indicator, dock state sync improvements
-- **1.12.0** - Global command palette, dock reset controls, shortcut reference sync
+## ⌨ Keyboard Shortcuts
 
-## Author
+<details>
+<summary><b>Full shortcut map (click to expand)</b></summary>
 
-**Yusuf Eminoglu** - [GitHub](https://github.com/YusufEminoglu) | yusuf.eminoglu@deu.edu.tr
+### Tools — `Ctrl+Shift+…`
 
-Part of the **[PlanX](https://github.com/YusufEminoglu/PlanX)** urban planning plugin suite.
+`L` Line · `P` Polyline · `R` Rectangle · `G` Polygon · `C` Circle · `A` Arc · `O` Offset · `T` Trim · `E` Extend · `F` Fillet · `B` Buffer · `M` Move · `Y` Array · `V` Vertex edit · `H` Hatch · `K` Construction line · `D` Dimension · `I` Measure · `U` Divide · `X` Multi-offset · `J` Join · `Space` Repeat last tool · `S` Focus command line · `/` Shortcut guide
+
+### Workflow — `Ctrl+Alt+…`
+
+`P` Command palette · `E` Toggle editing · `C` Cancel active tool · `F` Preflight checks · `Q` Quick start · `H` Docs · `D` Diagnostics · `W` Health check · `T` Usage stats · `R` Reset workspace · `Y` Shortcut audit · `G` Session checklist · `N` Issue template · `V` Release readiness
+
+</details>
+
+---
+
+## ♿ Quality & Accessibility
+
+- **Screen-reader complete** — every interactive dock control exposes `accessibleName`/`accessibleDescription`; tool buttons are tab-focusable with a visible focus ring.
+- **Dual-runtime verified** — a static 11-check smoke gate (`py -3 tests/smoke_compat.py`, no QGIS needed) locks Qt5/Qt6 enum safety, metadata, pick-aperture behaviour, and import discipline on every release.
+- **Guardrails everywhere** — invalid tool starts (no layer / non-vector / read-only) are blocked with guided status messages; built-in diagnostics, health-check, and issue-template dialogs make bug reports one click.
+
+---
+
+## 🇹🇷 Türkçe Özet
+
+**PlanX CAD Araç Seti**, QGIS içinde AutoCAD alışkanlıklarıyla çizim yapmanızı sağlayan hafif ve hızlı bir CAD eklentisidir:
+
+- **25+ CAD aracı:** Çizgi, sürekli çizgi, dikdörtgen, çokgen, daire, yay; ofset, buda (trim), uzat, pah/yuvarlatma (fillet), tampon, tarama (hatch), böl, birleştir, köşe düzenleme; taşı, kopyala, döndür, ölçekle, aynala, dizi.
+- **AutoCAD tarzı komut satırı:** `L` ↵ çizgi, `TR` ↵ buda… Boş Enter son komutu tekrarlar; ↑/↓ komut geçmişini gezer.
+- **Şehir plancısı araçları:** Etkileşimli **yol platformu** üretici, **kavşak** topolojisi düzeltici ve EasyFillet tabanlı **ada kırma**.
+- **Türkçe arayüz desteği:** Tüm araç açıklamaları ve durum mesajları İngilizce + Türkçe'dir; komut paletinde Türkçe takma adlar da çalışır.
+
+Kurulum: QGIS → *Eklentiler → Eklentileri Yönet ve Kur* → **PlanX CAD Toolset** aratın. Dokuz Eylül Üniversitesi Şehir ve Bölge Planlama Bölümü'ndeki eğitim iş akışlarından gelen geri bildirimlerle geliştirilmektedir.
+
+---
+
+## 🌐 The PlanX Ecosystem
+
+| Plugin | What it does |
+|---|---|
+| [PlanX](https://github.com/YusufEminoglu/PlanX) | Urban planning main suite |
+| **PlanX CAD Toolset** | *This plugin* — CAD drafting, measuring, road platforms |
+| [EasyFillet](https://github.com/YusufEminoglu/EasyFillet) | Standalone fillet / tangent arcs |
+| [PlanX 3D City Viewer](https://github.com/YusufEminoglu/planx_3d_city) | QGIS → Three.js 3D city viewer |
+| [OSM Quick 3D](https://github.com/YusufEminoglu/osm_quick_3d) | One-click OSM → native QGIS 3D massing |
+| [PlanX GeoStats Lab](https://github.com/YusufEminoglu/PlanX-GeoStats) | Spatial statistics, hot spots, LISA, regression |
+
+---
+
+## 🤝 Contributing & Support
+
+- 🐛 **Bugs / requests** → [Issues](https://github.com/YusufEminoglu/PlanX-CAD/issues) — the in-plugin **Issue Template** dialog (`Ctrl+Alt+N`) pre-fills diagnostics for you.
+- 📜 **Changelog** → [CHANGELOG.md](CHANGELOG.md) follows *Keep a Changelog*.
+- ✅ Before a PR: run `py -3 tests/smoke_compat.py` (11 static checks, no QGIS required).
+
+## 👤 Author
+
+**Yusuf Eminoğlu** — urban planner & developer
+[GitHub](https://github.com/YusufEminoglu) · yusuf.eminoglu@deu.edu.tr
+
+<div align="center">
+<sub>Built with ❤️ for the planning classroom and the drafting desk. If PlanX CAD saves you time, a ⭐ helps others find it.</sub>
+</div>
