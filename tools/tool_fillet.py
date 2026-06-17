@@ -83,10 +83,11 @@ class tool_fillet(tool_base):
         arc_geom = fillet_result['arc']
         tp1 = fillet_result['tp1']
         tp2 = fillet_result['tp2']
+        inter_pt = fillet_result.get('inter_pt')
 
         # Çizgileri teğet noktalarından kes
-        new_geom1 = trim_line_to_point(geom1, tp1)
-        new_geom2 = trim_line_to_point(geom2, tp2)
+        new_geom1 = trim_line_to_point(geom1, tp1, inter_pt)
+        new_geom2 = trim_line_to_point(geom2, tp2, inter_pt)
 
         if new_geom1 and not new_geom1.isEmpty():
             self._apply_edit(self.first_layer, self.first_feature, new_geom1)

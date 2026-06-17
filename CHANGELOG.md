@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.23.2] - 2026-06-17
+
+- Fix fillet trimming closest corner endpoints and zero vector corner bug
+
 ## [1.23.1] - 2026-06-17
 
 - Fix CRS mismatch bug when project and layer CRS differ

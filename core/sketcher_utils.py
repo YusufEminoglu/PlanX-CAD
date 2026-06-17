@@ -341,7 +341,7 @@ def line_intersection(p1, p2, p3, p4):
 def create_fillet_and_trims(geom1, geom2, radius):
     """
     İki QgsGeometry (LineString) arasında fillet yayı oluşturur.
-    Returns: { 'arc': QgsGeometry, 'tp1': QgsPointXY, 'tp2': QgsPointXY }
+    Returns: { 'arc': QgsGeometry, 'tp1': QgsPointXY, 'tp2': QgsPointXY, 'inter_pt': QgsPointXY }
     """
     if geom1.isMultipart():
         pts1 = geom1.asMultiPolyline()[0]
@@ -369,8 +369,8 @@ def create_fillet_and_trims(geom1, geom2, radius):
 
     i1 = 0 if QgsPointXY(pts1[0]).distance(inter_pt) < QgsPointXY(pts1[-1]).distance(inter_pt) else -1
     i2 = 0 if QgsPointXY(pts2[0]).distance(inter_pt) < QgsPointXY(pts2[-1]).distance(inter_pt) else -1
-    v1 = unit_vec(inter_pt, pts1[i1])
-    v2 = unit_vec(inter_pt, pts2[i2])
+    v1 = unit_vec(inter_pt, pts1[-1 if i1 == 0 else 0])
+    v2 = unit_vec(inter_pt, pts2[-1 if i2 == 0 else 0])
 
     dot = v1[0]*v2[0] + v1[1]*v2[1]
     if abs(abs(dot) - 1.0) < 1e-6:
@@ -412,12 +412,13 @@ def create_fillet_and_trims(geom1, geom2, radius):
     return {
         'arc': QgsGeometry.fromPolylineXY(arc_pts),
         'tp1': tp1,
-        'tp2': tp2
+        'tp2': tp2,
+        'inter_pt': inter_pt
     }
 
-def trim_line_to_point(geom, pt):
+def trim_line_to_point(geom, pt, inter_pt=None):
     """
-    Çizgiyi belirtilen noktaya kadar (en yakın uçundan) budar.
+    Çizgiyi belirtilen noktaya kadar (kesişim noktasına en yakın uçundan) budar.
     """
     if geom.isMultipart():
         pts = geom.asMultiPolyline()[0]
@@ -426,8 +427,9 @@ def trim_line_to_point(geom, pt):
     if len(pts) < 2:
         return geom
 
-    d0 = QgsGeometry.fromPointXY(pts[0]).distance(QgsGeometry.fromPointXY(pt))
-    d1 = QgsGeometry.fromPointXY(pts[-1]).distance(QgsGeometry.fromPointXY(pt))
+    ref_pt = inter_pt if inter_pt is not None else pt
+    d0 = QgsGeometry.fromPointXY(pts[0]).distance(QgsGeometry.fromPointXY(ref_pt))
+    d1 = QgsGeometry.fromPointXY(pts[-1]).distance(QgsGeometry.fromPointXY(ref_pt))
     
     if d0 < d1:
         new_pts = [pt] + pts[1:]
