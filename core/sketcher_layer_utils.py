@@ -7,7 +7,8 @@ Otomatik katman oluşturma, feature ekleme ve öznitelik yönetimi.
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import (
     QgsProject, QgsVectorLayer, QgsField, QgsFields,
-    QgsFeature, QgsGeometry, QgsWkbTypes, QgsFeatureSink
+    QgsFeature, QgsGeometry, QgsWkbTypes, QgsFeatureSink,
+    QgsCoordinateTransform
 )
 
 
@@ -116,6 +117,13 @@ def add_geometry_to_current_layer(iface, geometry):
 
     if not layer.isEditable():
         layer.startEditing()
+
+    canvas = iface.mapCanvas()
+    canvas_crs = canvas.mapSettings().destinationCrs()
+    layer_crs = layer.crs()
+    if canvas_crs.isValid() and layer_crs.isValid() and canvas_crs != layer_crs:
+        transform = QgsCoordinateTransform(canvas_crs, layer_crs, QgsProject.instance())
+        geometry.transform(transform)
 
     feat = QgsFeature(layer.fields())
     feat.setGeometry(geometry)

@@ -141,6 +141,32 @@ class tool_base(QgsMapTool):
         self.selected_point = None
         self._step = 0
 
+    def to_layer_coordinates(self, point, layer=None):
+        """Transform a QgsPointXY from Canvas CRS to Layer CRS."""
+        if layer is None:
+            layer = self.selected_layer
+        if layer is None:
+            return point
+        canvas_crs = self.canvas.mapSettings().destinationCrs()
+        layer_crs = layer.crs()
+        if canvas_crs.isValid() and layer_crs.isValid() and canvas_crs != layer_crs:
+            transform = QgsCoordinateTransform(canvas_crs, layer_crs, QgsProject.instance())
+            return transform.transform(point)
+        return point
+
+    def to_canvas_coordinates(self, point, layer=None):
+        """Transform a QgsPointXY from Layer CRS to Canvas CRS."""
+        if layer is None:
+            layer = self.selected_layer
+        if layer is None:
+            return point
+        canvas_crs = self.canvas.mapSettings().destinationCrs()
+        layer_crs = layer.crs()
+        if canvas_crs.isValid() and layer_crs.isValid() and canvas_crs != layer_crs:
+            transform = QgsCoordinateTransform(layer_crs, canvas_crs, QgsProject.instance())
+            return transform.transform(point)
+        return point
+
     # ── Olay İşleyiciler ─────────────────────────────────────────────────
 
     def canvasPressEvent(self, event):
@@ -158,21 +184,22 @@ class tool_base(QgsMapTool):
                 layer, feature = result
                 self.selected_layer = layer
                 self.selected_feature = feature
-                self.selected_point = point
+                self.selected_point = self.to_layer_coordinates(point, layer)
                 self._step = 1
 
                 # Obje vurgusu
                 geom = feature.geometry()
                 self.highlight_rb.reset(geom.type())
-                self.highlight_rb.setToGeometry(geom, None)
+                self.highlight_rb.setToGeometry(geom, layer)
 
-                self.on_entity_selected(layer, feature, point)
+                self.on_entity_selected(layer, feature, self.selected_point)
             else:
                 self.tool_message.emit(
                     f"⚠️ {self.tool_name()} — Obje bulunamadı, tekrar deneyin"
                 )
         else:
-            self.on_click(point, event.button())
+            layer_point = self.to_layer_coordinates(point)
+            self.on_click(layer_point, event.button())
 
     def canvasMoveEvent(self, event):
         point = self.toMapCoordinates(event.pos())
@@ -188,7 +215,8 @@ class tool_base(QgsMapTool):
 
         # Obje üzerine gelince vurgulama (Opsiyonel hover efekti eklenebilir)
         # Şimdilik sadece on_move tetikliyoruz.
-        self.on_move(point)
+        layer_point = self.to_layer_coordinates(point)
+        self.on_move(layer_point)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Escape:

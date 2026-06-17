@@ -65,4 +65,4 @@ class tool_scale(tool_base):
                 preview = scale_geometry(geom, self.center, factor)
                 if preview:
                     self.preview_rb.reset(geom.type())
-                    self.preview_rb.setToGeometry(preview)
+                    self.preview_rb.setToGeometry(preview, self.selected_layer)

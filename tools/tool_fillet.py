@@ -132,7 +132,7 @@ class tool_fillet(tool_base):
             self.preview_rb.setColor(COLOR_ACCENT)
             self.preview_rb.setWidth(3)
             self.preview_rb.setLineStyle(Qt.PenStyle.DashLine)
-            self.preview_rb.setToGeometry(arc_geom, None)
+            self.preview_rb.setToGeometry(arc_geom, self.first_layer)
             self.preview_rb.show()
 
     def _cleanup_fillet(self):

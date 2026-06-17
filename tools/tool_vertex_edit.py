@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
-from qgis.core import QgsGeometry, QgsPointXY, QgsWkbTypes
+from qgis.core import QgsGeometry, QgsPointXY, QgsWkbTypes, QgsCoordinateTransform, QgsProject
 from qgis.gui import QgsRubberBand, QgsVertexMarker
 
 from .tool_base import tool_base
@@ -80,10 +80,16 @@ class tool_vertex_edit(tool_base):
         part_idx, v_idx = self._part_indices[self._dragging_index]
         self._geom.moveVertex(point.x(), point.y(), self._vertex_id_for(part_idx, v_idx))
         # Snap visible markers
-        self._handles[self._dragging_index].setCenter(point)
+        canvas_crs = self.canvas.mapSettings().destinationCrs()
+        layer_crs = self.selected_layer.crs()
+        point_canvas = point
+        if canvas_crs.isValid() and layer_crs.isValid() and canvas_crs != layer_crs:
+            transform = QgsCoordinateTransform(layer_crs, canvas_crs, QgsProject.instance())
+            point_canvas = transform.transform(point)
+        self._handles[self._dragging_index].setCenter(point_canvas)
         # Live preview rb mirrors current geometry
         self.preview_rb.reset(self._geom.type())
-        self.preview_rb.setToGeometry(self._geom, None)
+        self.preview_rb.setToGeometry(self._geom, self.selected_layer)
 
     def canvasReleaseEvent(self, event):  # type: ignore[override]
         # Commit a move on mouse release
@@ -113,6 +119,13 @@ class tool_vertex_edit(tool_base):
                 parts = [self._geom.asPolyline()]
             else:
                 parts = self._geom.asPolygon()
+
+        canvas_crs = self.canvas.mapSettings().destinationCrs()
+        layer_crs = self.selected_layer.crs()
+        transform = None
+        if canvas_crs.isValid() and layer_crs.isValid() and canvas_crs != layer_crs:
+            transform = QgsCoordinateTransform(layer_crs, canvas_crs, QgsProject.instance())
+
         for part_idx, ring in enumerate(parts):
             for v_idx, pt in enumerate(ring):
                 marker = QgsVertexMarker(self.canvas)
@@ -120,7 +133,10 @@ class tool_vertex_edit(tool_base):
                 marker.setIconSize(9)
                 marker.setPenWidth(2)
                 marker.setColor(QColor("#ff6d00"))
-                marker.setCenter(QgsPointXY(pt))
+                pt_canvas = QgsPointXY(pt)
+                if transform:
+                    pt_canvas = transform.transform(pt_canvas)
+                marker.setCenter(pt_canvas)
                 self._handles.append(marker)
                 self._part_indices.append((part_idx, v_idx))
 
@@ -147,11 +163,18 @@ class tool_vertex_edit(tool_base):
 
     def _handle_at(self, point: QgsPointXY) -> int | None:
         """Return the index of a handle within hit tolerance of `point`."""
+        canvas_crs = self.canvas.mapSettings().destinationCrs()
+        layer_crs = self.selected_layer.crs()
+        point_canvas = point
+        if canvas_crs.isValid() and layer_crs.isValid() and canvas_crs != layer_crs:
+            transform = QgsCoordinateTransform(layer_crs, canvas_crs, QgsProject.instance())
+            point_canvas = transform.transform(point)
+
         tol = self.canvas.mapUnitsPerPixel() * _HANDLE_HIT_PX
         best, best_d = None, float("inf")
         for i, marker in enumerate(self._handles):
             c = marker.center()
-            d = (c.x() - point.x()) ** 2 + (c.y() - point.y()) ** 2
+            d = (c.x() - point_canvas.x()) ** 2 + (c.y() - point_canvas.y()) ** 2
             if d < tol * tol and d < best_d:
                 best, best_d = i, d
         return best
@@ -161,8 +184,17 @@ class tool_vertex_edit(tool_base):
             return
         tol = self.canvas.mapUnitsPerPixel() * _INSERT_TOL_PX
         # Distance from the click to the geometry; if close enough, insert.
-        pt_geom = QgsGeometry.fromPointXY(point)
-        if self._geom.distance(pt_geom) > tol:
+        canvas_crs = self.canvas.mapSettings().destinationCrs()
+        layer_crs = self.selected_layer.crs()
+        geom_canvas = QgsGeometry(self._geom)
+        point_canvas = point
+        if canvas_crs.isValid() and layer_crs.isValid() and canvas_crs != layer_crs:
+            transform = QgsCoordinateTransform(layer_crs, canvas_crs, QgsProject.instance())
+            geom_canvas.transform(transform)
+            point_canvas = transform.transform(point)
+
+        pt_geom = QgsGeometry.fromPointXY(point_canvas)
+        if geom_canvas.distance(pt_geom) > tol:
             return
         # Find the closest segment vertex
         closest = self._geom.closestSegmentWithContext(point)
@@ -173,7 +205,7 @@ class tool_vertex_edit(tool_base):
         self._geom.insertVertex(point.x(), point.y(), after_vertex)
         self._render_handles()
         self.preview_rb.reset(self._geom.type())
-        self.preview_rb.setToGeometry(self._geom, None)
+        self.preview_rb.setToGeometry(self._geom, self.selected_layer)
         self._commit()
         self.tool_message.emit("✅ Vertex Edit — vertex inserted")
 
@@ -201,7 +233,7 @@ class tool_vertex_edit(tool_base):
         self._geom.deleteVertex(self._vertex_id_for(part_idx, v_idx))
         self._render_handles()
         self.preview_rb.reset(self._geom.type())
-        self.preview_rb.setToGeometry(self._geom, None)
+        self.preview_rb.setToGeometry(self._geom, self.selected_layer)
         self._commit()
         self.tool_message.emit("✅ Vertex Edit — vertex deleted")
 

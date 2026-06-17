@@ -258,4 +258,4 @@ class tool_array(tool_base):
         if combined is None or combined.isEmpty():
             return
         self.preview_rb.reset(combined.type())
-        self.preview_rb.setToGeometry(combined, None)
+        self.preview_rb.setToGeometry(combined, self.selected_layer)

@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.23.1] - 2026-06-17
+
+- Fix CRS mismatch bug when project and layer CRS differ
+
 ## [1.23.0] - 2026-06-09
 
 ### Fixed

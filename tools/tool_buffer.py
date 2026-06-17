@@ -141,6 +141,7 @@ class tool_buffer(tool_base):
             buffer_layer = get_or_create_layer(
                 "planx_buffer",
                 geom_type="Polygon",
+                crs=layer.crs(),
                 fields=[
                     ("kaynak_katman", "string"),
                     ("buffer_mesafe", "double"),

@@ -53,4 +53,4 @@ class tool_mirror(tool_base):
             preview = mirror_geometry(geom, self.line_start, point)
             if preview:
                 self.preview_rb.reset(geom.type())
-                self.preview_rb.setToGeometry(preview)
+                self.preview_rb.setToGeometry(preview, self.selected_layer)

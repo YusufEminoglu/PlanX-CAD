@@ -66,7 +66,7 @@ class tool_rotate(tool_base):
             preview = rotate_geometry(geom, self.center, -rotation)
 
             self.preview_rb.reset(geom.type())
-            self.preview_rb.setToGeometry(preview)
+            self.preview_rb.setToGeometry(preview, self.selected_layer)
 
             # Açıyı göster
             angle_deg = rotation

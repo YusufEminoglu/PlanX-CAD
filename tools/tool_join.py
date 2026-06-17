@@ -180,7 +180,7 @@ class tool_join(tool_base):
         geoms = [f.geometry() for f in self.features_to_join]
         combined = QgsGeometry.collectGeometry(geoms)
         self.highlight_rb.reset(QgsWkbTypes.LineGeometry)
-        self.highlight_rb.setToGeometry(combined, None)
+        self.highlight_rb.setToGeometry(combined, self.selected_layer)
 
     def _do_join(self):
         layer = self.selected_layer

@@ -46,4 +46,4 @@ class tool_copy(tool_base):
             preview.translate(dx, dy)
 
             self.preview_rb.reset(self.selected_feature.geometry().type())
-            self.preview_rb.setToGeometry(preview)
+            self.preview_rb.setToGeometry(preview, self.selected_layer)

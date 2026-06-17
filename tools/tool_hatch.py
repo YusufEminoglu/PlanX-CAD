@@ -246,6 +246,7 @@ class tool_hatch(tool_base):
         hatch_layer = get_or_create_layer(
             "planx_hatch",
             geom_type="LineString",
+            crs=layer.crs(),
             fields=[
                 ("source_layer", "string"),
                 ("pattern", "string"),

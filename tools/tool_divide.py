@@ -222,6 +222,7 @@ class tool_divide(tool_base):
             target_layer = get_or_create_layer(
                 "planx_divisions",
                 geom_type="Point",
+                crs=self.selected_layer.crs(),
                 fields=[("source_fid", "longlong")]
             )
 

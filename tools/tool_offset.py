@@ -81,4 +81,4 @@ class tool_offset(tool_base):
                 best = right
 
             if best:
-                self.preview_rb.setToGeometry(best)
+                self.preview_rb.setToGeometry(best, self.selected_layer)
