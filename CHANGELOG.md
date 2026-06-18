@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.23.3] - 2026-06-18
+
+- docs: add CITATION.cff for Zenodo DOI integration
+
 ## [1.23.2] - 2026-06-17
 
 - Fix fillet trimming closest corner endpoints and zero vector corner bug
