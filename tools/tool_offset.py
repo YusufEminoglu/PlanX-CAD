@@ -89,7 +89,7 @@ class tool_offset(tool_base):
             left = offset_geometry(metric_geom, self.distance, "left")
             right = offset_geometry(metric_geom, self.distance, "right")
 
-            self.preview_rb.reset(QgsWkbTypes.LineGeometry)
+            self.preview_rb.reset(QgsWkbTypes.GeometryType.LineGeometry)
             best = None
             if left and right:
                 click_geom = QgsGeometry.fromPointXY(metric_point)

@@ -60,7 +60,7 @@ class AdaKirmaSketcher(QgsMapTool):
 
         self.params = dlg.get_params()
         self.preview_rb = create_preview_rubberband(
-            self.canvas, QgsWkbTypes.PointGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PointGeometry
         )
         self._step = 1
 
@@ -247,7 +247,7 @@ class AdaKirmaSketcher(QgsMapTool):
         for layer in QgsProject.instance().mapLayers().values():
             if not isinstance(layer, QgsVectorLayer):
                 continue
-            if layer.geometryType() != QgsWkbTypes.LineGeometry:
+            if layer.geometryType() != QgsWkbTypes.GeometryType.LineGeometry:
                 continue
 
             layer_search_area = transform_geometry(
@@ -317,7 +317,7 @@ class AdaKirmaSketcher(QgsMapTool):
 
     def _extract_nearest_point(self, geom, reference_point):
         """Extract the point nearest a reference from any geometry."""
-        if geom.type() == QgsWkbTypes.PointGeometry:
+        if geom.type() == QgsWkbTypes.GeometryType.PointGeometry:
             if geom.isMultipart():
                 pts = geom.asMultiPoint()
                 if not pts:

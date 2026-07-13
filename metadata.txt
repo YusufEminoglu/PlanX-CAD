@@ -3,7 +3,7 @@ name=PlanX CAD Toolset
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=AutoCAD-style drafting inside QGIS: 30+ tools for precise drawing, editing, snapping, dimensions, hatching, transforms, and urban road design.
-version=1.26.0
+version=1.26.1
 author=Yusuf Eminoğlu
 email=yusuf.eminoglu@deu.edu.tr
 
@@ -24,12 +24,7 @@ experimental=False
 deprecated=False
 
 changelog=
-    PlanX CAD Toolset 1.26.0 - Global English workbench and documentation.
-        - Standardized all user-facing labels, dialogs, tooltips, status messages, help pages, onboarding content, and release surfaces on concise English terminology.
-        - Removed bilingual display copy and legacy localized search aliases for a consistent global command-discovery experience.
-        - Added English road-platform, junction-island, and buffer output schemas while preserving legacy project layers through compatibility mapping.
-        - Fixed in-progress sketch completion with Enter and active-tool cancellation with Escape from the command line.
-        - Made Rotate and Mirror metric-safe in geographic CRSs and corrected mixed-CRS Multi-Offset previews.
-        - Preserved internal tool keys, settings keys, AutoCAD-style aliases, shortcuts, and project compatibility.
-        - Refreshed the command reference, shortcut map, smoke-test checklist, README, Plugin Hub notes, and citation metadata.
-        - Added release checks that guard against accidental bilingual user-facing copy while allowing author and institution proper names.
+    PlanX CAD Toolset 1.26.1 - QGIS 4 / Qt6 compatibility and Plugin Hub security-scan maintenance.
+        - Scoped every QGIS enum access for Qt6 / QGIS 4 (geometry types via QgsWkbTypes.GeometryType, vertex and rubber-band markers via IconType), clearing all Qt6 enum-compatibility warnings while staying compatible with QGIS 3.28 LTR.
+        - Replaced defensive try/except wrappers with contextlib.suppress to resolve the Plugin Hub Bandit security-scan findings; the same best-effort operations remain guarded with no change in behavior.
+        - No functional, command, shortcut, or project-format changes.

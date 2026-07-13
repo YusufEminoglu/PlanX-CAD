@@ -11,6 +11,7 @@ Pick two points (with snap). The tool creates:
 from __future__ import annotations
 
 import math
+from contextlib import suppress
 
 from qgis.PyQt.QtCore import Qt, pyqtSignal
 from qgis.PyQt.QtGui import QColor
@@ -59,7 +60,7 @@ class tool_dimension(QgsMapTool):
     def activate(self):
         super().activate()
         self.first_point = None
-        self.preview_rb = create_preview_rubberband(self.canvas, QgsWkbTypes.LineGeometry)
+        self.preview_rb = create_preview_rubberband(self.canvas, QgsWkbTypes.GeometryType.LineGeometry)
         if self.preview_rb is not None:
             self.preview_rb.setColor(COLOR_ACCENT)
             self.preview_rb.setWidth(2)
@@ -90,7 +91,7 @@ class tool_dimension(QgsMapTool):
         if self.first_point is None or self.preview_rb is None:
             return
         point = self._snapped_point(event)
-        self.preview_rb.reset(QgsWkbTypes.LineGeometry)
+        self.preview_rb.reset(QgsWkbTypes.GeometryType.LineGeometry)
         self.preview_rb.addPoint(self.first_point)
         self.preview_rb.addPoint(point)
         live = _format_distance(self._measure(self.first_point, point))
@@ -100,7 +101,7 @@ class tool_dimension(QgsMapTool):
         if event.key() == Qt.Key.Key_Escape:
             self.first_point = None
             if self.preview_rb is not None:
-                self.preview_rb.reset(QgsWkbTypes.LineGeometry)
+                self.preview_rb.reset(QgsWkbTypes.GeometryType.LineGeometry)
             self.tool_message.emit("📏 Dimension — cancelled")
 
     # ───────────────────────── Helpers ─────────────────────────
@@ -164,7 +165,8 @@ class tool_dimension(QgsMapTool):
         # Auto-enable feature labels showing `label` once.
         if layer.customProperty("planx_dim_labels_applied") != "yes":
             settings = layer.labeling()
-            try:
+            # Labeling is a nice-to-have; never block the dimension itself.
+            with suppress(Exception):
                 from qgis.core import (
                     QgsPalLayerSettings,
                     QgsTextFormat,
@@ -180,9 +182,6 @@ class tool_dimension(QgsMapTool):
                 layer.setLabeling(QgsVectorLayerSimpleLabeling(pal))
                 layer.setLabelsEnabled(True)
                 layer.setCustomProperty("planx_dim_labels_applied", "yes")
-            except Exception:
-                # Labeling is a nice-to-have; never block the dimension itself.
-                pass
 
         self._dim_count += 1
         self.tool_message.emit(

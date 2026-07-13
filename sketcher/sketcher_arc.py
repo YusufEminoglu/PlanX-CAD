@@ -19,7 +19,7 @@ class sketcher_arc(sketcher_base):
         return "Arc"
 
     def geom_type(self):
-        return QgsWkbTypes.LineGeometry
+        return QgsWkbTypes.GeometryType.LineGeometry
 
     def on_click(self, point, button):
         if button == Qt.MouseButton.LeftButton:
@@ -41,7 +41,7 @@ class sketcher_arc(sketcher_base):
                 self.update_preview(point)
             elif len(self.vertices) == 2:
                 pts = self._calc_arc(self.vertices[0], self.vertices[1], point)
-                self.preview_rb.reset(QgsWkbTypes.LineGeometry)
+                self.preview_rb.reset(QgsWkbTypes.GeometryType.LineGeometry)
                 for pt in pts:
                     self.preview_rb.addPoint(pt)
 

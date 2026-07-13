@@ -175,7 +175,7 @@ class tool_fillet(tool_base):
         # Recreate the rubber band after a cleanup so previews remain visible.
         if self.preview_rb is None:
             self.preview_rb = create_preview_rubberband(self.canvas)
-        self.preview_rb.reset(QgsWkbTypes.LineGeometry)
+        self.preview_rb.reset(QgsWkbTypes.GeometryType.LineGeometry)
 
         pos = self.canvas.mouseLastXY()
         result = self._pick_feature(

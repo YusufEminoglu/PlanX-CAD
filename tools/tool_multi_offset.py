@@ -6,6 +6,8 @@ Allows offsetting selected lines/polylines multiple times with custom distances 
 from __future__ import annotations
 
 import math
+from contextlib import suppress
+
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QFont
 from qgis.PyQt.QtWidgets import (
@@ -109,7 +111,7 @@ class tool_multi_offset(tool_base):
             self._reset()
             return
 
-        if geom.type() != QgsWkbTypes.LineGeometry:
+        if geom.type() != QgsWkbTypes.GeometryType.LineGeometry:
             self.tool_message.emit("⚠️ Multi-Offset — Only line features can be offset")
             self._reset()
             return
@@ -129,10 +131,8 @@ class tool_multi_offset(tool_base):
         raw_vals = [x.strip() for x in self.distances_str.split(",") if x.strip()]
         parsed = []
         for val in raw_vals:
-            try:
+            with suppress(ValueError):
                 parsed.append(abs(float(val)))
-            except ValueError:
-                pass
 
         if not parsed:
             self.tool_message.emit("⚠️ Multi-Offset — Enter at least one valid distance")
@@ -230,7 +230,7 @@ class tool_multi_offset(tool_base):
                     if display_geom is not None and not display_geom.isEmpty():
                         offset_geoms.append(display_geom)
 
-            self.preview_rb.reset(QgsWkbTypes.LineGeometry)
+            self.preview_rb.reset(QgsWkbTypes.GeometryType.LineGeometry)
             if offset_geoms:
                 combined = QgsGeometry.collectGeometry(offset_geoms)
                 self.preview_rb.setToGeometry(combined, self.selected_layer)

@@ -56,7 +56,7 @@ class sketcher_base(QgsMapTool):
 
     def geom_type(self):
         """Return the output QgsWkbTypes geometry type."""
-        return QgsWkbTypes.LineGeometry
+        return QgsWkbTypes.GeometryType.LineGeometry
 
     def on_click(self, point, button):
         """Handle a canvas click; subclasses override this method."""

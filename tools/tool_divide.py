@@ -102,7 +102,7 @@ class tool_divide(tool_base):
             self._reset()
             return
 
-        if geom.type() != QgsWkbTypes.LineGeometry:
+        if geom.type() != QgsWkbTypes.GeometryType.LineGeometry:
             self.tool_message.emit("⚠️ Divide — Only line features can be divided")
             self._reset()
             return
@@ -230,7 +230,7 @@ class tool_divide(tool_base):
         # Determine target point layer
         active_layer = self.iface.activeLayer()
         target_layer = None
-        if active_layer and active_layer.isEditable() and active_layer.geometryType() == QgsWkbTypes.PointGeometry:
+        if active_layer and active_layer.isEditable() and active_layer.geometryType() == QgsWkbTypes.GeometryType.PointGeometry:
             target_layer = active_layer
         else:
             # Get or create memory layer planx_divisions

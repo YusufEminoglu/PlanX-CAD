@@ -17,7 +17,7 @@ COLOR_PREVIEW = QColor(100, 149, 237, 150)    # Cornflower blue
 COLOR_SNAP = QColor(255, 0, 0, 220)           # Red
 
 
-def create_sketcher_rubberband(canvas, geom_type=QgsWkbTypes.LineGeometry,
+def create_sketcher_rubberband(canvas, geom_type=QgsWkbTypes.GeometryType.LineGeometry,
                                color=None, width=2):
     """Create a new sketch rubber band.
 
@@ -35,7 +35,7 @@ def create_sketcher_rubberband(canvas, geom_type=QgsWkbTypes.LineGeometry,
     rb.setColor(c)
     rb.setWidth(width)
 
-    if geom_type == QgsWkbTypes.PolygonGeometry:
+    if geom_type == QgsWkbTypes.GeometryType.PolygonGeometry:
         fill = QColor(c)
         fill.setAlpha(40)
         rb.setFillColor(fill)
@@ -44,14 +44,14 @@ def create_sketcher_rubberband(canvas, geom_type=QgsWkbTypes.LineGeometry,
     return rb
 
 
-def create_preview_rubberband(canvas, geom_type=QgsWkbTypes.LineGeometry):
+def create_preview_rubberband(canvas, geom_type=QgsWkbTypes.GeometryType.LineGeometry):
     """Create a translucent rubber band for live previews."""
     rb = QgsRubberBand(canvas, geom_type)
     rb.setColor(COLOR_PREVIEW)
     rb.setWidth(1)
     rb.setLineStyle(Qt.PenStyle.DashLine)
 
-    if geom_type == QgsWkbTypes.PolygonGeometry:
+    if geom_type == QgsWkbTypes.GeometryType.PolygonGeometry:
         fill = QColor(COLOR_PREVIEW)
         fill.setAlpha(25)
         rb.setFillColor(fill)
@@ -64,10 +64,10 @@ def create_snap_marker(canvas):
     Returns:
         QgsRubberBand configured for point geometry
     """
-    rb = QgsRubberBand(canvas, QgsWkbTypes.PointGeometry)
+    rb = QgsRubberBand(canvas, QgsWkbTypes.GeometryType.PointGeometry)
     rb.setColor(COLOR_SNAP)
     rb.setWidth(3)
-    rb.setIcon(QgsRubberBand.ICON_CROSS)
+    rb.setIcon(QgsRubberBand.IconType.ICON_CROSS)
     rb.setIconSize(12)
     return rb
 

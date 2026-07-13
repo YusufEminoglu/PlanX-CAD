@@ -45,7 +45,7 @@ class tool_measure(QgsMapTool):
         self.vertices = []
         self.total_distance = 0.0
 
-        geom_type = QgsWkbTypes.LineGeometry if self.mode == 0 else QgsWkbTypes.PolygonGeometry
+        geom_type = QgsWkbTypes.GeometryType.LineGeometry if self.mode == 0 else QgsWkbTypes.GeometryType.PolygonGeometry
         self.rb = create_sketcher_rubberband(self.canvas, geom_type, COLOR_ACCENT, 2)
         self.preview_rb = create_preview_rubberband(self.canvas, geom_type)
 
@@ -99,7 +99,7 @@ class tool_measure(QgsMapTool):
 
         # Preview rubberband
         if self.preview_rb:
-            geom_type = QgsWkbTypes.LineGeometry if self.mode == 0 else QgsWkbTypes.PolygonGeometry
+            geom_type = QgsWkbTypes.GeometryType.LineGeometry if self.mode == 0 else QgsWkbTypes.GeometryType.PolygonGeometry
             self.preview_rb.reset(geom_type)
             for v in self.vertices:
                 self.preview_rb.addPoint(v)
@@ -192,16 +192,16 @@ class tool_measure(QgsMapTool):
         self.vertices = []
         self.total_distance = 0.0
         if self.rb:
-            geom_type = QgsWkbTypes.LineGeometry if self.mode == 0 else QgsWkbTypes.PolygonGeometry
+            geom_type = QgsWkbTypes.GeometryType.LineGeometry if self.mode == 0 else QgsWkbTypes.GeometryType.PolygonGeometry
             self.rb.reset(geom_type)
         if self.preview_rb:
-            geom_type = QgsWkbTypes.LineGeometry if self.mode == 0 else QgsWkbTypes.PolygonGeometry
+            geom_type = QgsWkbTypes.GeometryType.LineGeometry if self.mode == 0 else QgsWkbTypes.GeometryType.PolygonGeometry
             self.preview_rb.reset(geom_type)
 
     def _cancel(self):
         self.vertices = []
         self.total_distance = 0.0
-        geom_type = QgsWkbTypes.LineGeometry if self.mode == 0 else QgsWkbTypes.PolygonGeometry
+        geom_type = QgsWkbTypes.GeometryType.LineGeometry if self.mode == 0 else QgsWkbTypes.GeometryType.PolygonGeometry
         if self.rb:
             self.rb.reset(geom_type)
         if self.preview_rb:
@@ -218,7 +218,7 @@ class tool_measure(QgsMapTool):
             else:
                 self.total_distance = 0.0
 
-            geom_type = QgsWkbTypes.LineGeometry if self.mode == 0 else QgsWkbTypes.PolygonGeometry
+            geom_type = QgsWkbTypes.GeometryType.LineGeometry if self.mode == 0 else QgsWkbTypes.GeometryType.PolygonGeometry
             if self.rb:
                 self.rb.reset(geom_type)
                 for v in self.vertices:

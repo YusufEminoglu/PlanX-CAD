@@ -23,7 +23,7 @@ class sketcher_circle(sketcher_base):
         return "Circle"
 
     def geom_type(self):
-        return QgsWkbTypes.PolygonGeometry
+        return QgsWkbTypes.GeometryType.PolygonGeometry
 
     def on_click(self, point, button):
         if button == Qt.MouseButton.LeftButton:
@@ -40,7 +40,7 @@ class sketcher_circle(sketcher_base):
     def on_move(self, point):
         if self.center is not None and self.preview_rb:
             pts = self._calc_circle(self.center, point)
-            self.preview_rb.reset(QgsWkbTypes.PolygonGeometry)
+            self.preview_rb.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             for pt in pts:
                 self.preview_rb.addPoint(pt)
 

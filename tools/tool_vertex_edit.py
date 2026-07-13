@@ -47,7 +47,7 @@ class tool_vertex_edit(tool_base):
             self.tool_message.emit("⚠️ Vertex Edit — empty geometry")
             self._reset()
             return
-        if geom.type() not in (QgsWkbTypes.LineGeometry, QgsWkbTypes.PolygonGeometry):
+        if geom.type() not in (QgsWkbTypes.GeometryType.LineGeometry, QgsWkbTypes.GeometryType.PolygonGeometry):
             self.tool_message.emit("⚠️ Vertex Edit — pick a line or polygon")
             self._reset()
             return
@@ -110,12 +110,12 @@ class tool_vertex_edit(tool_base):
         if self._geom is None:
             return
         if self._geom.isMultipart():
-            if self._geom.type() == QgsWkbTypes.LineGeometry:
+            if self._geom.type() == QgsWkbTypes.GeometryType.LineGeometry:
                 parts = self._geom.asMultiPolyline()
             else:
                 parts = [ring for poly in self._geom.asMultiPolygon() for ring in poly]
         else:
-            if self._geom.type() == QgsWkbTypes.LineGeometry:
+            if self._geom.type() == QgsWkbTypes.GeometryType.LineGeometry:
                 parts = [self._geom.asPolyline()]
             else:
                 parts = self._geom.asPolygon()
@@ -129,7 +129,7 @@ class tool_vertex_edit(tool_base):
         for part_idx, ring in enumerate(parts):
             for v_idx, pt in enumerate(ring):
                 marker = QgsVertexMarker(self.canvas)
-                marker.setIconType(QgsVertexMarker.ICON_BOX)
+                marker.setIconType(QgsVertexMarker.IconType.ICON_BOX)
                 marker.setIconSize(9)
                 marker.setPenWidth(2)
                 marker.setColor(QColor("#ff6d00"))
@@ -146,12 +146,12 @@ class tool_vertex_edit(tool_base):
             return 0
         offset = 0
         if self._geom.isMultipart():
-            if self._geom.type() == QgsWkbTypes.LineGeometry:
+            if self._geom.type() == QgsWkbTypes.GeometryType.LineGeometry:
                 parts = self._geom.asMultiPolyline()
             else:
                 parts = [ring for poly in self._geom.asMultiPolygon() for ring in poly]
         else:
-            if self._geom.type() == QgsWkbTypes.LineGeometry:
+            if self._geom.type() == QgsWkbTypes.GeometryType.LineGeometry:
                 parts = [self._geom.asPolyline()]
             else:
                 parts = self._geom.asPolygon()
@@ -214,16 +214,16 @@ class tool_vertex_edit(tool_base):
             return
         part_idx, v_idx = self._part_indices[handle_index]
         # Refuse if it would invalidate the ring
-        min_required = 2 if self._geom.type() == QgsWkbTypes.LineGeometry else 4  # ring needs ≥4 (closed)
+        min_required = 2 if self._geom.type() == QgsWkbTypes.GeometryType.LineGeometry else 4  # ring needs ≥4 (closed)
         # crude per-part length check
         if self._geom.isMultipart():
-            if self._geom.type() == QgsWkbTypes.LineGeometry:
+            if self._geom.type() == QgsWkbTypes.GeometryType.LineGeometry:
                 ring_len = len(self._geom.asMultiPolyline()[part_idx])
             else:
                 rings_flat = [r for poly in self._geom.asMultiPolygon() for r in poly]
                 ring_len = len(rings_flat[part_idx])
         else:
-            if self._geom.type() == QgsWkbTypes.LineGeometry:
+            if self._geom.type() == QgsWkbTypes.GeometryType.LineGeometry:
                 ring_len = len(self._geom.asPolyline())
             else:
                 ring_len = len(self._geom.asPolygon()[part_idx])

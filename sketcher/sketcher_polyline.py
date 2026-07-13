@@ -15,7 +15,7 @@ class sketcher_polyline(sketcher_base):
         return "Polyline"
 
     def geom_type(self):
-        return QgsWkbTypes.LineGeometry
+        return QgsWkbTypes.GeometryType.LineGeometry
 
     def on_click(self, point, button):
         if button == Qt.MouseButton.LeftButton:

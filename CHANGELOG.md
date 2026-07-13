@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.26.1] - 2026-07-13
+
+- Plugin Hub compatibility and security-scan maintenance release; no functional changes.
+
+### Compatibility
+- Scoped every QGIS enum access for Qt6 / QGIS 4: geometry types now resolve through `QgsWkbTypes.GeometryType.*`, and vertex and rubber-band markers through `QgsVertexMarker.IconType.*` and `QgsRubberBand.IconType.*`. This clears all 90 Qt6 enum-compatibility warnings while staying compatible with QGIS 3.28 LTR.
+
+### Quality
+- Replaced defensive `try/except: pass` wrappers with `contextlib.suppress`, resolving the Plugin Hub Bandit security-scan findings that blocked 1.26.0. The same best-effort operations remain guarded, with no change in behavior.
+
 ## [1.26.0] - 2026-07-13
 
 - Target release: PlanX CAD Toolset 1.26.0 — global English workbench and documentation

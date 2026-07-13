@@ -189,13 +189,13 @@ class tool_trim(tool_base):
             parts = [geom]
 
         for part in parts:
-            if part.type() == QgsWkbTypes.PointGeometry:
+            if part.type() == QgsWkbTypes.GeometryType.PointGeometry:
                 if part.isMultipart():
                     for p in part.asMultiPoint():
                         points.append(QgsPointXY(p))
                 else:
                     points.append(QgsPointXY(part.asPoint()))
-            elif part.type() == QgsWkbTypes.LineGeometry:
+            elif part.type() == QgsWkbTypes.GeometryType.LineGeometry:
                 # For linear intersections, use their vertices.
                 if part.isMultipart():
                     for line in part.asMultiPolyline():

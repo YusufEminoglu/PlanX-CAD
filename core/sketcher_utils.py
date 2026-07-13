@@ -379,7 +379,7 @@ def create_fillet_and_trims(geom1, geom2, radius):
         return None
 
     inter = geom1.intersection(geom2)
-    if not inter.isEmpty() and inter.type() == QgsWkbTypes.PointGeometry:
+    if not inter.isEmpty() and inter.type() == QgsWkbTypes.GeometryType.PointGeometry:
         inter_pt = inter.asPoint()
     else:
         inter_pt = line_intersection(pts1[0], pts1[-1], pts2[0], pts2[-1])

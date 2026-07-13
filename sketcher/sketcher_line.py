@@ -13,7 +13,7 @@ class sketcher_line(sketcher_base):
         return "Line"
 
     def geom_type(self):
-        return QgsWkbTypes.LineGeometry
+        return QgsWkbTypes.GeometryType.LineGeometry
 
     def on_click(self, point, button):
         if button == Qt.MouseButton.LeftButton:

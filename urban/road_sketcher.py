@@ -46,10 +46,10 @@ class RoadSketcher(QgsMapTool):
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self.params = dlg.get_params()
             self.rb = create_sketcher_rubberband(
-                self.canvas, QgsWkbTypes.LineGeometry, COLOR_ACCENT, 3
+                self.canvas, QgsWkbTypes.GeometryType.LineGeometry, COLOR_ACCENT, 3
             )
             self.preview_rb = create_preview_rubberband(
-                self.canvas, QgsWkbTypes.LineGeometry
+                self.canvas, QgsWkbTypes.GeometryType.LineGeometry
             )
             self.sketcher_message.emit(
                 f"🛣️ Draw Road ({self.params['road_type']}, "
@@ -107,7 +107,7 @@ class RoadSketcher(QgsMapTool):
                 if match.isValid():
                     point = match.point()
 
-            self.preview_rb.reset(QgsWkbTypes.LineGeometry)
+            self.preview_rb.reset(QgsWkbTypes.GeometryType.LineGeometry)
             for v in self.vertices:
                 self.preview_rb.addPoint(v)
             self.preview_rb.addPoint(point)
@@ -116,17 +116,17 @@ class RoadSketcher(QgsMapTool):
         if event.key() == Qt.Key.Key_Escape:
             self._cleanup()
             self.rb = create_sketcher_rubberband(
-                self.canvas, QgsWkbTypes.LineGeometry, COLOR_ACCENT, 3
+                self.canvas, QgsWkbTypes.GeometryType.LineGeometry, COLOR_ACCENT, 3
             )
             self.preview_rb = create_preview_rubberband(
-                self.canvas, QgsWkbTypes.LineGeometry
+                self.canvas, QgsWkbTypes.GeometryType.LineGeometry
             )
             self.sketcher_message.emit("🛣️ Draw Road — Cancelled")
         elif event.key() == Qt.Key.Key_Backspace:
             if len(self.vertices) > 0:
                 self.vertices.pop()
                 if self.rb:
-                    self.rb.reset(QgsWkbTypes.LineGeometry)
+                    self.rb.reset(QgsWkbTypes.GeometryType.LineGeometry)
                     for v in self.vertices:
                         self.rb.addPoint(v)
         elif event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
@@ -157,9 +157,9 @@ class RoadSketcher(QgsMapTool):
 
         self._cleanup()
         self.rb = create_sketcher_rubberband(
-            self.canvas, QgsWkbTypes.LineGeometry, COLOR_ACCENT, 3
+            self.canvas, QgsWkbTypes.GeometryType.LineGeometry, COLOR_ACCENT, 3
         )
         self.preview_rb = create_preview_rubberband(
-            self.canvas, QgsWkbTypes.LineGeometry
+            self.canvas, QgsWkbTypes.GeometryType.LineGeometry
         )
         self.sketcher_finished.emit()

@@ -14,7 +14,7 @@ class sketcher_rectangle(sketcher_base):
         return "Rectangle"
 
     def geom_type(self):
-        return QgsWkbTypes.PolygonGeometry
+        return QgsWkbTypes.GeometryType.PolygonGeometry
 
     def on_click(self, point, button):
         if button == Qt.MouseButton.LeftButton:
@@ -25,7 +25,7 @@ class sketcher_rectangle(sketcher_base):
     def on_move(self, point):
         if len(self.vertices) == 1 and self.preview_rb:
             rect_pts = self._rectangle_points(self.vertices[0], point)
-            self.preview_rb.reset(QgsWkbTypes.PolygonGeometry)
+            self.preview_rb.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             for pt in rect_pts:
                 self.preview_rb.addPoint(pt)
 

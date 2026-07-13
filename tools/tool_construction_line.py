@@ -87,7 +87,7 @@ class tool_construction_line(QgsMapTool):
     def activate(self):
         super().activate()
         self.first_point = None
-        self.preview_rb = create_preview_rubberband(self.canvas, QgsWkbTypes.LineGeometry)
+        self.preview_rb = create_preview_rubberband(self.canvas, QgsWkbTypes.GeometryType.LineGeometry)
         if self.preview_rb is not None:
             self.preview_rb.setColor(COLOR_ACCENT)
             self.preview_rb.setWidth(1)
@@ -107,7 +107,7 @@ class tool_construction_line(QgsMapTool):
         if event.key() == Qt.Key.Key_Escape:
             self.first_point = None
             if self.preview_rb is not None:
-                self.preview_rb.reset(QgsWkbTypes.LineGeometry)
+                self.preview_rb.reset(QgsWkbTypes.GeometryType.LineGeometry)
             self.tool_message.emit("┄ Construction — cancelled")
 
     def canvasPressEvent(self, event):
@@ -115,7 +115,7 @@ class tool_construction_line(QgsMapTool):
         if event.button() == Qt.MouseButton.RightButton:
             self.first_point = None
             if self.preview_rb is not None:
-                self.preview_rb.reset(QgsWkbTypes.LineGeometry)
+                self.preview_rb.reset(QgsWkbTypes.GeometryType.LineGeometry)
             self.tool_message.emit(f"┄ Construction — reset ({self._count} so far)")
             return
         if event.button() != Qt.MouseButton.LeftButton:
@@ -132,7 +132,7 @@ class tool_construction_line(QgsMapTool):
             return
         p2 = self._snap(event)
         a, b = self._segment_for_preview(self.first_point, p2)
-        self.preview_rb.reset(QgsWkbTypes.LineGeometry)
+        self.preview_rb.reset(QgsWkbTypes.GeometryType.LineGeometry)
         self.preview_rb.addPoint(a)
         self.preview_rb.addPoint(b)
 

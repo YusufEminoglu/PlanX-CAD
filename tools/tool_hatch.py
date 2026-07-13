@@ -91,7 +91,7 @@ def _generate_hatch_lines(
                 if len(part) >= 2:
                     lines.append(QgsGeometry.fromPolylineXY(part))
         else:
-            if clipped.type() == QgsWkbTypes.LineGeometry:
+            if clipped.type() == QgsWkbTypes.GeometryType.LineGeometry:
                 lines.append(clipped)
     return lines
 
@@ -197,9 +197,9 @@ class tool_hatch(tool_base):
             self.tool_message.emit("⚠️ Hatch — empty geometry")
             self._reset()
             return
-        if geom.type() != QgsWkbTypes.PolygonGeometry:
+        if geom.type() != QgsWkbTypes.GeometryType.PolygonGeometry:
             # Try to close a polyline into a polygon.
-            if geom.type() == QgsWkbTypes.LineGeometry:
+            if geom.type() == QgsWkbTypes.GeometryType.LineGeometry:
                 from qgis.core import QgsGeometry as _G
                 try:
                     converted = _G.fromPolygonXY([geom.asPolyline()]) if not geom.isMultipart() else None

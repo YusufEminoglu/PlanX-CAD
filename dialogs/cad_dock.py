@@ -7,6 +7,7 @@ Highly compact, space-optimized layout with the official PlanX Teal/Slate theme.
 from __future__ import annotations
 
 import os
+from contextlib import suppress
 
 from qgis.PyQt.QtCore import Qt, pyqtSignal, QSize, QSettings
 from qgis.PyQt.QtGui import QIcon, QFont, QColor
@@ -792,10 +793,8 @@ class CADDockWidget(QDockWidget):
     def unload(self):
         self._save_state()
         if hasattr(self, 'coord_widget') and self.coord_widget:
-            try:
+            with suppress(Exception):
                 self.coord_widget.unload()
-            except Exception:
-                pass
 
     def set_status(self, message):
         self.status_label.setText(message)

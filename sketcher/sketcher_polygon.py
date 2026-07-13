@@ -25,7 +25,7 @@ class sketcher_polygon(sketcher_base):
         return "Polygon"
 
     def geom_type(self):
-        return QgsWkbTypes.PolygonGeometry
+        return QgsWkbTypes.GeometryType.PolygonGeometry
 
     def activate(self):
         super().activate()
@@ -59,7 +59,7 @@ class sketcher_polygon(sketcher_base):
     def on_move(self, point):
         if self.center is not None and self.preview_rb:
             pts = self._calc_polygon(self.center, point)
-            self.preview_rb.reset(QgsWkbTypes.PolygonGeometry)
+            self.preview_rb.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             for pt in pts:
                 self.preview_rb.addPoint(pt)
 

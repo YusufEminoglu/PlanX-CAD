@@ -5,6 +5,8 @@ Base class for editing and transform tools.
 Provides feature picking, previews, precision input, and undo-safe edits.
 """
 
+from contextlib import suppress
+
 from qgis.PyQt.QtCore import Qt, pyqtSignal
 from qgis.PyQt.QtGui import QColor, QCursor, QPixmap, QPainter, QPen, QBrush
 from qgis.core import (
@@ -57,13 +59,13 @@ class tool_base(QgsMapTool):
 
         # Visual feedback: snap marker and feature highlight.
         self.snap_marker = QgsVertexMarker(self.canvas)
-        self.snap_marker.setIconType(QgsVertexMarker.ICON_CIRCLE)
+        self.snap_marker.setIconType(QgsVertexMarker.IconType.ICON_CIRCLE)
         self.snap_marker.setColor(QColor(13, 148, 136))
         self.snap_marker.setIconSize(12)
         self.snap_marker.setPenWidth(2)
         self.snap_marker.hide()
 
-        self.highlight_rb = QgsRubberBand(self.canvas, QgsWkbTypes.LineGeometry)
+        self.highlight_rb = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.LineGeometry)
         self.highlight_rb.setWidth(4)
         self.highlight_rb.setColor(QColor(13, 148, 136, 160))
 
@@ -112,14 +114,14 @@ class tool_base(QgsMapTool):
 
         if getattr(self, 'snap_marker', None) is None:
             self.snap_marker = QgsVertexMarker(self.canvas)
-            self.snap_marker.setIconType(QgsVertexMarker.ICON_CIRCLE)
+            self.snap_marker.setIconType(QgsVertexMarker.IconType.ICON_CIRCLE)
             self.snap_marker.setColor(QColor(13, 148, 136))
             self.snap_marker.setIconSize(12)
             self.snap_marker.setPenWidth(2)
             self.snap_marker.hide()
 
         if getattr(self, 'highlight_rb', None) is None:
-            self.highlight_rb = QgsRubberBand(self.canvas, QgsWkbTypes.LineGeometry)
+            self.highlight_rb = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.LineGeometry)
             self.highlight_rb.setWidth(4)
             self.highlight_rb.setColor(QColor(13, 148, 136, 160))
             
@@ -443,10 +445,8 @@ class tool_base(QgsMapTool):
 
             if source_feature:
                 for i, _field in enumerate(layer.fields()):
-                    try:
+                    with suppress(Exception):
                         feat.setAttribute(i, source_feature.attribute(i))
-                    except Exception:
-                        pass
             features.append(feat)
 
         layer.beginEditCommand(self.tool_name())

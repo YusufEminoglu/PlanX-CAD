@@ -117,7 +117,7 @@ class tool_join(tool_base):
             if result:
                 layer, feature = result
                 geom = feature.geometry()
-                if geom is None or geom.isEmpty() or geom.type() != QgsWkbTypes.LineGeometry:
+                if geom is None or geom.isEmpty() or geom.type() != QgsWkbTypes.GeometryType.LineGeometry:
                     self.tool_message.emit(
                         "⚠️ Join — Only line or polyline features can be joined"
                     )
@@ -179,7 +179,7 @@ class tool_join(tool_base):
         
         geoms = [f.geometry() for f in self.features_to_join]
         combined = QgsGeometry.collectGeometry(geoms)
-        self.highlight_rb.reset(QgsWkbTypes.LineGeometry)
+        self.highlight_rb.reset(QgsWkbTypes.GeometryType.LineGeometry)
         self.highlight_rb.setToGeometry(combined, self.selected_layer)
 
     def _do_join(self):

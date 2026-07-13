@@ -2,6 +2,8 @@
 """Advanced junction solver for curb corners, medians, and traffic islands."""
 
 import math
+from contextlib import suppress
+
 from qgis.PyQt.QtCore import Qt, pyqtSignal
 from qgis.PyQt.QtWidgets import QDialog
 from qgis.core import (
@@ -74,7 +76,7 @@ class JunctionSketcher(QgsMapTool):
 
         self.params = dlg.get_params()
         self.preview_rb = create_preview_rubberband(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self._step = 1
         mode_label = (
@@ -128,7 +130,7 @@ class JunctionSketcher(QgsMapTool):
                 metric_point, self.params["radius"], 48
             )
         ]
-        self.preview_rb.reset(QgsWkbTypes.PolygonGeometry)
+        self.preview_rb.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
         for pt in pts:
             self.preview_rb.addPoint(pt)
 
@@ -490,7 +492,7 @@ class JunctionSketcher(QgsMapTool):
         # Reset the preview for the next activation.
         cleanup_sketcher_rubberband(self.canvas, self.preview_rb)
         self.preview_rb = create_preview_rubberband(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.sketcher_finished.emit()
         self._junction_edit_state = None
@@ -515,7 +517,7 @@ class JunctionSketcher(QgsMapTool):
             if not state:
                 continue
             layer = state["layer"]
-            try:
+            with suppress(Exception):
                 if state["command_open"]:
                     layer.destroyEditCommand()
                 if state.get("committed"):
@@ -528,8 +530,6 @@ class JunctionSketcher(QgsMapTool):
                         )
                 elif not state["was_editing"] and layer.isEditable():
                     layer.rollBack()
-            except Exception:
-                pass
             self._junction_edit_state[key] = None
 
     def _compensate_committed_island(self):
@@ -574,7 +574,7 @@ class JunctionSketcher(QgsMapTool):
         return [
             QgsGeometry(part) for part in candidates
             if part and not part.isEmpty()
-            and part.type() == QgsWkbTypes.LineGeometry
+            and part.type() == QgsWkbTypes.GeometryType.LineGeometry
         ]
 
     def _annular_trim_parts(self, geometry, inner_buffer, outer_buffer):
@@ -591,7 +591,7 @@ class JunctionSketcher(QgsMapTool):
         parts = [
             part for part in metric_parts
             if part and not part.isEmpty()
-            and part.type() == QgsWkbTypes.LineGeometry
+            and part.type() == QgsWkbTypes.GeometryType.LineGeometry
         ]
         if not parts:
             return layer.deleteFeature(feature.id())
@@ -622,7 +622,7 @@ class JunctionSketcher(QgsMapTool):
     ):
         """Build one outward half-edge for each curb/buffer crossing."""
         buffer_boundary = junction_buffer.convertToType(
-            QgsWkbTypes.LineGeometry
+            QgsWkbTypes.GeometryType.LineGeometry
         )
         edges = []
         effective_road_id = (

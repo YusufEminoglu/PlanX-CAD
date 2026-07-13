@@ -35,7 +35,7 @@ class tool_measure_select(tool_base):
 
         if self.mode == 0:
             # Measure line length.
-            if geom.type() != QgsWkbTypes.LineGeometry:
+            if geom.type() != QgsWkbTypes.GeometryType.LineGeometry:
                 self.tool_message.emit("⚠️ Select a line feature")
                 self._reset()
                 return
@@ -58,7 +58,7 @@ class tool_measure_select(tool_base):
 
         elif self.mode == 1:
             # Measure polygon area and perimeter.
-            if geom.type() != QgsWkbTypes.PolygonGeometry:
+            if geom.type() != QgsWkbTypes.GeometryType.PolygonGeometry:
                 self.tool_message.emit("⚠️ Select a polygon feature")
                 self._reset()
                 return

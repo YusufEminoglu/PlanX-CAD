@@ -2,6 +2,7 @@
 """PlanX CAD Toolset: QGIS plugin entry point and workbench shell."""
 
 import os
+from contextlib import suppress
 
 from qgis.PyQt.QtCore import Qt, QTimer, QSettings, QUrl
 from qgis.PyQt.QtGui import QDesktopServices, QIcon, QKeySequence
@@ -175,10 +176,8 @@ class PlanXCADPlugin:
             self._quick_start_timer.deleteLater()
             self._quick_start_timer = None
         if self._canvas_tool_signal_connected:
-            try:
+            with suppress(Exception):
                 self.iface.mapCanvas().mapToolSet.disconnect(self._on_map_tool_set)
-            except Exception:
-                pass
             self._canvas_tool_signal_connected = False
 
         # Deactivate the current map tool.
@@ -192,10 +191,8 @@ class PlanXCADPlugin:
             if hasattr(self._dock, 'unload'):
                 self._dock.unload()
             if self._layer_signal_connected:
-                try:
+                with suppress(Exception):
                     self.iface.currentLayerChanged.disconnect(self._on_current_layer_changed)
-                except Exception:
-                    pass
                 self._layer_signal_connected = False
             self._bind_active_layer(None)
             self.iface.removeDockWidget(self._dock)
@@ -287,18 +284,14 @@ class PlanXCADPlugin:
 
             except Exception as e:
                 if self._layer_signal_connected:
-                    try:
+                    with suppress(Exception):
                         self.iface.currentLayerChanged.disconnect(
                             self._on_current_layer_changed
                         )
-                    except Exception:
-                        pass
                     self._layer_signal_connected = False
                 if dock is not None:
-                    try:
+                    with suppress(Exception):
                         dock.unload()
-                    except Exception:
-                        pass
                     dock.deleteLater()
                 self._dock = None
                 QMessageBox.critical(
@@ -347,12 +340,12 @@ class PlanXCADPlugin:
         "line", "polyline", "rectangle", "polygon", "circle", "arc",
     }
     _ACTIVE_TARGET_GEOMETRY = {
-        "line": QgsWkbTypes.LineGeometry,
-        "polyline": QgsWkbTypes.LineGeometry,
-        "arc": QgsWkbTypes.LineGeometry,
-        "rectangle": QgsWkbTypes.PolygonGeometry,
-        "polygon": QgsWkbTypes.PolygonGeometry,
-        "circle": QgsWkbTypes.PolygonGeometry,
+        "line": QgsWkbTypes.GeometryType.LineGeometry,
+        "polyline": QgsWkbTypes.GeometryType.LineGeometry,
+        "arc": QgsWkbTypes.GeometryType.LineGeometry,
+        "rectangle": QgsWkbTypes.GeometryType.PolygonGeometry,
+        "polygon": QgsWkbTypes.GeometryType.PolygonGeometry,
+        "circle": QgsWkbTypes.GeometryType.PolygonGeometry,
     }
     _EDITABLE_PICK_TOOLS = {
         "offset", "trim", "extend", "fillet", "vertex_edit",
@@ -577,21 +570,17 @@ class PlanXCADPlugin:
         """Refresh dock state when QGIS toggles editing on the same layer."""
         if self._watched_layer is not None:
             for signal_name in ("editingStarted", "editingStopped"):
-                try:
+                with suppress(Exception):
                     getattr(self._watched_layer, signal_name).disconnect(
                         self._on_layer_edit_state_changed
                     )
-                except Exception:
-                    pass
         self._watched_layer = layer if isinstance(layer, QgsVectorLayer) else None
         if self._watched_layer is not None:
             for signal_name in ("editingStarted", "editingStopped"):
-                try:
+                with suppress(Exception):
                     getattr(self._watched_layer, signal_name).connect(
                         self._on_layer_edit_state_changed
                     )
-                except Exception:
-                    pass
 
     def _on_layer_edit_state_changed(self):
         if self._dock and hasattr(self._dock, "refresh_layer_state"):
@@ -899,15 +888,13 @@ class PlanXCADPlugin:
 
         meta_path = os.path.join(self.plugin_dir, "metadata.txt")
         version = "unknown"
-        try:
+        with suppress(Exception):
             with open(meta_path, "r", encoding="utf-8") as f:
                 import re
                 content = f.read()
                 m = re.search(r"^version=(.+)$", content, re.MULTILINE)
                 if m:
                     version = m.group(1).strip()
-        except Exception:
-            pass
         rows.append({
             "check": "Metadata version",
             "status": "OK" if version not in ("", "unknown") else "WARN",
@@ -991,10 +978,8 @@ class PlanXCADPlugin:
         if self._dock:
             self._dock.set_status(message)
             return
-        try:
+        with suppress(Exception):
             self.iface.mainWindow().statusBar().showMessage(message, 6000)
-        except Exception:
-            pass
 
     def _relay_tool_message(self, message):
         self._set_status(message)
@@ -1043,7 +1028,7 @@ class PlanXCADPlugin:
             if expected is not None and layer.geometryType() != expected:
                 target_name = (
                     "line"
-                    if expected == QgsWkbTypes.LineGeometry
+                    if expected == QgsWkbTypes.GeometryType.LineGeometry
                     else "polygon"
                 )
                 self._set_status(
@@ -1259,7 +1244,7 @@ class PlanXCADPlugin:
     def _show_about(self):
         """Show plugin version and capability information."""
         version = "1.0.0"
-        try:
+        with suppress(Exception):
             meta_path = os.path.join(self.plugin_dir, "metadata.txt")
             with open(meta_path, "r", encoding="utf-8") as f:
                 import re
@@ -1267,8 +1252,6 @@ class PlanXCADPlugin:
                 match = re.search(r"^version=(.+)$", content, re.MULTILINE)
                 if match:
                     version = match.group(1).strip()
-        except Exception:
-            pass
 
         QMessageBox.about(
             self.iface.mainWindow(),
@@ -1398,7 +1381,7 @@ class PlanXCADPlugin:
             self._show_quick_start()
 
     def _maybe_show_quick_start_once(self):
-        try:
+        with suppress(Exception):
             s = QSettings("PlanX", "PlanXCAD")
             seen = s.value("onboarding/quick_start_seen", False, type=bool)
             if seen:
@@ -1409,5 +1392,3 @@ class PlanXCADPlugin:
                 self._show_scheduled_quick_start
             )
             self._quick_start_timer.start(400)
-        except Exception:
-            pass
