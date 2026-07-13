@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Çoklu Öteleme (Multi-Offset) Aracı
+"""PlanX CAD Multi-Offset tool.
 
 Allows offsetting selected lines/polylines multiple times with custom distances and side settings.
-Bilingual: English (Primary) and Turkish (Secondary).
 """
 from __future__ import annotations
 
@@ -25,7 +24,7 @@ class MultiOffsetDialog(QDialog):
 
     def __init__(self, parent=None, last_distances="3.0, 6.0", last_side=2):
         super().__init__(parent)
-        self.setWindowTitle("Multi-Offset / Çoklu Öteleme")
+        self.setWindowTitle("Multi-Offset")
         self.setMinimumWidth(320)
         self.setModal(True)
         self._last_distances = last_distances
@@ -35,7 +34,7 @@ class MultiOffsetDialog(QDialog):
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
-        title = QLabel("Multi-Offset Parameters / Çoklu Öteleme Parametreleri")
+        title = QLabel("Multi-Offset Parameters")
         f = QFont()
         f.setBold(True)
         f.setPointSize(10)
@@ -48,23 +47,23 @@ class MultiOffsetDialog(QDialog):
         self.txt_distances = QLineEdit()
         self.txt_distances.setText(self._last_distances)
         self.txt_distances.setPlaceholderText("e.g. 3.0, 6.0, 9.0")
-        self.txt_distances.setToolTip("Enter comma-separated distances / Virgülle ayrılmış mesafeler girin")
-        form.addRow("Distances / Mesafeler (m):", self.txt_distances)
+        self.txt_distances.setToolTip("Enter comma-separated distances")
+        form.addRow("Distances (m):", self.txt_distances)
 
         self.cmb_side = QComboBox()
         self.cmb_side.addItems([
-            "Left / Sol",
-            "Right / Sağ",
-            "Both / Her İki Taraf",
-            "Mouse Click / Tıklanan Taraf"
+            "Left",
+            "Right",
+            "Both",
+            "Pick Side on Canvas"
         ])
         self.cmb_side.setCurrentIndex(self._last_side)
-        form.addRow("Direction / Yön:", self.cmb_side)
+        form.addRow("Direction:", self.cmb_side)
 
         layout.addLayout(form)
 
         btn_row = QHBoxLayout()
-        ok = QPushButton("✅ Apply / Uygula")
+        ok = QPushButton("✅ Apply")
         ok.setMinimumHeight(34)
         ok.setStyleSheet(
             "QPushButton { background: #1a237e; color: white; font-weight: bold;"
@@ -72,7 +71,7 @@ class MultiOffsetDialog(QDialog):
             "QPushButton:hover { background: #283593; }"
         )
         ok.clicked.connect(self.accept)
-        cancel = QPushButton("Cancel / İptal")
+        cancel = QPushButton("Cancel")
         cancel.setMinimumHeight(34)
         cancel.clicked.connect(self.reject)
         btn_row.addWidget(ok)
@@ -96,29 +95,29 @@ class tool_multi_offset(tool_base):
         self.parsed_distances: list[float] = []
 
     def tool_name(self):
-        return "Multi-Offset / Çoklu Öteleme"
+        return "Multi-Offset"
 
     def activate(self):
         super().activate()
         self.parsed_distances = []
-        self.tool_message.emit("🔧 Multi-Offset — Select line to offset / Çoklu Öteleme — Ötelenecek çizgiyi seçin")
+        self.tool_message.emit("🔧 Multi-Offset — Select a line to offset")
 
     def on_entity_selected(self, layer, feature, point):
         geom = feature.geometry()
         if geom is None or geom.isEmpty():
-            self.tool_message.emit("⚠️ Multi-Offset — Empty geometry / Boş geometri")
+            self.tool_message.emit("⚠️ Multi-Offset — Geometry is empty")
             self._reset()
             return
 
         if geom.type() != QgsWkbTypes.LineGeometry:
-            self.tool_message.emit("⚠️ Multi-Offset — Only lines can be offset / Sadece çizgiler ötelenebilir")
+            self.tool_message.emit("⚠️ Multi-Offset — Only line features can be offset")
             self._reset()
             return
 
         # Open dialog
         dlg = MultiOffsetDialog(self.iface.mainWindow(), self.distances_str, self.side_mode)
         if dlg.exec() != QDialog.DialogCode.Accepted:
-            self.tool_message.emit("⚠️ Multi-Offset — Cancelled / İptal edildi")
+            self.tool_message.emit("⚠️ Multi-Offset — Cancelled")
             self._reset()
             return
 
@@ -136,7 +135,7 @@ class tool_multi_offset(tool_base):
                 pass
 
         if not parsed:
-            self.tool_message.emit("⚠️ Multi-Offset — Invalid distance format / Geçersiz mesafe formatı")
+            self.tool_message.emit("⚠️ Multi-Offset — Enter at least one valid distance")
             self._reset()
             return
 
@@ -154,7 +153,7 @@ class tool_multi_offset(tool_base):
         else:  # Clicked Side
             self._step = 2
             self.tool_message.emit(
-                "🔧 Multi-Offset — Move mouse to select side and click / Çoklu Öteleme — Mouse ile tarafı seçip tıklayın"
+                "🔧 Multi-Offset — Move the pointer to choose a side, then click"
             )
 
     def _apply_offsets(self, layer, feature, geom, side):
@@ -184,15 +183,14 @@ class tool_multi_offset(tool_base):
         ]
 
         if not offset_geoms:
-            self.tool_message.emit("⚠️ Multi-Offset — Failed to generate offset geometry / Öteleme geometrisi üretilemedi")
+            self.tool_message.emit("⚠️ Multi-Offset — Failed to generate offset geometry")
             return
 
         added = self._add_features(layer, offset_geoms, feature)
         if not added:
             return
         self.tool_message.emit(
-            f"✅ Multi-Offset — Added {len(added)} parallel lines / "
-            f"Çoklu Öteleme — {len(added)} adet paralel çizgi eklendi"
+            f"✅ Multi-Offset — Added {len(added)} parallel lines"
         )
 
     def _get_closer_side(self, geom, point) -> str:
@@ -235,7 +233,7 @@ class tool_multi_offset(tool_base):
             self.preview_rb.reset(QgsWkbTypes.LineGeometry)
             if offset_geoms:
                 combined = QgsGeometry.collectGeometry(offset_geoms)
-                self.preview_rb.setToGeometry(combined)
+                self.preview_rb.setToGeometry(combined, self.selected_layer)
 
     def on_click(self, point, button):
         if self._step == 2 and button == Qt.MouseButton.LeftButton:

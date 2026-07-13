@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Extend Aracı"""
+"""PlanX CAD Extend tool."""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry, QgsPointXY
@@ -8,8 +8,9 @@ from ..core.sketcher_utils import extend_geometry_to_boundary
 
 
 class tool_extend(tool_base):
-    """Çizgiyi sınır objesine kadar uzatır.
-    1. Sınır objesini seç | 2. Uzatılacak çizgiyi seç
+    """Extend a line to a selected boundary.
+
+    1. Select boundary | 2. Select line to extend
     """
 
     def __init__(self, canvas, iface):
@@ -22,17 +23,17 @@ class tool_extend(tool_base):
 
     def activate(self):
         super().activate()
-        self.tool_message.emit("↗️ Extend — Sınır objesini seçin")
+        self.tool_message.emit("↗️ Extend — Select the boundary feature")
 
     def on_entity_selected(self, layer, feature, point):
         self.boundary_layer = layer
         self.boundary_feature = feature
         self._step = 2
-        self.tool_message.emit("↗️ Extend — Uzatılacak çizgiyi seçin")
+        self.tool_message.emit("↗️ Extend — Select the line to extend")
 
     def on_click(self, point, button):
         if self._step == 2 and button == Qt.MouseButton.LeftButton:
-            # Sınır objesi dışlanır — çizgi kendi sınırına uzatılamaz
+            # Exclude the boundary so a line cannot extend to itself.
             result = self._pick_feature(
                 self.canvas.mouseLastXY(),
                 exclude=(self.boundary_layer, self.boundary_feature),
@@ -54,7 +55,7 @@ class tool_extend(tool_base):
                     self._apply_edit(layer, feature, new_geom)
                 else:
                     self.tool_message.emit(
-                        "⚠️ Extend — Uzatma yapılamadı veya CRS dönüşümü başarısız"
+                        "⚠️ Extend — Extension failed or the CRS transform was invalid"
                     )
 
             self._reset()

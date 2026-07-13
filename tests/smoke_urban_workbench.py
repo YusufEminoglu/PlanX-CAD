@@ -19,12 +19,14 @@ from qgis.core import (  # noqa: E402
     QgsCoordinateReferenceSystem,
     QgsDistanceArea,
     QgsFeature,
+    QgsField,
     QgsGeometry,
     QgsPointXY,
     QgsProject,
     QgsVectorLayer,
     QgsWkbTypes,
 )
+from qgis.PyQt.QtCore import QVariant  # noqa: E402
 from qgis.gui import QgsMapCanvas  # noqa: E402
 
 from planX_CAD_arac_Seti.urban.ada_kirma_sketcher import (  # noqa: E402
@@ -34,6 +36,10 @@ from planX_CAD_arac_Seti.urban.junction_sketcher import (  # noqa: E402
     JunctionSketcher,
 )
 from planX_CAD_arac_Seti.urban.road_generator import RoadGenerator  # noqa: E402
+from planX_CAD_arac_Seti.core.sketcher_layer_utils import (  # noqa: E402
+    get_road_platform_layer,
+    road_attribute,
+)
 from planX_CAD_arac_Seti.urban.crs_utils import (  # noqa: E402
     local_metric_crs,
     transform_geometry,
@@ -89,14 +95,14 @@ def _line_endpoints(geometry):
 
 def _road_params():
     return {
-        "yol_tipi": "Test road",
-        "tek_yon": False,
-        "serit_sayisi": 2,
-        "serit_genisligi": 3.5,
-        "refuj_genislik": 2.0,
-        "sol_kaldirim": 2.0,
-        "sag_kaldirim": 2.0,
-        "toplam_genislik": 20.0,
+        "road_type": "Test road",
+        "one_way": False,
+        "lane_count": 2,
+        "lane_width": 3.5,
+        "median_width": 2.0,
+        "left_sidewalk": 2.0,
+        "right_sidewalk": 2.0,
+        "total_width": 20.0,
     }
 
 
@@ -116,7 +122,7 @@ def _generate_cross(iface):
     _check("cross vertical generated", generator.generate(
         vertical, _road_params()
     ) == 9)
-    return QgsProject.instance().mapLayersByName("planx_yol_platformu")[0]
+    return QgsProject.instance().mapLayersByName("planx_road_platform")[0]
 
 
 def _assert_connections_are_gap_free(layer, component, expected_count):
@@ -126,9 +132,9 @@ def _assert_connections_are_gap_free(layer, component, expected_count):
     connections = []
     for feature in layer.getFeatures():
         geometry = transform_geometry(feature.geometry(), layer.crs(), metric_crs)
-        if feature["bilesen"] == "kaldirim":
+        if road_attribute(layer, feature, "component") == "sidewalk":
             curb_endpoints.extend(_line_endpoints(geometry))
-        elif feature["bilesen"] == component:
+        elif road_attribute(layer, feature, "component") == component:
             connections.append(geometry)
 
     _check(
@@ -161,7 +167,7 @@ def test_geographic_road_generation_and_edit_lifecycle(iface):
     ])
     generator = RoadGenerator(iface)
     count = generator.generate(center, params)
-    layer = project.mapLayersByName("planx_yol_platformu")[0]
+    layer = project.mapLayersByName("planx_road_platform")[0]
 
     _check("road component count", count == 9, f"count={count}")
     _check(
@@ -171,7 +177,7 @@ def test_geographic_road_generation_and_edit_lifecycle(iface):
 
     sidewalks = [
         feature for feature in layer.getFeatures()
-        if feature["bilesen"] == "kaldirim"
+        if road_attribute(layer, feature, "component") == "sidewalk"
     ]
     distance_area = QgsDistanceArea()
     distance_area.setSourceCrs(geographic, project.transformContext())
@@ -260,9 +266,9 @@ def test_junction_does_not_touch_unrelated_layers(canvas, iface, road_layer):
         "corner_mode": "chamfer",
         "chamfer_dist": 5.0,
         "fillet_radius": 3.0,
-        "ada_tipi": "yok",
-        "ada_radius": 3.0,
-        "teardrop_uzunluk": 6.0,
+        "island_type": "none",
+        "island_radius": 3.0,
+        "teardrop_length": 6.0,
     }
     single_road_sketcher._create_junction(QgsPointXY(27.1405, 38.4200))
     after_single_road = {
@@ -300,9 +306,9 @@ def test_junction_does_not_touch_unrelated_layers(canvas, iface, road_layer):
         "corner_mode": "chamfer",
         "chamfer_dist": 5.0,
         "fillet_radius": 3.0,
-        "ada_tipi": "yuvarlak",
-        "ada_radius": 3.0,
-        "teardrop_uzunluk": 6.0,
+        "island_type": "round",
+        "island_radius": 3.0,
+        "teardrop_length": 6.0,
     }
     sketcher._create_junction(QgsPointXY(27.1405, 38.4200))
 
@@ -316,7 +322,7 @@ def test_junction_does_not_touch_unrelated_layers(canvas, iface, road_layer):
     _check("junction does not open unrelated layer editing", not unrelated.isEditable())
     _check("junction closes plugin-started road edit", not road_layer.isEditable())
     connections = _assert_connections_are_gap_free(
-        road_layer, "dis_kirma", 4
+        road_layer, "junction_chamfer", 4
     )
     lengths = [connection.length() for connection in connections]
     _check(
@@ -330,7 +336,7 @@ def test_junction_does_not_touch_unrelated_layers(canvas, iface, road_layer):
     refuge_caps = [
         transform_geometry(feature.geometry(), road_layer.crs(), metric_crs)
         for feature in road_layer.getFeatures()
-        if feature["bilesen"] == "refuj_baglanti"
+        if road_attribute(road_layer, feature, "component") == "median_connection"
     ]
     _check(
         "round junction closes every directional refuge arm",
@@ -342,7 +348,9 @@ def test_junction_does_not_touch_unrelated_layers(canvas, iface, road_layer):
         all(1.9 < geometry.length() < 2.1 for geometry in refuge_caps),
         f"lengths={[geometry.length() for geometry in refuge_caps]}",
     )
-    island_layer = QgsProject.instance().mapLayersByName("kavsak_ada")[0]
+    island_layer = QgsProject.instance().mapLayersByName(
+        "planx_junction_islands"
+    )[0]
     _check("round junction creates one island", island_layer.featureCount() == 1)
 
 
@@ -360,14 +368,14 @@ def test_fillet_junction_integration(canvas, iface):
         "corner_mode": "fillet",
         "chamfer_dist": 5.0,
         "fillet_radius": 3.0,
-        "ada_tipi": "yok",
-        "ada_radius": 3.0,
-        "teardrop_uzunluk": 6.0,
+        "island_type": "none",
+        "island_radius": 3.0,
+        "teardrop_length": 6.0,
     }
     sketcher._create_junction(QgsPointXY(27.1405, 38.4200))
 
     connections = _assert_connections_are_gap_free(
-        road_layer, "ic_baglanti", 4
+        road_layer, "junction_fillet", 4
     )
     lengths = [connection.length() for connection in connections]
     _check(
@@ -378,7 +386,8 @@ def test_fillet_junction_integration(canvas, iface):
     _check(
         "fillet mode does not emit chamfer components",
         not any(
-            feature["bilesen"] == "dis_kirma"
+            road_attribute(road_layer, feature, "component") ==
+            "junction_chamfer"
             for feature in road_layer.getFeatures()
         ),
     )
@@ -392,15 +401,15 @@ def _road_snapshot(layer):
     }
 
 
-def _junction_params(island="yok"):
+def _junction_params(island="none"):
     return {
         "radius": 12.0,
         "corner_mode": "chamfer",
         "chamfer_dist": 5.0,
         "fillet_radius": 3.0,
-        "ada_tipi": island,
-        "ada_radius": 3.0,
-        "teardrop_uzunluk": 6.0,
+        "island_type": island,
+        "island_radius": 3.0,
+        "teardrop_length": 6.0,
     }
 
 
@@ -438,9 +447,9 @@ def test_junction_failure_rollback(canvas, iface):
     before = _road_snapshot(road_layer)
     road_layer.startEditing()
     sketcher = JunctionSketcher(canvas, iface)
-    sketcher.params = _junction_params("yuvarlak")
+    sketcher.params = _junction_params("round")
     sketcher._create_junction(QgsPointXY(27.1405, 38.4200))
-    island_layer = project.mapLayersByName("kavsak_ada")[0]
+    island_layer = project.mapLayersByName("planx_junction_islands")[0]
     _check(
         "island junction refuses mixed user edit ownership",
         _road_snapshot(road_layer) == before
@@ -455,33 +464,111 @@ def test_junction_failure_rollback(canvas, iface):
     road_layer = _generate_cross(iface)
     before = _road_snapshot(road_layer)
     setup_sketcher = JunctionSketcher(canvas, iface)
-    island_layer = setup_sketcher._get_kavsak_ada_layer()
+    island_layer = setup_sketcher._get_junction_island_layer()
     existing_island = QgsFeature(island_layer.fields())
     existing_island.setGeometry(
         QgsGeometry.fromPointXY(QgsPointXY(27.1405, 38.4200)).buffer(
             0.00001, 8
         )
     )
-    existing_island.setAttribute("kavsak_id", 3)
-    existing_island.setAttribute("ada_tipi", "existing")
-    existing_island.setAttribute("ada_radius", 1.0)
+    existing_island.setAttribute("junction_id", 3)
+    existing_island.setAttribute("island_type", "existing")
+    existing_island.setAttribute("island_radius", 1.0)
     island_layer.dataProvider().addFeature(existing_island)
     original_commit = road_layer.commitChanges
     road_layer.commitChanges = lambda: False
     try:
         sketcher = JunctionSketcher(canvas, iface)
-        sketcher.params = _junction_params("yuvarlak")
+        sketcher.params = _junction_params("round")
         sketcher._create_junction(QgsPointXY(27.1405, 38.4200))
     finally:
         road_layer.commitChanges = original_commit
-    island_layer = project.mapLayersByName("kavsak_ada")[0]
+    island_layer = project.mapLayersByName("planx_junction_islands")[0]
     remaining_islands = list(island_layer.getFeatures())
     _check(
         "road commit failure compensates committed island",
         _road_snapshot(road_layer) == before
         and not road_layer.isEditable()
         and len(remaining_islands) == 1
-        and remaining_islands[0]["ada_tipi"] == "existing",
+        and remaining_islands[0]["island_type"] == "existing",
+    )
+
+
+def test_legacy_schema_compatibility(canvas, iface):
+    """Pre-1.26 project layers remain writable without duplicate outputs."""
+    project = QgsProject.instance()
+    project.clear()
+    geographic = QgsCoordinateReferenceSystem.fromEpsgId(4326)
+    project.setCrs(geographic)
+    canvas.setDestinationCrs(geographic)
+
+    legacy_road = QgsVectorLayer(
+        "MultiLineString?crs=EPSG:4326", "planx_yol_platformu", "memory"
+    )
+    legacy_road.dataProvider().addAttributes([
+        QgsField("yol_id", QVariant.Int),
+        QgsField("yol_tipi", QVariant.String),
+        QgsField("bilesen", QVariant.String),
+        QgsField("taraf", QVariant.String),
+        QgsField("serit_no", QVariant.Int),
+        QgsField("serit_sayisi", QVariant.Int),
+        QgsField("serit_genisligi", QVariant.Double),
+        QgsField("refuj_genislik", QVariant.Double),
+        QgsField("kaldirim_genislik", QVariant.Double),
+        QgsField("toplam_genislik", QVariant.Double),
+        QgsField("gorunur", QVariant.Int),
+    ])
+    legacy_road.updateFields()
+    project.addMapLayer(legacy_road)
+
+    # Saved projects commonly change their project CRS while managed output
+    # layers retain their original, valid layer CRS.
+    project.setCrs(QgsCoordinateReferenceSystem.fromEpsgId(3857))
+
+    resolved = get_road_platform_layer()
+    _check(
+        "legacy road layer is reused after a project-CRS change",
+        resolved.id() == legacy_road.id(),
+    )
+    center = QgsGeometry.fromPolylineXY([
+        QgsPointXY(27.1400, 38.4200),
+        QgsPointXY(27.1410, 38.4200),
+    ])
+    count = RoadGenerator(iface).generate(center, _road_params())
+    _check("legacy road schema remains writable", count == 9)
+    _check(
+        "legacy road values remain compatible",
+        any(
+            feature["bilesen"] == "kaldirim"
+            and road_attribute(legacy_road, feature, "component") == "sidewalk"
+            for feature in legacy_road.getFeatures()
+        ),
+    )
+    _check(
+        "English road layer is not duplicated over legacy data",
+        not project.mapLayersByName("planx_road_platform"),
+    )
+
+    legacy_islands = QgsVectorLayer(
+        "Polygon?crs=EPSG:4326", "kavsak_ada", "memory"
+    )
+    legacy_islands.dataProvider().addAttributes([
+        QgsField("kavsak_id", QVariant.Int),
+        QgsField("ada_tipi", QVariant.String),
+        QgsField("ada_radius", QVariant.Double),
+    ])
+    legacy_islands.updateFields()
+    project.addMapLayer(legacy_islands)
+    resolved_islands = JunctionSketcher(
+        canvas, iface
+    )._get_junction_island_layer()
+    _check(
+        "legacy junction-island layer is reused after a project-CRS change",
+        resolved_islands.id() == legacy_islands.id(),
+    )
+    _check(
+        "English island layer is not duplicated over legacy data",
+        not project.mapLayersByName("planx_junction_islands"),
     )
 
 
@@ -500,6 +587,7 @@ def run_all():
         test_junction_does_not_touch_unrelated_layers(canvas, iface, road_layer)
         test_fillet_junction_integration(canvas, iface)
         test_junction_failure_rollback(canvas, iface)
+        test_legacy_schema_compatibility(canvas, iface)
         print("  All urban workbench runtime checks passed")
         return True
     finally:

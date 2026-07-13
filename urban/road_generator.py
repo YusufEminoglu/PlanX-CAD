@@ -5,7 +5,11 @@ from qgis.core import (
     QgsFeature, QgsFeatureRequest, QgsGeometry, QgsPointXY, QgsWkbTypes,
 )
 
-from ..core.sketcher_layer_utils import get_road_platform_layer
+from ..core.sketcher_layer_utils import (
+    get_road_platform_layer,
+    road_field_name,
+    set_road_attribute,
+)
 from ..core.sketcher_utils import offset_geometry
 from .crs_utils import local_metric_crs, transform_geometry
 
@@ -39,24 +43,24 @@ class RoadGenerator:
         if metric_center is None or metric_center.isEmpty():
             return 0
 
-        yol_tipi = params["yol_tipi"]
-        serit_sayisi = int(params["serit_sayisi"])
-        serit_gen = float(params["serit_genisligi"])
-        refuj_gen = float(params.get("refuj_genislik", 0.0))
-        sol_k = float(params["sol_kaldirim"])
-        sag_k = float(params["sag_kaldirim"])
-        toplam_gen = float(params["toplam_genislik"])
-        tek_yon = bool(params.get("tek_yon", False))
-        if serit_sayisi < 1 or serit_gen <= 0.0:
+        road_type = params["road_type"]
+        lane_count = int(params["lane_count"])
+        lane_width = float(params["lane_width"])
+        median_width = float(params.get("median_width", 0.0))
+        left_sidewalk = float(params["left_sidewalk"])
+        right_sidewalk = float(params["right_sidewalk"])
+        total_width = float(params["total_width"])
+        one_way = bool(params.get("one_way", False))
+        if lane_count < 1 or lane_width <= 0.0:
             return 0
 
         base_attrs = {
-            "yol_id": self._next_road_id(layer),
-            "yol_tipi": yol_tipi,
-            "serit_sayisi": serit_sayisi,
-            "serit_genisligi": serit_gen,
-            "refuj_genislik": refuj_gen,
-            "toplam_genislik": toplam_gen,
+            "road_id": self._next_road_id(layer),
+            "road_type": road_type,
+            "lane_count": lane_count,
+            "lane_width": lane_width,
+            "median_width": median_width,
+            "total_width": total_width,
         }
 
         started_editing = not layer.isEditable()
@@ -64,7 +68,7 @@ class RoadGenerator:
             return 0
 
         count = 0
-        layer.beginEditCommand("Yol platformu oluştur")
+        layer.beginEditCommand("Create road platform")
 
         def add(geometry, attributes):
             nonlocal count
@@ -80,23 +84,23 @@ class RoadGenerator:
         try:
             center_attrs = {
                 **base_attrs,
-                "bilesen": "center",
-                "taraf": "none",
-                "serit_no": 0,
-                "kaldirim_genislik": 0,
-                "gorunur": 0,
+                "component": "centerline",
+                "side": "none",
+                "lane_no": 0,
+                "sidewalk_width": 0,
+                "visible": 0,
             }
             add(metric_center, center_attrs)
 
-            if tek_yon:
+            if one_way:
                 self._generate_one_way(
-                    metric_center, base_attrs, serit_sayisi, serit_gen,
-                    sol_k, sag_k, add,
+                    metric_center, base_attrs, lane_count, lane_width,
+                    left_sidewalk, right_sidewalk, add,
                 )
             else:
                 self._generate_two_way(
-                    metric_center, base_attrs, serit_sayisi, serit_gen,
-                    refuj_gen, sol_k, sag_k, add,
+                    metric_center, base_attrs, lane_count, lane_width,
+                    median_width, left_sidewalk, right_sidewalk, add,
                 )
 
             layer.endEditCommand()
@@ -128,32 +132,32 @@ class RoadGenerator:
             )
             attributes = {
                 **base_attrs,
-                "bilesen": "serit",
-                "taraf": (
-                    "sol" if lane_index == 0
-                    else "sag" if lane_index == lane_count
-                    else "orta"
+                "component": "lane",
+                "side": (
+                    "left" if lane_index == 0
+                    else "right" if lane_index == lane_count
+                    else "center"
                 ),
-                "serit_no": lane_index,
-                "kaldirim_genislik": 0,
-                "gorunur": int(lane_index in (0, lane_count)),
+                "lane_no": lane_index,
+                "sidewalk_width": 0,
+                "visible": int(lane_index in (0, lane_count)),
             }
             add(geometry, attributes)
 
-        for side, taraf, width in (
-            ("left", "sol", left_sidewalk),
-            ("right", "sag", right_sidewalk),
+        for side, side_label, width in (
+            ("left", "left", left_sidewalk),
+            ("right", "right", right_sidewalk),
         ):
             if width > 0:
                 add(
                     offset_geometry(center_geom, left_edge + width, side),
                     {
                         **base_attrs,
-                        "bilesen": "kaldirim",
-                        "taraf": taraf,
-                        "serit_no": 0,
-                        "kaldirim_genislik": width,
-                        "gorunur": 1,
+                        "component": "sidewalk",
+                        "side": side_label,
+                        "lane_no": 0,
+                        "sidewalk_width": width,
+                        "visible": 1,
                     },
                 )
 
@@ -161,49 +165,49 @@ class RoadGenerator:
     def _generate_two_way(center_geom, base_attrs, lane_count, lane_width,
                           median_width, left_sidewalk, right_sidewalk, add):
         if median_width > 0:
-            for taraf, side in (("sol", "left"), ("sag", "right")):
+            for side_label, side in (("left", "left"), ("right", "right")):
                 add(
                     offset_geometry(center_geom, median_width / 2.0, side),
                     {
                         **base_attrs,
-                        "bilesen": "refuj",
-                        "taraf": taraf,
-                        "serit_no": 0,
-                        "kaldirim_genislik": 0,
-                        "gorunur": 1,
+                        "component": "median",
+                        "side": side_label,
+                        "lane_no": 0,
+                        "sidewalk_width": 0,
+                        "visible": 1,
                     },
                 )
 
         for lane_index in range(1, lane_count + 1):
             distance = median_width / 2.0 + lane_index * lane_width
-            for taraf, side in (("sol", "left"), ("sag", "right")):
+            for side_label, side in (("left", "left"), ("right", "right")):
                 add(
                     offset_geometry(center_geom, distance, side),
                     {
                         **base_attrs,
-                        "bilesen": "serit",
-                        "taraf": taraf,
-                        "serit_no": lane_index,
-                        "kaldirim_genislik": 0,
-                        "gorunur": int(lane_index == lane_count),
+                        "component": "lane",
+                        "side": side_label,
+                        "lane_no": lane_index,
+                        "sidewalk_width": 0,
+                        "visible": int(lane_index == lane_count),
                     },
                 )
 
         road_edge = median_width / 2.0 + lane_count * lane_width
-        for side, taraf, width in (
-            ("left", "sol", left_sidewalk),
-            ("right", "sag", right_sidewalk),
+        for side, side_label, width in (
+            ("left", "left", left_sidewalk),
+            ("right", "right", right_sidewalk),
         ):
             if width > 0:
                 add(
                     offset_geometry(center_geom, road_edge + width, side),
                     {
                         **base_attrs,
-                        "bilesen": "kaldirim",
-                        "taraf": taraf,
-                        "serit_no": 0,
-                        "kaldirim_genislik": width,
-                        "gorunur": 1,
+                        "component": "sidewalk",
+                        "side": side_label,
+                        "lane_no": 0,
+                        "sidewalk_width": width,
+                        "visible": 1,
                     },
                 )
 
@@ -215,14 +219,12 @@ class RoadGenerator:
         feature = QgsFeature(layer.fields())
         feature.setGeometry(geometry)
         for field_name, value in attributes.items():
-            index = layer.fields().indexOf(field_name)
-            if index >= 0:
-                feature.setAttribute(index, value)
+            set_road_attribute(feature, layer, field_name, value)
         return layer.addFeature(feature)
 
     @staticmethod
     def _next_road_id(layer):
-        index = layer.fields().indexOf("yol_id")
+        index = layer.fields().indexOf(road_field_name(layer, "road_id"))
         if index < 0:
             return 1
         maximum = 0

@@ -23,13 +23,13 @@ class CommandPaletteDialog(QDialog):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        intro = QLabel("Type command name and press Enter. / Komut adini yazip Enter'a basin.")
+        intro = QLabel("Type a command name and press Enter.")
         intro.setWordWrap(True)
         intro.setStyleSheet("color: #334155; padding: 4px;")
         layout.addWidget(intro)
 
         self.search_input = QLineEdit(self)
-        self.search_input.setPlaceholderText("Search command / Komut ara")
+        self.search_input.setPlaceholderText("Search commands and aliases")
         self.search_input.textChanged.connect(self._filter)
         self.search_input.returnPressed.connect(self._activate_current)
         layout.addWidget(self.search_input)
@@ -45,7 +45,7 @@ class CommandPaletteDialog(QDialog):
         self.list_widget.itemDoubleClicked.connect(lambda _: self._activate_current())
         layout.addWidget(self.list_widget)
 
-        close_btn = QPushButton("Close / Kapat")
+        close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.reject)
         layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
@@ -59,33 +59,56 @@ class CommandPaletteDialog(QDialog):
             "dimension": "Measure", "measure": "Measure", "measure_area": "Measure", "measure_select_line": "Measure", "measure_select_area": "Measure",
             "road": "Urban", "junction": "Urban", "ada_kirma": "Urban",
         }
+        display_names = {
+            "line": "Line", "polyline": "Polyline", "rectangle": "Rectangle",
+            "polygon": "Regular Polygon", "circle": "Circle", "arc": "Arc",
+            "offset": "Offset", "trim": "Trim", "extend": "Extend",
+            "fillet": "Fillet", "buffer": "Buffer", "vertex_edit": "Vertex Edit",
+            "hatch": "Hatch", "construction_inf": "Construction Line",
+            "construction_ray": "Construction Ray", "construction_seg": "Construction Segment",
+            "divide": "Divide", "multi_offset": "Multi-Offset", "join": "Join",
+            "move": "Move", "copy": "Copy", "rotate": "Rotate", "scale": "Scale",
+            "mirror": "Mirror", "array": "Array", "dimension": "Dimension",
+            "measure": "Measure Distance", "measure_area": "Measure Area",
+            "measure_select_line": "Measure Selected Line",
+            "measure_select_area": "Measure Selected Area", "road": "Draw Road",
+            "junction": "Junction", "ada_kirma": "Block Chamfer",
+        }
         aliases = {
-            "line": ["cizgi"], "polyline": ["coklu", "poly"], "rectangle": ["dikdortgen"], "polygon": ["cokgen"], "circle": ["daire"],
-            "arc": ["yay"], "offset": ["oteleme"], "trim": ["budama"], "extend": ["uzatma"], "fillet": ["kose"], "buffer": ["tampon"],
-            "move": ["tasi"], "copy": ["kopya"], "rotate": ["dondur"], "scale": ["olcekle"], "mirror": ["ayna"], "dimension": ["olculendirme"],
-            "measure": ["olc", "mesafe"], "join": ["birlestir"], "divide": ["bol"], "hatch": ["tarama"], "road": ["yol"],
-            "junction": ["kavsak"], "ada_kirma": ["ada"],
+            "line": ["segment"], "polyline": ["pline", "connected line"],
+            "rectangle": ["box"], "polygon": ["regular polygon"],
+            "circle": ["radius"], "arc": ["curve"], "offset": ["parallel"],
+            "trim": ["cut"], "extend": ["lengthen"], "fillet": ["round corner"],
+            "buffer": ["zone"], "move": ["translate"], "copy": ["duplicate"],
+            "rotate": ["turn"], "scale": ["resize"], "mirror": ["reflect"],
+            "dimension": ["label distance"], "measure": ["distance"],
+            "measure_area": ["area"], "join": ["merge lines"],
+            "divide": ["split equally"], "hatch": ["fill pattern"],
+            "road": ["street platform"], "junction": ["intersection"],
+            "ada_kirma": ["block", "block chamfer", "chamfer"],
         }
         self._items = []
         for key, seq in self._shortcuts:
             self._items.append({
                 "key": key,
+                "name": display_names.get(key, key.replace("_", " ").title()),
                 "shortcut": seq,
                 "category": categories.get(key, "Urban" if key in ("road", "junction", "ada_kirma") else "Editing"),
                 "aliases": aliases.get(key, []),
                 "usage": int(self._usage_counts.get(key, 0)),
             })
-        self._items.sort(key=lambda it: (-it["usage"], it["key"]))
+        self._items.sort(key=lambda it: (-it["usage"], it["name"]))
         self._render(self._items)
 
     def _render(self, rows):
         self.list_widget.clear()
         for row in rows:
             key = row["key"]
+            name = row["name"]
             seq = row["shortcut"]
             cat = row["category"]
             usage = row["usage"]
-            item = QListWidgetItem(f"{key}    [{seq}]    ({cat})    uses:{usage}")
+            item = QListWidgetItem(f"{name}    [{seq}]    ({cat})    Uses: {usage}")
             item.setData(Qt.ItemDataRole.UserRole, key)
             self.list_widget.addItem(item)
         if self.list_widget.count() > 0:
@@ -98,7 +121,10 @@ class CommandPaletteDialog(QDialog):
         for r in self._items:
             if category != "All" and r["category"] != category:
                 continue
-            blob = " ".join([r["key"], r["shortcut"], r["category"]] + r["aliases"]).lower()
+            blob = " ".join(
+                [r["key"], r["name"], r["shortcut"], r["category"]]
+                + r["aliases"]
+            ).lower()
             if query and query not in blob:
                 continue
             rows.append(r)

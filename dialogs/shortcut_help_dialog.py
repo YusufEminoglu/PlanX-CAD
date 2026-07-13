@@ -11,7 +11,7 @@ from qgis.PyQt.QtWidgets import (
 class ShortcutHelpDialog(QDialog):
     def __init__(self, shortcuts, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("PlanX CAD - Shortcut Guide / Kisayol Rehberi")
+        self.setWindowTitle("PlanX CAD - Shortcut Guide")
         self.setMinimumWidth(700)
         self.setMinimumHeight(560)
         self._shortcuts = shortcuts
@@ -23,8 +23,8 @@ class ShortcutHelpDialog(QDialog):
         layout = QVBoxLayout(self)
 
         intro = QLabel(
-            "Keyboard-first workflow: Ctrl+Shift+S focuses search, Ctrl+Shift+Space repeats last tool.\n"
-            "Klavye odakli akista Ctrl+Shift+S aramayi odaklar, Ctrl+Shift+Space son araci tekrarlar."
+            "Keyboard-first workflow: Ctrl+Shift+S focuses the command line; "
+            "Ctrl+Shift+Space repeats the last tool."
         )
         intro.setWordWrap(True)
         intro.setStyleSheet("color: #334155; padding: 4px;")
@@ -32,18 +32,18 @@ class ShortcutHelpDialog(QDialog):
 
         filter_row = QHBoxLayout()
         self.search_input = QLineEdit(self)
-        self.search_input.setPlaceholderText("Search command or shortcut / Komut veya kisayol ara")
+        self.search_input.setPlaceholderText("Search commands or shortcuts")
         self.search_input.textChanged.connect(self._apply_filter)
         filter_row.addWidget(self.search_input)
 
         self.category_combo = QComboBox(self)
-        self.category_combo.addItems(["All / Tum", "Drawing", "Editing", "Transform", "Measure", "Urban", "System"])
+        self.category_combo.addItems(["All", "Drawing", "Editing", "Transform", "Measure", "Urban", "System"])
         self.category_combo.currentTextChanged.connect(self._apply_filter)
         filter_row.addWidget(self.category_combo)
         layout.addLayout(filter_row)
 
-        self.table = QTableWidget(0, 4, self)
-        self.table.setHorizontalHeaderLabels(["Command", "Komut", "Shortcut", "Category"])
+        self.table = QTableWidget(0, 3, self)
+        self.table.setHorizontalHeaderLabels(["Command", "Shortcut", "Category"])
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -57,22 +57,25 @@ class ShortcutHelpDialog(QDialog):
         self.table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.table)
 
-        close_btn = QPushButton("Close / Kapat")
+        close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
     def _populate_rows(self):
-        tr_map = {
-            "line": "Cizgi", "polyline": "Coklu Cizgi", "rectangle": "Dikdortgen", "polygon": "Cokgen",
-            "circle": "Daire", "arc": "Yay", "offset": "Oteleme", "trim": "Budama", "extend": "Uzatma",
-            "fillet": "Kose Yuvarlama", "buffer": "Tampon", "move": "Tasi", "array": "Coklu Kopya",
-            "copy": "Kopyala", "rotate": "Dondur", "scale": "Olcekle", "mirror": "Aynala",
-            "vertex_edit": "Kose Duzenleme", "hatch": "Tarama", "construction_inf": "Sonsuz Referans",
-            "construction_ray": "Isin Referans", "construction_seg": "Segment Referans", "dimension": "Olculendirme",
-            "measure": "Mesafe Olc", "measure_area": "Alan Olc",
-            "measure_select_line": "Secili Cizgiyi Olc", "measure_select_area": "Secili Alani Olc",
-            "divide": "Esit Parcaya Bol", "multi_offset": "Coklu Oteleme", "join": "Birlestir",
-            "road": "Yol Ciz", "junction": "Kavsak", "ada_kirma": "Ada Kirma",
+        names = {
+            "line": "Line", "polyline": "Polyline", "rectangle": "Rectangle",
+            "polygon": "Regular Polygon", "circle": "Circle", "arc": "Arc",
+            "offset": "Offset", "trim": "Trim", "extend": "Extend",
+            "fillet": "Fillet", "buffer": "Buffer", "move": "Move",
+            "array": "Array", "copy": "Copy", "rotate": "Rotate", "scale": "Scale",
+            "mirror": "Mirror", "vertex_edit": "Vertex Edit", "hatch": "Hatch",
+            "construction_inf": "Construction Line", "construction_ray": "Construction Ray",
+            "construction_seg": "Construction Segment", "dimension": "Dimension",
+            "measure": "Measure Distance", "measure_area": "Measure Area",
+            "measure_select_line": "Measure Selected Line",
+            "measure_select_area": "Measure Selected Area", "divide": "Divide",
+            "multi_offset": "Multi-Offset", "join": "Join", "road": "Draw Road",
+            "junction": "Junction", "ada_kirma": "Block Chamfer",
         }
 
         categories = {
@@ -90,32 +93,31 @@ class ShortcutHelpDialog(QDialog):
         self._rows = []
         for tool_key, seq in self._shortcuts:
             self._rows.append({
-                "en": tool_key,
-                "tr": tr_map.get(tool_key, tool_key),
+                "command": names.get(tool_key, tool_key.replace("_", " ").title()),
                 "shortcut": seq,
                 "category": categories.get(tool_key, "System"),
             })
 
         self._rows.extend([
-            {"en": "repeat_last", "tr": "son_araci_tekrar", "shortcut": "Ctrl+Shift+Space", "category": "System"},
-            {"en": "focus_search", "tr": "arama_odagi", "shortcut": "Ctrl+Shift+S", "category": "System"},
-            {"en": "open_shortcuts", "tr": "kisayol_rehberi", "shortcut": "Ctrl+Shift+/", "category": "System"},
-            {"en": "open_docs", "tr": "komut_kilavuzu", "shortcut": "Ctrl+Alt+H", "category": "System"},
-            {"en": "open_smoke_test", "tr": "duman_test_listesi", "shortcut": "Ctrl+Alt+M", "category": "System"},
-            {"en": "command_palette", "tr": "komut_paleti", "shortcut": "Ctrl+Alt+P", "category": "System"},
-            {"en": "cancel_active_tool", "tr": "aktif_araci_iptal", "shortcut": "Ctrl+Alt+C", "category": "System"},
-            {"en": "toggle_layer_editing", "tr": "katman_duzenleme_ac_kapat", "shortcut": "Ctrl+Alt+E", "category": "System"},
-            {"en": "run_preflight", "tr": "preflight_kontrolu", "shortcut": "Ctrl+Alt+F", "category": "System"},
-            {"en": "quick_start", "tr": "hizli_baslangic", "shortcut": "Ctrl+Alt+Q", "category": "System"},
-            {"en": "session_checklist", "tr": "oturum_kontrol_listesi", "shortcut": "Ctrl+Alt+G", "category": "System"},
-            {"en": "pin_last_tool", "tr": "son_araci_sabitle", "shortcut": "Ctrl+Alt+Z", "category": "System"},
-            {"en": "open_diagnostics", "tr": "tani_raporu", "shortcut": "Ctrl+Alt+D", "category": "System"},
-            {"en": "reset_workspace_state", "tr": "calisma_alani_sifirla", "shortcut": "Ctrl+Alt+R", "category": "System"},
-            {"en": "open_usage_stats", "tr": "kullanim_istatistikleri", "shortcut": "Ctrl+Alt+T", "category": "System"},
-            {"en": "open_health_check", "tr": "sistem_kontrolu", "shortcut": "Ctrl+Alt+W", "category": "System"},
-            {"en": "open_shortcut_audit", "tr": "kisayol_denetimi", "shortcut": "Ctrl+Alt+Y", "category": "System"},
-            {"en": "open_issue_template", "tr": "hata_rapor_sablonu", "shortcut": "Ctrl+Alt+N", "category": "System"},
-            {"en": "open_release_readiness", "tr": "surum_hazirlik", "shortcut": "Ctrl+Alt+V", "category": "System"},
+            {"command": "Repeat Last Tool", "shortcut": "Ctrl+Shift+Space", "category": "System"},
+            {"command": "Focus Command Line", "shortcut": "Ctrl+Shift+S", "category": "System"},
+            {"command": "Open Shortcut Guide", "shortcut": "Ctrl+Shift+/", "category": "System"},
+            {"command": "Open Command Reference", "shortcut": "Ctrl+Alt+H", "category": "System"},
+            {"command": "Open Smoke Test Checklist", "shortcut": "Ctrl+Alt+M", "category": "System"},
+            {"command": "Open Command Palette", "shortcut": "Ctrl+Alt+P", "category": "System"},
+            {"command": "Cancel Active Tool", "shortcut": "Ctrl+Alt+C", "category": "System"},
+            {"command": "Toggle Layer Editing", "shortcut": "Ctrl+Alt+E", "category": "System"},
+            {"command": "Run Preflight", "shortcut": "Ctrl+Alt+F", "category": "System"},
+            {"command": "Open Quick Start", "shortcut": "Ctrl+Alt+Q", "category": "System"},
+            {"command": "Open Session Checklist", "shortcut": "Ctrl+Alt+G", "category": "System"},
+            {"command": "Pin Last Tool", "shortcut": "Ctrl+Alt+Z", "category": "System"},
+            {"command": "Open Diagnostics", "shortcut": "Ctrl+Alt+D", "category": "System"},
+            {"command": "Reset Workspace", "shortcut": "Ctrl+Alt+R", "category": "System"},
+            {"command": "Open Usage Statistics", "shortcut": "Ctrl+Alt+T", "category": "System"},
+            {"command": "Open Health Check", "shortcut": "Ctrl+Alt+W", "category": "System"},
+            {"command": "Open Shortcut Audit", "shortcut": "Ctrl+Alt+Y", "category": "System"},
+            {"command": "Open Issue Template", "shortcut": "Ctrl+Alt+N", "category": "System"},
+            {"command": "Open Release Readiness", "shortcut": "Ctrl+Alt+V", "category": "System"},
         ])
 
         self._render_rows(self._rows)
@@ -123,22 +125,19 @@ class ShortcutHelpDialog(QDialog):
     def _render_rows(self, rows):
         self.table.setRowCount(len(rows))
         for r, row in enumerate(rows):
-            self.table.setItem(r, 0, QTableWidgetItem(row["en"]))
-            self.table.setItem(r, 1, QTableWidgetItem(row["tr"]))
-            self.table.setItem(r, 2, QTableWidgetItem(row["shortcut"]))
-            self.table.setItem(r, 3, QTableWidgetItem(row["category"]))
+            self.table.setItem(r, 0, QTableWidgetItem(row["command"]))
+            self.table.setItem(r, 1, QTableWidgetItem(row["shortcut"]))
+            self.table.setItem(r, 2, QTableWidgetItem(row["category"]))
         self.table.resizeColumnsToContents()
 
     def _apply_filter(self):
         query = (self.search_input.text() or "").strip().lower()
         cat = self.category_combo.currentText()
-        cat = cat.split(" /")[0]
-
         filtered = []
         for row in self._rows:
             if cat != "All" and row["category"] != cat:
                 continue
-            blob = f"{row['en']} {row['tr']} {row['shortcut']} {row['category']}".lower()
+            blob = f"{row['command']} {row['shortcut']} {row['category']}".lower()
             if query and query not in blob:
                 continue
             filtered.append(row)

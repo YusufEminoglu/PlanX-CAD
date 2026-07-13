@@ -11,7 +11,7 @@ class SessionChecklistDialog(QDialog):
         self._run_preflight_cb = run_preflight_cb
         self._run_health_cb = run_health_cb
         self._run_audit_cb = run_audit_cb
-        self.setWindowTitle("PlanX CAD - Session Checklist / Oturum Kontrol Listesi")
+        self.setWindowTitle("PlanX CAD - Session Checklist")
         self.setMinimumWidth(700)
         self.setMinimumHeight(420)
         self._build_ui()
@@ -28,8 +28,6 @@ class SessionChecklistDialog(QDialog):
             "<li>Run <b>Shortcut Audit</b> before custom keymap changes.</li>"
             "<li>Use Diagnostics when reporting issues.</li>"
             "</ol>"
-            "<p><b>TR:</b> Dock'u acin, hedef vektor katmani secin, duzenlemeyi acin, "
-            "Preflight + Health Check calistirin, kisayol degisikligi oncesi Key Audit yapin.</p>"
         )
         text.setWordWrap(True)
         text.setTextFormat(Qt.TextFormat.RichText)
@@ -48,6 +46,6 @@ class SessionChecklistDialog(QDialog):
         tools_row.addWidget(audit_btn)
         layout.addLayout(tools_row)
 
-        close_btn = QPushButton("Close / Kapat")
+        close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)

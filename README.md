@@ -15,7 +15,7 @@
 Type `L` ↵, draw a line. Type `F` ↵, fillet a corner.
 **30+ CAD tools, an AutoCAD-style command line, and road-platform design — without ever leaving QGIS.**
 
-[Install](#-installation) · [Tools](#-tool-catalog) · [Command line](#-autocad-style-command-line) · [Urban tools](#-urban-planning-tools) · [Shortcuts](#-keyboard-shortcuts) · [Türkçe](#-türkçe-özet)
+[Install](#-installation) · [Tools](#-tool-catalog) · [Command line](#-autocad-style-command-line) · [Urban tools](#-urban-planning-tools) · [Shortcuts](#-keyboard-shortcuts)
 
 </div>
 
@@ -28,6 +28,7 @@ Type `L` ↵, draw a line. Type `F` ↵, fillet a corner.
 | ⚡ **Muscle-memory friendly** | AutoCAD-style command aliases (`L`, `PL`, `TR`, `F`, `CO`…), empty-Enter repeats the last command, Up/Down recalls history — a real command loop. |
 | 📐 **Drafting-grade picking** | A true 10-px pickbox with snap markers, hover highlighting, and self-pick protection in two-step tools (Fillet/Trim/Extend). |
 | 🏙️ **Built for planners** | Interactive road platform generator, junction topology fixer, and block-corner chamfering — tools you won't find in generic CAD plugins. |
+| 🌍 **Global by design** | A concise English-only workbench, documentation set, command palette, and output schema built for international teams. |
 | 🧩 **Zero friction** | Pure QGIS API — no external dependencies, no build step. One dockable panel, native snapping, works on **QGIS 3.28 LTR through QGIS 4**. |
 
 Developed with feedback from educational workflows at **Dokuz Eylül University, Department of City and Regional Planning**.
@@ -94,7 +95,7 @@ The dock's search box **is** a command line:
 
 ```text
 Command:  L ⏎          → Line starts
-Command:  ⏎            → repeats the last command (AutoCAD muscle memory)
+Command:  ⏎            → finishes the active sketch; repeats the last command when idle
 Command:  ↑ / ↓        → recall command history
 Command:  fil…         → autocomplete popup suggests Fillet
 Command:  500000,4250000 → absolute point in the map canvas CRS
@@ -103,7 +104,7 @@ Command:  @25<45       → 25 metres at 45 degrees
 Command:  12.5         → 12.5 metres along the current cursor bearing
 ```
 
-Resolution precedence: **alias → exact tool key → fuzzy name match**. Unknown commands echo a clear message instead of failing silently. There is also a global **command palette** (`Ctrl+Alt+P`) with category filtering, Turkish aliases, and usage-based ordering.
+Resolution precedence: **alias → exact tool key → fuzzy name match**. Unknown commands echo a clear message instead of failing silently. There is also a global **command palette** (`Ctrl+Alt+P`) with category filtering and usage-based ordering.
 
 While a drawing or transform tool is active, type a number, `-`, or `@` directly on the canvas to move focus to the command line without breaking the current operation. Precision point entry is available for Line, Polyline, Rectangle, Circle, Polygon, Arc, Move, and Copy. Rotate accepts a signed angle in degrees; Scale accepts a positive factor. Relative, polar, and direct-distance values are always metres, even when the project uses a geographic CRS; absolute `x,y` values use the canvas CRS.
 
@@ -113,9 +114,9 @@ While a drawing or transform tool is active, type a number, `-`, or `@` directly
 
 | | |
 |---|---|
-| 🛣 **Road Platform Generator** | Interactive road cross-section design: draw an axis, configure carriageway and lane widths, get a ready platform polygon. |
+| 🛣 **Road Platform Generator** | Interactive road cross-section design: draw an axis, configure carriageway and lane widths, and generate ready road-platform linework. |
 | ➕ **Junction Topology Fixer** | Solves X/T/skew road corners with a selectable metric Chamfer or tangent Fillet, exact curb trims, and gap-free connections. |
-| 🔲 **Block Chamfering** *(Ada Kırma)* | EasyFillet-powered corner rounding for urban blocks — one click per corner. |
+| 🔲 **Block Chamfering** | EasyFillet-powered corner rounding for urban blocks — one click per corner. |
 
 ---
 
@@ -161,36 +162,21 @@ set QGIS_PLUGINPATH=<clone parent dir>   →  restart QGIS
 ## ♿ Quality & Accessibility
 
 - **Screen-reader complete** — every interactive dock control exposes `accessibleName`/`accessibleDescription`; tool buttons are tab-focusable with a visible focus ring.
-- **Dual-runtime verified** — a static 11-check smoke gate (`py -3 tests/smoke_compat.py`, no QGIS needed) locks Qt5/Qt6 enum safety, metadata, pick-aperture behaviour, and import discipline on every release.
+- **Dual-runtime verified** — a static 12-check smoke gate (`py -3 tests/smoke_compat.py`, no QGIS needed) locks Qt5/Qt6 enum safety, metadata, English-only release surfaces, pick-aperture behaviour, and import discipline on every release.
 - **Real QGIS runtime gates** — lifecycle, geometry-regression, and urban-workbench suites run headlessly on both QGIS 3 LTR/Qt5 and QGIS 4/Qt6 before release.
 - **Metre-accurate everywhere** — distance-based CAD and road tools use a local metric work CRS, so a 5 m offset remains 5 m even when the source layer is EPSG:4326.
 - **Guardrails everywhere** — writable targets enter edit mode automatically; missing, incompatible, or truly read-only targets get guided status messages instead of silent failure.
 
----
-
-## 🇹🇷 Türkçe Özet
-
-**PlanX CAD Araç Seti**, QGIS içinde AutoCAD alışkanlıklarıyla çizim yapmanızı sağlayan hafif ve hızlı bir CAD eklentisidir:
-
-- **30+ CAD aracı:** Çizgi, sürekli çizgi, dikdörtgen, çokgen, daire, yay; ofset, buda (trim), uzat, pah/yuvarlatma (fillet), tampon, tarama (hatch), böl, birleştir, köşe düzenleme; taşı, kopyala, döndür, ölçekle, aynala, dizi.
-- **AutoCAD tarzı komut satırı:** `L` ↵ çizgi, `TR` ↵ buda… Boş Enter son komutu tekrarlar; ↑/↓ komut geçmişini gezer.
-- **Şehir plancısı araçları:** Etkileşimli **yol platformu** üretici, **kavşak** topolojisi düzeltici ve EasyFillet tabanlı **ada kırma**.
-- **Türkçe arayüz desteği:** Tüm araç açıklamaları ve durum mesajları İngilizce + Türkçe'dir; komut paletinde Türkçe takma adlar da çalışır.
-
-Kurulum: QGIS → *Eklentiler → Eklentileri Yönet ve Kur* → **PlanX CAD Toolset** aratın. Dokuz Eylül Üniversitesi Şehir ve Bölge Planlama Bölümü'ndeki eğitim iş akışlarından gelen geri bildirimlerle geliştirilmektedir.
-
----
-
 ## 🧩 Part of the PlanX ecosystem
 
-This plugin is one of 15 open-source QGIS plugins for urban planning by the same author:
+This plugin belongs to a growing open-source QGIS ecosystem for urban planning by the same author:
 
 | Planning & analysis | CAD & production | 3D & visualization |
 |---|---|---|
 | [PlanX](https://github.com/YusufEminoglu/PlanX) — spatial-planning suite | [PlanX CAD Toolset](https://github.com/YusufEminoglu/PlanX-CAD) — drafting-grade CAD | [PlanX 3D City](https://github.com/YusufEminoglu/planx_3d_city) — Three.js city viewer |
 | [GeoStats Lab](https://github.com/YusufEminoglu/planx_geostats) — spatial statistics | [EasyFillet](https://github.com/YusufEminoglu/EasyFillet) — tangent-arc fillet | [3D OSM Model](https://github.com/YusufEminoglu/osm_3d_model) — OSM → 3D city in browser |
 | [Suitability Lab](https://github.com/YusufEminoglu/planx_suitability_lab) — raster MCDA | [Settlement Toolset](https://github.com/YusufEminoglu/PlanX-Settlement) — 9-stage settlement plans | [OSM Quick 3D](https://github.com/YusufEminoglu/osm_quick_3d) — OSM → native QGIS 3D |
-| [DataCube Lab](https://github.com/YusufEminoglu/planx_datacube) — spatiotemporal cubes | [UIP Toolset](https://github.com/YusufEminoglu/PlanX-UIP) — Turkish master-plan automation | [Urban Procedural 3D](https://github.com/YusufEminoglu/planx_urban_procedural_3d) — parametric zoning lab |
+| [DataCube Lab](https://github.com/YusufEminoglu/planx_datacube) — spatiotemporal cubes | [UIP Toolset](https://github.com/YusufEminoglu/PlanX-UIP) — master-plan automation | [Urban Procedural 3D](https://github.com/YusufEminoglu/planx_urban_procedural_3d) — parametric zoning lab |
 | [Urban Resilience](https://github.com/YusufEminoglu/planx_urban_resilience) — 28 resilience tools | [ParcelFlux](https://github.com/YusufEminoglu/parcelflux) — parcel subdivision | [CartoLab](https://github.com/YusufEminoglu/planx_cartolab) — publication cartography |
 
 ---
@@ -199,7 +185,7 @@ This plugin is one of 15 open-source QGIS plugins for urban planning by the same
 
 - 🐛 **Bugs / requests** → [Issues](https://github.com/YusufEminoglu/PlanX-CAD/issues) — the in-plugin **Issue Template** dialog (`Ctrl+Alt+N`) pre-fills diagnostics for you.
 - 📜 **Changelog** → [CHANGELOG.md](CHANGELOG.md) follows *Keep a Changelog*.
-- ✅ Before a PR: run `py -3 tests/smoke_compat.py` (11 static checks), then run all `tests/smoke_*` runtime suites with both `python-qgis-ltr.bat` and `python-qgis.bat`.
+- ✅ Before a PR: run `py -3 tests/smoke_compat.py` (12 static checks, including the English-only release gate), then run all `tests/smoke_*` runtime suites with both `python-qgis-ltr.bat` and `python-qgis.bat`.
 
 ## 👤 Author
 

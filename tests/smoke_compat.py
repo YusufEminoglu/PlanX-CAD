@@ -44,6 +44,22 @@ _QT6_BAD_ALIASES: dict[tuple[str, str], str] = {
 
 _SPLIT_GEOM_RE = re.compile(r"\w+\s*,\s*\w+\s*=\s*\w+\.splitGeometry\(")
 
+_TURKISH_CHARS_RE = re.compile(r"[çÇğĞıİöÖşŞüÜ]")
+_TURKISH_ASCII_RE = re.compile(
+    r"\b(?:turk|cizgi|coklu|dikdortgen|cokgen|daire|oteleme|budama|"
+    r"uzatma|kose|tasi|kopyala|dondur|olcekle|aynala|tarama|kavsak|"
+    r"kirma|katman|komut|kisayol|kapat|iptal|uygula|mesafe|olcum|"
+    r"tampon|birlestir|bolum|nokta|surum|hizli|baslangic|secin|"
+    r"tiklayin|arac|hata|hazirlik|duzenleme|yaricap|basarili|"
+    r"olustur|raporu|tum)\b",
+    re.IGNORECASE,
+)
+_ENGLISH_SCAN_SUFFIXES = {
+    ".py", ".md", ".html", ".txt", ".cff", ".svg",
+}
+_ALLOWED_PROPER_NAMES = ("Yusuf Eminoğlu", "Eminoğlu", "Dokuz Eylül")
+_ALLOWED_LEGACY_LITERALS = {"kavsak"}
+
 # Unscoped Qt enum members that exist in PyQt5 but were removed in PyQt6/QGIS 4.
 # Detected as 2-element chains ('Qt', <name>); scoped forms like
 # Qt.Key.Key_Z or Qt.MouseButton.LeftButton are 3 elements and stay valid.
@@ -298,6 +314,52 @@ def check_command_line() -> bool:
                "wired" if ok else f"missing: {', '.join(missing)}")
 
 
+def check_english_only_surface() -> bool:
+    """Keep the shipped plugin, documentation, and UI English-only."""
+    failures: list[str] = []
+    for path in PLUGIN_DIR.rglob("*"):
+        if not path.is_file() or path.suffix.lower() not in _ENGLISH_SCAN_SUFFIXES:
+            continue
+        if any(part in {".git", "__pycache__", "media", "tests"} for part in path.parts):
+            continue
+        text = path.read_text(encoding="utf-8-sig", errors="replace")
+        checked = text
+        for proper_name in _ALLOWED_PROPER_NAMES:
+            checked = checked.replace(proper_name, "")
+        unicode_match = _TURKISH_CHARS_RE.search(checked)
+        if unicode_match:
+            line = checked.count("\n", 0, unicode_match.start()) + 1
+            failures.append(f"{path.relative_to(PLUGIN_DIR)}:{line}: Turkish character")
+
+        if path.suffix.lower() == ".py":
+            try:
+                tree = ast.parse(text, filename=str(path))
+            except SyntaxError:
+                continue  # Syntax is reported by check_syntax.
+            strings = [
+                node for node in ast.walk(tree)
+                if isinstance(node, ast.Constant) and isinstance(node.value, str)
+            ]
+            for node in strings:
+                if node.value in _ALLOWED_LEGACY_LITERALS:
+                    continue
+                if _TURKISH_ASCII_RE.search(node.value):
+                    failures.append(
+                        f"{path.relative_to(PLUGIN_DIR)}:{node.lineno}: Turkish UI text"
+                    )
+                    break
+        elif _TURKISH_ASCII_RE.search(checked):
+            match = _TURKISH_ASCII_RE.search(checked)
+            line = checked.count("\n", 0, match.start()) + 1
+            failures.append(f"{path.relative_to(PLUGIN_DIR)}:{line}: Turkish text")
+
+    return _ok(
+        "English-only shipped surface",
+        not failures,
+        "clean" if not failures else "; ".join(failures[:5]),
+    )
+
+
 # ── runner ────────────────────────────────────────────────────────────────────
 
 def run_all() -> bool:
@@ -317,6 +379,7 @@ def run_all() -> bool:
         check_dock_accessibility(),
         check_command_line(),
         check_pick_aperture_and_exclusion(),
+        check_english_only_surface(),
     ]
     passed = sum(results)
     total = len(results)

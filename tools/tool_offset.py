@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Offset Aracı"""
+"""PlanX CAD Offset tool."""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry, QgsPointXY
@@ -11,7 +11,7 @@ from ..urban.crs_utils import local_metric_crs, transform_geometry, transform_po
 
 
 class tool_offset(tool_base):
-    """Seçilen objeyi belirtilen mesafe kadar öteleme yapar."""
+    """Create a parallel copy at a specified metric distance."""
 
     def __init__(self, canvas, iface):
         super().__init__(canvas, iface)
@@ -21,15 +21,15 @@ class tool_offset(tool_base):
         return "Offset"
 
     def on_entity_selected(self, layer, feature, point):
-        # Mesafe sor
+        # Ask for the offset distance.
         d, ok = QInputDialog.getDouble(
-            self.iface.mainWindow(), "Offset", "Offset mesafesi (m):",
+            self.iface.mainWindow(), "Offset", "Offset distance (m):",
             self.distance, 0.01, 100000.0, 2
         )
         if ok:
             self.distance = d
             self.tool_message.emit(
-                f"🔧 Offset ({self.distance}m) — Hangi tarafa? Sol tık: taraf seçin"
+                f"🔧 Offset ({self.distance} m) — Click the side to offset"
             )
             self._step = 2
 
@@ -38,7 +38,7 @@ class tool_offset(tool_base):
             geom = self.selected_feature.geometry()
             metric_crs, metric_geom = self._metric_geometry(geom)
             if metric_geom is None:
-                self.tool_message.emit("⚠️ Offset — Geçerli bir kaynak CRS gerekli")
+                self.tool_message.emit("⚠️ Offset — A valid source CRS is required")
                 self._reset()
                 return
             metric_point = transform_point(
@@ -48,11 +48,10 @@ class tool_offset(tool_base):
                 QgsGeometry.fromPointXY(metric_point)
             )
             if closest:
-                # Soldaki/sağdaki offset
+                # Build both sides and choose the one nearest the click.
                 left = offset_geometry(metric_geom, self.distance, "left")
                 right = offset_geometry(metric_geom, self.distance, "right")
 
-                # Hangi taraf tıklanan noktaya daha yakın?
                 use_geom = None
                 if left and right:
                     click_geom = QgsGeometry.fromPointXY(metric_point)
@@ -72,9 +71,9 @@ class tool_offset(tool_base):
                         self.selected_layer, use_geom, self.selected_feature
                     )
                     if added is not None:
-                        self.tool_message.emit("✅ Offset — Tamamlandı")
+                        self.tool_message.emit("✅ Offset — Completed")
                 else:
-                    self.tool_message.emit("⚠️ Offset hesaplanamadı")
+                    self.tool_message.emit("⚠️ Offset could not be calculated")
 
             self._reset()
 

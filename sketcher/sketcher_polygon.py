@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Çokgen (Polygon) Sketcher"""
+"""PlanX CAD regular-polygon sketcher."""
 
 import math
 from qgis.PyQt.QtCore import Qt
@@ -10,9 +10,9 @@ from ..core.crs_utils import local_metric_crs, transform_point
 
 
 class sketcher_polygon(sketcher_base):
-    """Düzgün N-gen çizer.
-    1. tık: Merkez | 2. tık: Yarıçap ve yön
-    Başlangıçta kenar sayısı sorulur.
+    """Draw a regular polygon with a configurable side count.
+    First click: centre | Second click: radius and orientation
+    The side count is requested when the tool starts.
     """
 
     def __init__(self, canvas, iface):
@@ -22,7 +22,7 @@ class sketcher_polygon(sketcher_base):
         self._activation_cancelled = False
 
     def tool_name(self):
-        return "Çokgen"
+        return "Polygon"
 
     def geom_type(self):
         return QgsWkbTypes.PolygonGeometry
@@ -30,18 +30,18 @@ class sketcher_polygon(sketcher_base):
     def activate(self):
         super().activate()
         self._activation_cancelled = False
-        # Kenar sayısı sor
+        # Ask for the polygon side count.
         n, ok = QInputDialog.getInt(
-            self.iface.mainWindow(), "Çokgen", "Kenar sayısı:", self.sides, 3, 100
+            self.iface.mainWindow(), "Polygon", "Number of sides:", self.sides, 3, 100
         )
         if ok:
             self.sides = n
         else:
             self._activation_cancelled = True
-            self.sketcher_message.emit("✏️ Çokgen — İptal edildi")
+            self.sketcher_message.emit("✏️ Polygon — Cancelled")
             return
         self.sketcher_message.emit(
-            f"✏️ Çokgen ({self.sides} kenar) — Merkez noktasını tıklayın"
+            f"✏️ Polygon ({self.sides} sides) — Click the centre point"
         )
 
     def on_click(self, point, button):
@@ -50,7 +50,7 @@ class sketcher_polygon(sketcher_base):
                 self.center = point
                 self.add_vertex(point)
                 self.sketcher_message.emit(
-                    f"✏️ Çokgen — Yarıçapı belirlemek için tıklayın"
+                    "✏️ Polygon — Click to set the radius and orientation"
                 )
             else:
                 self.add_vertex(point)
@@ -70,7 +70,7 @@ class sketcher_polygon(sketcher_base):
         return None
 
     def _calc_polygon(self, center, edge_point):
-        """Regular polygon noktalarını hesapla."""
+        """Calculate the regular polygon vertices."""
         canvas_crs = self.canvas.mapSettings().destinationCrs()
         metric_crs = None
         if canvas_crs.isGeographic():

@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.26.0] - 2026-07-13
+
+- Target release: PlanX CAD Toolset 1.26.0 — global English workbench and documentation
+
+### Changed
+- Standardized the complete user-facing workbench on concise English terminology, including dock labels, tooltips, status messages, setup dialogs, onboarding, diagnostics, release-readiness views, menus, and About content.
+- Removed bilingual labels and legacy localized search aliases so command discovery, shortcut guidance, and support screenshots present one consistent global interface.
+- Rebuilt the command reference, shortcut map, smoke-test checklist, and README as English-only resources while preserving the existing CAD concepts, precision-input examples, and accessibility guidance.
+- Refreshed Plugin Hub release notes and citation metadata for the 1.26 release line.
+- Standardized newly generated road-platform, junction-island, and buffer layers on descriptive English layer names, field names, and attribute values.
+
+### Fixed
+- Made empty Enter finish a valid in-progress sketch instead of restarting the active tool and discarding vertices; incomplete sketches now remain intact and request the missing points.
+- Made Escape from the focused command line clear the input and safely cancel the active CAD operation.
+- Made Rotate and Mirror operate in a local metric CRS so high-latitude geographic projects preserve physical lengths, curved geometry, and Z/M values.
+- Corrected Multi-Offset previews when the map canvas and selected layer use different CRSs.
+
+### Compatibility
+- Preserved internal tool keys, module names, and stored settings keys used by existing projects.
+- Added compatibility mapping for legacy road-platform and junction-island layers, fields, CRSs, and attribute values so existing projects are reused in place—even after a project-CRS change—while new projects receive the English schemas.
+- Retained the established AutoCAD-style command aliases, keyboard shortcuts, project formats, and QGIS 3.28 through QGIS 4 compatibility range.
+
+### Quality
+- Expanded release checks to detect accidental bilingual user-facing copy while allowing author and institution proper names.
+- Kept all help tables, dialog controls, and workbench feedback screen-reader accessible after the terminology consolidation.
+
 ## [1.25.1] - 2026-07-13
 
 - AutoCAD-style precision input and geographic drafting accuracy
@@ -121,7 +147,7 @@ Stable release — full accessibility coverage, verified on QGIS 3 LTR and QGIS 
 ## [1.19.0] - 2026-05-26
 
 ### Accessibility
-- **Screen readers**: icon-only tool buttons and quick-action buttons now set `accessibleName` / `accessibleDescription`, so assistive tech announces the tool name + bilingual description instead of a bare "button". The dock itself has an accessible name.
+- **Screen readers**: icon-only tool buttons and quick-action buttons now set `accessibleName` / `accessibleDescription`, so assistive technology announces a useful tool description instead of a bare "button". The dock itself has an accessible name.
 - **Keyboard navigation**: tool buttons are now tab-focusable (`Qt.FocusPolicy.TabFocus`) with a visible focus ring on both tool buttons and quick-action buttons.
 
 ### Compactness
@@ -175,7 +201,7 @@ Stable release — full accessibility coverage, verified on QGIS 3 LTR and QGIS 
 - Shortcut audit report (`Key Audit` button + `Ctrl+Alt+Y`) to detect keymap conflicts.
 - Tool activation guardrails to prevent invalid launches on missing/non-vector/read-only layers.
 - Session checklist dialog (`Ctrl+Alt+G`) for one-window beta startup control.
-- Command palette upgraded with category filter, Turkish aliases, and usage-based ordering.
+- Command palette upgraded with category filtering, additional search aliases, and usage-based ordering.
 - New docs tab with QGIS smoke test checklist for release-candidate validation.
 - Direct smoke-test opener (`Ctrl+Alt+M`) for faster RC verification in QGIS.
 - Issue template dialog (`Ctrl+Alt+N`) that includes diagnostics text for structured bug reporting.
@@ -236,9 +262,9 @@ Beta acceleration pass with command access and workflow reset controls.
 English-first documentation revision + beta usability upgrades.
 
 ### Added
-- **English-primary docs with Turkish secondary notes** in both command and shortcut HTML references.
+- **English-primary documentation** in both command and shortcut HTML references.
 - **Searchable shortcut center** (`dialogs/shortcut_help_dialog.py`) with command/category filters.
-- **Live workflow hint panel** in dock (`Tip / Ipucu`) that updates per active tool.
+- **Live workflow hint panel** in the dock (`Tip`) that updates per active tool.
 - **Global docs shortcut**: `Ctrl+Alt+H` opens Command Reference.
 
 ## [1.10.0] - 2026-05-23
@@ -250,7 +276,7 @@ HTML documentation and in-dock help integration for command mastery.
   - `docs/command_reference.html` (detailed command usage and workflow tips)
   - `docs/shortcuts.html` (full keyboard map)
 - Dock quick actions now include `Docs` and `Keys` buttons for one-click help access.
-- New menu entry: `Command Reference / Komut Kilavuzu`.
+- New menu entry: `Command Reference`.
 
 ## [1.9.0] - 2026-05-23
 
@@ -270,7 +296,7 @@ Beta completion hardening pass for CAD accessibility and operator speed.
 Beta completion release candidate for high-speed CAD workflows.
 
 ### Added
-- **Dock quick search**: type tool names/aliases in the new `Find tool / Arac ara` box and press Enter to launch the first match.
+- **Dock quick search**: type tool names or aliases in the new `Find tool` box and press Enter to launch the first match.
 - **Recent tools strip**: last 3 activated tools are pinned in the dock for one-click reactivation.
 - **Activation sync**: tools launched from keyboard shortcuts now sync back to dock button state and recent history.
 
@@ -290,7 +316,7 @@ Hatch / Pattern Fill + Construction Lines.
 
 ## [1.6.0] - 2026-05-20
 
-- Add Join, Divide, Multi-Offset tools and make UI bilingual/compact
+- Add Join, Divide, and Multi-Offset tools, and make the interface compact
 
 All notable changes to **PlanX CAD Toolset** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
@@ -322,9 +348,9 @@ Keyboard shortcuts framework + tool history.
   - Drawing: `L`ine, `P`olyline, `R`ectangle, polyGon (`G`), `C`ircle, `A`rc
   - Editing: `O`ffset, `T`rim, `E`xtend, `F`illet, `B`uffer, arra`Y`
   - Transform: `M`ove
-  - Measure: `D`imension, `I` (mesafe ölç)
+  - Measure: `D`imension, `I` (distance measurement)
 - **`Ctrl+Shift+Space`**: repeat the last activated tool (CAD convention).
-- Dock: new **"↻ Son aracı tekrarla"** button next to the status bar.
+- Dock: new **"Repeat Last Tool"** button next to the status bar.
 - Tool-button tooltips now show their keyboard shortcut as a `[Ctrl+Shift+X]` suffix.
 
 ### Changed
@@ -368,7 +394,7 @@ UI overhaul + correctness pass.
 - **QInputDialog** parent set to QGIS main window for Fillet, Offset, Polygon (previously `None` → off-screen positioning on multi-monitor setups).
 
 ### Fixed (urban)
-- **Ada Kırma** & **Kavşak**: premature `commitChanges` could persist the user's open edits on their own road layers. All three sites now use the "preserve user's edit session" pattern (`was_editing` guard).
+- **Block Chamfer** and **Junction**: premature `commitChanges` could persist the user's open edits on their own road layers. All three sites now use the "preserve user's edit session" pattern (`was_editing` guard).
 
 ### Removed
 - `sketcher_utils.trim_geometry_at_point` (broken: `click_point` was unused, function returned the input unchanged).

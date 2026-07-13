@@ -9,14 +9,12 @@
     h1, h2 { color: #0f766e; margin-top: 20px; }
     .card { border: 1px solid #d8e0ea; border-radius: 8px; padding: 12px; margin: 10px 0; background: #f8fafc; }
     .k { font-family: Consolas, monospace; background: #e2e8f0; padding: 2px 6px; border-radius: 4px; }
-    .tr { color: #475569; margin-top: 6px; }
     ul { margin: 8px 0 0 18px; }
   </style>
 </head>
 <body>
   <h1>PlanX CAD - Command Reference</h1>
-  <p>Primary language is English; Turkish notes are provided as secondary guidance.</p>
-  <p class="tr">Birincil dil Ingilizce; Turkce notlar ikincil yonlendirme olarak verilir.</p>
+  <p>Use this reference to build accurate, topology-safe CAD workflows in QGIS.</p>
 
   <h2 id="drawing">1. Drawing Commands</h2>
   <div class="card">
@@ -26,7 +24,6 @@
       <li>Lock the first point carefully; use snap on second point for clean endpoint closure.</li>
       <li>Use Polyline for long chains to keep a single continuous feature.</li>
     </ul>
-    <p class="tr">Komutu acin, snap acik olsun; ilk noktayi dikkatli secin, ikinci noktada snap ile temiz kapanis alin.</p>
   </div>
 
   <div class="card">
@@ -39,7 +36,6 @@
       <li>Type a number, minus sign, or <span class="k">@</span> directly on the canvas, or focus the command line with <span class="k">Ctrl+Shift+S</span>.</li>
     </ul>
     <p>Point input works with Line, Polyline, Rectangle, Circle, Polygon, Arc, Move, and Copy. Rotate accepts signed degrees; Scale accepts a positive factor. Metric input remains metre-accurate in geographic projects.</p>
-    <p class="tr">Mutlak koordinatlarda harita CRS'si; goreli, polar ve dogrudan mesafede metre kullanilir. Cizim sirasinda sayi, eksi veya @ tusuna dogrudan basabilirsiniz.</p>
   </div>
 
   <h2 id="editing">2. Editing Commands</h2>
@@ -50,7 +46,6 @@
       <li>In Trim/Extend sequences, pick reference boundary first, then target geometry.</li>
       <li>For tight intersections, smaller fillet radius is usually more stable.</li>
     </ul>
-    <p class="tr">Trim/Extend zincirlerinde once referans, sonra hedef secin; dar acilarda kucuk fillet yaricapi daha stabil olur.</p>
   </div>
 
   <div class="card">
@@ -65,7 +60,6 @@
         </ul>
       </li>
     </ul>
-    <p class="tr">Hatch icin kapali poligon kullanin; construction modlarini amaca gore secin (sonsuz/isin/segment).</p>
   </div>
 
   <h2 id="transform">3. Transform Commands</h2>
@@ -76,7 +70,6 @@
       <li>Use Array for repetitive layouts instead of manual copies.</li>
       <li>Validate mirror axis before confirming to avoid flipped planning layouts.</li>
     </ul>
-    <p class="tr">Temel nokta secimi donusum kalitesini dogrudan etkiler; tekrarli duzenlerde Array tercih edin.</p>
   </div>
 
   <h2 id="measurement">4. Measurement and Annotation</h2>
@@ -86,7 +79,6 @@
       <li>Dimension creates persistent features, improving auditability in deliverables.</li>
       <li>For selection-based measurement, pre-filter candidates to avoid accidental totals.</li>
     </ul>
-    <p class="tr">Dimension kalici kayit olusturur; secime dayali olcumde once filtrelemek hata riskini azaltir.</p>
   </div>
 
   <h2 id="urban">5. Urban Workflow Notes</h2>
@@ -96,19 +88,17 @@
       <li>Road/Junction/Block Chamfer tools should start from a clean centerline and editable target layer.</li>
       <li>Run preflight before generating complex road platform geometry.</li>
     </ul>
-    <p class="tr">Yol/Kavsak/Ada Kirma komutlarina temiz aks ve duzenlenebilir katmanla baslayin; karmasik uretim oncesi preflight calistirin.</p>
   </div>
   <h2 id="workflow">6. Productivity Workflow</h2>
   <div class="card">
     <ul>
       <li><span class="k">Ctrl+Shift+S</span>: focus search and launch by typing command name.</li>
       <li><span class="k">Ctrl+Shift+Space</span>: repeat last tool instantly.</li>
-      <li>Use the <strong>Recent</strong> row and live <strong>Tip / Ipucu</strong> panel in dock.</li>
+      <li>Use the <strong>Recent</strong> row and live <strong>Tip</strong> panel in the dock.</li>
       <li>Use <strong>Docs</strong> and <strong>Keys</strong> buttons for in-context help.</li>
       <li>Use <strong>Help Tool</strong> to jump directly to the most relevant command section.</li>
       <li>Use <strong>Stats</strong> and <strong>Diag</strong> for support-readiness and operational checks.</li>
     </ul>
-    <p class="tr">Dock icindeki Son Araclar ve Ipucu paneli hizli calisma akisinda temel yardim katmanidir.</p>
   </div>
 </body>
 </html>

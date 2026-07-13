@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-planX CAD — Yol Çiz (Road Sketcher)
-İnteraktif yol orta çizgisi çizimi + platform üretme.
-"""
+"""Interactive road-centerline sketcher and platform generator."""
 
 from qgis.PyQt.QtCore import Qt, pyqtSignal
 from qgis.PyQt.QtWidgets import QDialog
@@ -18,11 +15,11 @@ from .road_generator import RoadGenerator
 
 
 class RoadSketcher(QgsMapTool):
-    """Yol orta çizgisi çizip platform üretir.
+    """Sketch a road centerline and generate its platform components.
 
-    1. Dialog açılır → parametreler girilir
-    2. Haritada orta çizgi çizilir (polyline)
-    3. Çizim bittiğinde → RoadGenerator ile platform üretilir
+    1. Collect platform parameters.
+    2. Sketch a centerline polyline on the map.
+    3. Generate platform components when the sketch is finished.
     """
 
     sketcher_finished = pyqtSignal()
@@ -44,7 +41,7 @@ class RoadSketcher(QgsMapTool):
         self._activation_cancelled = False
         self.vertices = []
 
-        # Parametre dialog'unu göster
+        # Collect road-platform parameters before opening the sketch.
         dlg = RoadDialog(self.iface.mainWindow())
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self.params = dlg.get_params()
@@ -55,13 +52,13 @@ class RoadSketcher(QgsMapTool):
                 self.canvas, QgsWkbTypes.LineGeometry
             )
             self.sketcher_message.emit(
-                f"🛣️ Yol Çiz ({self.params['yol_tipi']}, "
-                f"Toplam: {self.params['toplam_genislik']:.1f}m) — "
-                f"Orta çizgiyi çizin | Sağ tık: Bitir"
+                f"🛣️ Draw Road ({self.params['road_type']}, "
+                f"total: {self.params['total_width']:.1f} m) — "
+                "Sketch the centerline | Right-click: Finish"
             )
         else:
             self._activation_cancelled = True
-            self.sketcher_message.emit("🛣️ Yol Çiz — İptal edildi")
+            self.sketcher_message.emit("🛣️ Draw Road — Cancelled")
             self.sketcher_finished.emit()
 
     def deactivate(self):
@@ -93,8 +90,8 @@ class RoadSketcher(QgsMapTool):
             if self.rb:
                 self.rb.addPoint(point)
             self.sketcher_message.emit(
-                f"🛣️ Yol Çiz — {len(self.vertices)} nokta | "
-                f"Sağ tık: Bitir | Esc: İptal"
+                f"🛣️ Draw Road — {len(self.vertices)} points | "
+                "Right-click: Finish | Esc: Cancel"
             )
 
         elif event.button() == Qt.MouseButton.RightButton:
@@ -124,7 +121,7 @@ class RoadSketcher(QgsMapTool):
             self.preview_rb = create_preview_rubberband(
                 self.canvas, QgsWkbTypes.LineGeometry
             )
-            self.sketcher_message.emit("🛣️ Yol Çiz — İptal edildi")
+            self.sketcher_message.emit("🛣️ Draw Road — Cancelled")
         elif event.key() == Qt.Key.Key_Backspace:
             if len(self.vertices) > 0:
                 self.vertices.pop()
@@ -137,7 +134,7 @@ class RoadSketcher(QgsMapTool):
                 self._finish()
 
     def _finish(self):
-        """Orta çizgiyi oluştur ve yol platformunu üret."""
+        """Build the centerline and generate the road platform."""
         if len(self.vertices) < 2 or self.params is None:
             return
 
@@ -146,15 +143,17 @@ class RoadSketcher(QgsMapTool):
 
         if count > 0:
             self.sketcher_message.emit(
-                f"✅ Yol Çiz — {count} bileşen üretildi "
-                f"(planx_yol_platformu katmanına eklendi)"
+                f"✅ Draw Road — {count} components generated "
+                "(added to planx_road_platform)"
             )
             self.iface.messageBar().pushSuccess(
                 "planX CAD",
-                f"Yol platformu oluşturuldu: {count} bileşen"
+                f"Road platform created: {count} components"
             )
         else:
-            self.sketcher_message.emit("⚠️ Yol Çiz — Platform üretilemedi")
+            self.sketcher_message.emit(
+                "⚠️ Draw Road — Platform could not be generated"
+            )
 
         self._cleanup()
         self.rb = create_sketcher_rubberband(

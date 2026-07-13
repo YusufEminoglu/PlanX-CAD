@@ -10,7 +10,7 @@ from qgis.PyQt.QtWidgets import (
 class HealthCheckDialog(QDialog):
     def __init__(self, checks, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("PlanX CAD - Health Check / Sistem Kontrolu")
+        self.setWindowTitle("PlanX CAD - Health Check")
         self.setMinimumWidth(720)
         self.setMinimumHeight(480)
 
@@ -42,6 +42,6 @@ class HealthCheckDialog(QDialog):
         table.resizeColumnsToContents()
         layout.addWidget(table)
 
-        close_btn = QPushButton("Close / Kapat")
+        close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)

@@ -42,7 +42,7 @@ def _check(name, condition, detail=""):
 def _edge(road, source, point, outward, part=0):
     return CurbHalfEdge(
         road_id=road,
-        component="kaldirim",
+        component="sidewalk",
         source_id=source,
         source_part=part,
         cut_point=QgsPointXY(*point),

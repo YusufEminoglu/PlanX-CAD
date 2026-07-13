@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-planX CAD — Katman Yönetim Yardımcıları
-Otomatik katman oluşturma, feature ekleme ve öznitelik yönetimi.
-"""
+"""Layer creation, feature insertion, and attribute helpers for PlanX CAD."""
 
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import (
@@ -12,18 +9,86 @@ from qgis.core import (
 )
 
 
+ROAD_PLATFORM_LAYER_NAME = "planx_road_platform"
+LEGACY_ROAD_PLATFORM_LAYER_NAME = "planx_yol_platformu"
+
+ROAD_PLATFORM_FIELDS = [
+    ("road_id", "int"),
+    ("road_type", "string"),
+    ("component", "string"),
+    ("side", "string"),
+    ("lane_no", "int"),
+    ("lane_count", "int"),
+    ("lane_width", "double"),
+    ("median_width", "double"),
+    ("sidewalk_width", "double"),
+    ("total_width", "double"),
+    ("visible", "int"),
+]
+
+LEGACY_ROAD_PLATFORM_FIELDS = [
+    ("yol_id", "int"),
+    ("yol_tipi", "string"),
+    ("bilesen", "string"),
+    ("taraf", "string"),
+    ("serit_no", "int"),
+    ("serit_sayisi", "int"),
+    ("serit_genisligi", "double"),
+    ("refuj_genislik", "double"),
+    ("kaldirim_genislik", "double"),
+    ("toplam_genislik", "double"),
+    ("gorunur", "int"),
+]
+
+ROAD_FIELD_ALIASES = {
+    "road_id": "yol_id",
+    "road_type": "yol_tipi",
+    "component": "bilesen",
+    "side": "taraf",
+    "lane_no": "serit_no",
+    "lane_count": "serit_sayisi",
+    "lane_width": "serit_genisligi",
+    "median_width": "refuj_genislik",
+    "sidewalk_width": "kaldirim_genislik",
+    "total_width": "toplam_genislik",
+    "visible": "gorunur",
+}
+
+LEGACY_COMPONENT_VALUES = {
+    "center": "centerline",
+    "serit": "lane",
+    "kaldirim": "sidewalk",
+    "refuj": "median",
+    "dis_kirma": "junction_chamfer",
+    "ic_baglanti": "junction_fillet",
+    "refuj_baglanti": "median_connection",
+}
+LEGACY_SIDE_VALUES = {"sol": "left", "sag": "right", "orta": "center"}
+LEGACY_ROAD_TYPE_VALUES = {"kavsak": "junction"}
+
+
+def _reverse(mapping):
+    return {value: key for key, value in mapping.items()}
+
+
+CANONICAL_COMPONENT_VALUES = _reverse(LEGACY_COMPONENT_VALUES)
+CANONICAL_SIDE_VALUES = _reverse(LEGACY_SIDE_VALUES)
+CANONICAL_ROAD_TYPE_VALUES = _reverse(LEGACY_ROAD_TYPE_VALUES)
+
+
 def get_or_create_layer(layer_name, geom_type="MultiLineString", crs=None,
                         fields=None):
-    """Katmanı bul veya oluştur.
+    """Find a compatible project layer or create a memory layer.
 
     Args:
-        layer_name: str — katman adı
-        geom_type: str — 'Point', 'LineString', 'MultiLineString', 'Polygon'
-        crs: QgsCoordinateReferenceSystem (varsayılan: proje CRS)
-        fields: list[tuple(name, type)] — öznitelik alanları
+        layer_name: Display name for the layer.
+        geom_type: ``Point``, ``LineString``, ``MultiLineString``, or
+            ``Polygon``.
+        crs: Target CRS; defaults to the project CRS.
+        fields: Sequence of ``(name, type)`` field definitions.
 
     Returns:
-        QgsVectorLayer
+        A compatible or newly created ``QgsVectorLayer``.
     """
     project = QgsProject.instance()
 
@@ -57,7 +122,7 @@ def get_or_create_layer(layer_name, geom_type="MultiLineString", crs=None,
     if not layer.isValid():
         return None
 
-    # Alanları ekle
+    # Add the requested fields before exposing the layer to the project.
     if fields:
         dp = layer.dataProvider()
         qgs_fields = []
@@ -78,15 +143,15 @@ def get_or_create_layer(layer_name, geom_type="MultiLineString", crs=None,
 
 
 def add_feature_to_layer(layer, geometry, attributes=None):
-    """Katmana feature ekler.
+    """Add a feature without committing an existing user edit session.
 
     Args:
-        layer: QgsVectorLayer
-        geometry: QgsGeometry
-        attributes: dict — {alan_adı: değer}
+        layer: Destination vector layer.
+        geometry: Feature geometry.
+        attributes: Mapping of field names to values.
 
     Returns:
-        QgsFeature veya None
+        The inserted ``QgsFeature``, or ``None`` on failure.
     """
     if (layer is None or geometry is None or geometry.isEmpty() or
             not isinstance(layer, QgsVectorLayer) or not layer.isValid()):
@@ -124,14 +189,14 @@ def add_feature_to_layer(layer, geometry, attributes=None):
 
 
 def add_geometry_to_current_layer(iface, geometry):
-    """Aktif düzenlenebilir katmana geometri ekler.
+    """Add canvas geometry to the active compatible vector layer.
 
     Args:
-        iface: QGIS iface
-        geometry: QgsGeometry
+        iface: QGIS interface object.
+        geometry: Geometry expressed in the canvas CRS.
 
     Returns:
-        bool — başarılı mı
+        ``True`` when the feature was added.
     """
     layer = iface.activeLayer()
     if layer is None:
@@ -190,14 +255,14 @@ def add_geometry_to_current_layer(iface, geometry):
 
 
 def get_editable_vector_layers(iface, geom_types=None):
-    """Düzenlenebilir vektör katmanları listeler.
+    """Return editable project vector layers, optionally by geometry type.
 
     Args:
-        iface: QGIS iface
-        geom_types: list[QgsWkbTypes] — filtre (varsayılan: hepsi)
+        iface: QGIS interface object.
+        geom_types: Optional list of accepted geometry types.
 
     Returns:
-        list[QgsVectorLayer]
+        List of matching vector layers.
     """
     layers = []
     for layer in QgsProject.instance().mapLayers().values():
@@ -212,55 +277,123 @@ def get_editable_vector_layers(iface, geom_types=None):
     return layers
 
 
+def _find_compatible_layer(layer_name, geom_type, crs, fields):
+    """Return a managed same-name layer with a valid CRS, type, and schema.
+
+    Managed road output is transformed to the layer CRS at every read/write
+    boundary, so changing the project CRS must not orphan an existing layer.
+    """
+    project = QgsProject.instance()
+    requested_wkb = QgsWkbTypes.parseType(geom_type)
+    required_names = {name for name, _field_type in fields}
+    for candidate in project.mapLayersByName(layer_name):
+        if not isinstance(candidate, QgsVectorLayer):
+            continue
+        same_wkb = (
+            QgsWkbTypes.flatType(candidate.wkbType()) ==
+            QgsWkbTypes.flatType(requested_wkb)
+        )
+        same_crs = candidate.crs().isValid()
+        candidate_names = {field.name() for field in candidate.fields()}
+        if same_wkb and same_crs and required_names.issubset(candidate_names):
+            return candidate
+    return None
+
+
+def road_field_name(layer, canonical_name):
+    """Resolve an English road field to the active canonical or legacy name."""
+    if layer.fields().indexOf(canonical_name) >= 0:
+        return canonical_name
+    legacy_name = ROAD_FIELD_ALIASES.get(canonical_name)
+    if legacy_name and layer.fields().indexOf(legacy_name) >= 0:
+        return legacy_name
+    return canonical_name
+
+
+def road_attribute(layer, feature, canonical_name):
+    """Read a road attribute and normalize legacy values to English."""
+    field_name = road_field_name(layer, canonical_name)
+    value = feature.attribute(field_name)
+    if canonical_name == "component":
+        return LEGACY_COMPONENT_VALUES.get(value, value)
+    if canonical_name == "side":
+        return LEGACY_SIDE_VALUES.get(value, value)
+    if canonical_name == "road_type":
+        return LEGACY_ROAD_TYPE_VALUES.get(value, value)
+    return value
+
+
+def set_road_attribute(feature, layer, canonical_name, value):
+    """Set a canonical road value, translating when a legacy layer is reused."""
+    field_name = road_field_name(layer, canonical_name)
+    if field_name != canonical_name:
+        if canonical_name == "component":
+            value = CANONICAL_COMPONENT_VALUES.get(value, value)
+        elif canonical_name == "side":
+            value = CANONICAL_SIDE_VALUES.get(value, value)
+        elif canonical_name == "road_type":
+            value = CANONICAL_ROAD_TYPE_VALUES.get(value, value)
+    index = layer.fields().indexOf(field_name)
+    if index >= 0:
+        feature.setAttribute(index, value)
+
+
 def get_road_platform_layer(crs=None):
-    """Yol platformu katmanını bul veya oluştur.
+    """Find a road-platform layer or create the global English schema.
+
+    Existing projects that contain the pre-1.26 legacy layer and fields are
+    reused in place. New projects always receive ``planx_road_platform`` and
+    English field names.
 
     Returns:
-        QgsVectorLayer
+        The canonical or compatible legacy road-platform layer.
     """
-    fields = [
-        ("yol_id", "int"),
-        ("yol_tipi", "string"),
-        ("bilesen", "string"),
-        ("taraf", "string"),
-        ("serit_no", "int"),
-        ("serit_sayisi", "int"),
-        ("serit_genisligi", "double"),
-        ("refuj_genislik", "double"),
-        ("kaldirim_genislik", "double"),
-        ("toplam_genislik", "double"),
-        ("gorunur", "int"),
-    ]
-    layer = get_or_create_layer(
-        "planx_yol_platformu",
-        geom_type="MultiLineString",
-        crs=crs,
-        fields=fields
+    if crs is None:
+        crs = QgsProject.instance().crs()
+
+    layer = _find_compatible_layer(
+        ROAD_PLATFORM_LAYER_NAME, "MultiLineString", crs,
+        ROAD_PLATFORM_FIELDS,
     )
-    
-    if layer and layer.customProperty("planx_symbology_applied") != "yes":
-        from qgis.core import QgsRuleBasedRenderer, QgsSymbol, QgsLineSymbol
-        
+    if layer is None:
+        layer = _find_compatible_layer(
+            LEGACY_ROAD_PLATFORM_LAYER_NAME, "MultiLineString", crs,
+            LEGACY_ROAD_PLATFORM_FIELDS,
+        )
+    if layer is None:
+        layer = get_or_create_layer(
+            ROAD_PLATFORM_LAYER_NAME,
+            geom_type="MultiLineString",
+            crs=crs,
+            fields=ROAD_PLATFORM_FIELDS,
+        )
+
+    if layer and layer.customProperty("planx_symbology_language") != "en":
+        from qgis.core import QgsRuleBasedRenderer, QgsLineSymbol
+
         symbol_visible = QgsLineSymbol.createSimple({'line_color': '100,100,100,255', 'line_width': '0.4'})
         symbol_hidden = QgsLineSymbol.createSimple({'line_style': 'no'})
-        
+
         root_rule = QgsRuleBasedRenderer.Rule(None)
-        
-        # Rule for visible (gorunur = 1) or NULL
+        visible_field = road_field_name(layer, "visible")
+
+        # Show normal platform components and hide construction centerlines.
         rule_vis = QgsRuleBasedRenderer.Rule(symbol_visible)
-        rule_vis.setFilterExpression('"gorunur" = 1 OR "gorunur" IS NULL')
-        rule_vis.setLabel('Görünür')
+        rule_vis.setFilterExpression(
+            f'"{visible_field}" = 1 OR "{visible_field}" IS NULL'
+        )
+        rule_vis.setLabel("Visible")
         root_rule.appendChild(rule_vis)
-        
-        # Rule for hidden (gorunur = 0)
+
         rule_hid = QgsRuleBasedRenderer.Rule(symbol_hidden)
-        rule_hid.setFilterExpression('"gorunur" = 0')
-        rule_hid.setLabel('Gizli')
+        rule_hid.setFilterExpression(f'"{visible_field}" = 0')
+        rule_hid.setLabel("Hidden")
         root_rule.appendChild(rule_hid)
-        
+
         renderer = QgsRuleBasedRenderer(root_rule)
         layer.setRenderer(renderer)
         layer.setCustomProperty("planx_symbology_applied", "yes")
+        layer.setCustomProperty("planx_symbology_language", "en")
         layer.triggerRepaint()
-        
+
     return layer

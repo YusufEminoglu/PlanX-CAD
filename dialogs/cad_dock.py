@@ -70,6 +70,8 @@ class CommandLineEdit(QLineEdit):
     exactly like the AutoCAD command line. Enter still fires returnPressed.
     """
 
+    escape_requested = pyqtSignal()
+
     _MAX_HISTORY = 50
 
     def __init__(self, parent=None):
@@ -98,6 +100,12 @@ class CommandLineEdit(QLineEdit):
 
     def keyPressEvent(self, event):
         key = event.key()
+        if key == Qt.Key.Key_Escape:
+            self.clear()
+            self._hist_index = len(self._history)
+            self.escape_requested.emit()
+            event.accept()
+            return
         if key == Qt.Key.Key_Up and self._history:
             self._hist_index = max(0, self._hist_index - 1)
             self.setText(self._history[self._hist_index])
@@ -179,7 +187,7 @@ class CADDockWidget(QDockWidget):
     shortcuts_requested = pyqtSignal()
 
     def __init__(self, iface, icon_dir, parent=None):
-        super().__init__("planX CAD Toolset / planX CAD Araç Seti", parent)
+        super().__init__("PlanX CAD Toolset", parent)
         self.iface = iface
         self.icon_dir = icon_dir
 
@@ -201,6 +209,7 @@ class CADDockWidget(QDockWidget):
         self._activation_count = 0
         self._tool_usage_counts = {}
         self._precision_input_handler = None
+        self._command_enter_handler = None
 
         self._setup_ui()
 
@@ -242,7 +251,9 @@ class CADDockWidget(QDockWidget):
         "msl": "measure_select_line", "measureline": "measure_select_line",
         "msa": "measure_select_area", "measurearea": "measure_select_area",
         "dim": "dimension", "dimension": "dimension",
-        "road": "road", "junction": "junction", "ada": "ada_kirma",
+        "road": "road", "junction": "junction",
+        "block": "ada_kirma", "blockchamfer": "ada_kirma",
+        "chamfer": "ada_kirma",
     }
 
     # Tool key -> visible shortcut for tooltip badge. Mirrors main_plugin._SHORTCUTS.
@@ -272,16 +283,16 @@ class CADDockWidget(QDockWidget):
         "join":             "Ctrl+Shift+J",
     }
     _TOOL_HINTS = {
-        "line": "Line: click start and end points. / Cizgi: baslangic ve bitis noktasi tiklayin.",
-        "polyline": "Polyline: keep clicking vertices, finish with right click. / Coklu Cizgi: koseleri tiklayin, sag tikla bitir.",
-        "trim": "Trim: pick cutting boundary, then target segment. / Budama: once sinir, sonra budanacak parca.",
-        "extend": "Extend: pick reference edge, then line to extend. / Uzatma: once referans, sonra uzatilacak cizgi.",
-        "fillet": "Fillet: select two edges; use small radius for stability. / Fillet: iki kenar secin; kucuk yaricap daha stabil.",
-        "construction_inf": "Infinite construction: axis/grid references. / Sonsuz referans: aks ve grid icin.",
-        "construction_ray": "Ray construction: one-way projection. / Isin referans: tek yon projeksiyon.",
-        "construction_seg": "Segment construction: bounded temporary reference. / Segment referans: sinirli gecici dogru.",
-        "measure": "Measure: snap both ends for reliable distance. / Olcum: dogru mesafe icin iki ucu snapleyin.",
-        "road": "Road sketch: define centerline cleanly, then platform params. / Yol: once aksi cizin, sonra platform parametreleri.",
+        "line": "Line: click the start and end points.",
+        "polyline": "Polyline: keep clicking vertices; finish with right-click or Enter.",
+        "trim": "Trim: pick the cutting boundary, then the target segment.",
+        "extend": "Extend: pick the reference edge, then the line to extend.",
+        "fillet": "Fillet: select two edges; use a small radius for tight corners.",
+        "construction_inf": "Construction Line: create an infinite axis or grid reference.",
+        "construction_ray": "Construction Ray: create a one-way reference.",
+        "construction_seg": "Construction Segment: create a bounded reference.",
+        "measure": "Measure: snap both endpoints for a reliable distance.",
+        "road": "Road: define a clean centerline, then configure the platform.",
     }
 
     def _add_tool_button(self, grid, row, col, key, icon_file, tooltip):
@@ -327,8 +338,8 @@ class CADDockWidget(QDockWidget):
         layout.setSpacing(3)
         layout.setContentsMargins(4, 4, 4, 4)
 
-        # ── Header / Başlık ───────────────────────────────────────────────
-        header = QLabel("🔧 planX CAD Toolset / Araç Seti")
+        # ── Header ────────────────────────────────────────────────────────
+        header = QLabel("🔧 PlanX CAD Toolset")
         header_font = QFont()
         header_font.setPointSize(9)
         header_font.setBold(True)
@@ -361,20 +372,21 @@ class CADDockWidget(QDockWidget):
         )
         self.search_input.textChanged.connect(self._apply_tool_filter)
         self.search_input.returnPressed.connect(self._run_command)
+        self.search_input.escape_requested.connect(self.cancel_requested.emit)
         layout.addWidget(self.search_input)
 
-        # ── Drawing Tools / Çizim Araçları ─────────────────────────────────
-        draw_group = CollapsibleGroupBox("✏️ Drawing / Çizim")
+        # ── Drawing Tools ─────────────────────────────────────────────────
+        draw_group = CollapsibleGroupBox("✏️ Drawing")
         draw_grid = QGridLayout()
         self._configure_compact_grid(draw_grid)
 
         draw_tools = [
-            ("line",      "cad_line.svg",      "Line / Çizgi"),
-            ("polyline",  "cad_polyline.svg",  "Polyline / Çoklu Çizgi"),
-            ("rectangle", "cad_rectangle.svg", "Rectangle / Dikdörtgen"),
-            ("polygon",   "cad_polygon.svg",   "Polygon / Çokgen"),
-            ("circle",    "cad_circle.svg",    "Circle / Daire"),
-            ("arc",       "cad_arc.svg",       "Arc / Yay"),
+            ("line",      "cad_line.svg",      "Line"),
+            ("polyline",  "cad_polyline.svg",  "Polyline"),
+            ("rectangle", "cad_rectangle.svg", "Rectangle"),
+            ("polygon",   "cad_polygon.svg",   "Regular Polygon"),
+            ("circle",    "cad_circle.svg",    "Circle"),
+            ("arc",       "cad_arc.svg",       "Arc"),
         ]
         draw_content = QWidget()
         draw_content.setLayout(draw_grid)
@@ -389,26 +401,26 @@ class CADDockWidget(QDockWidget):
         draw_group.set_content_widget(draw_content)
         layout.addWidget(draw_group)
 
-        # ── Editing Tools / Düzenleme Araçları ──────────────────────────────
-        edit_group = CollapsibleGroupBox("🔨 Editing / Düzenleme")
+        # ── Editing Tools ─────────────────────────────────────────────────
+        edit_group = CollapsibleGroupBox("🔨 Editing")
         edit_grid = QGridLayout()
         self._configure_compact_grid(edit_grid)
 
         edit_tools = [
-            ("offset",       "cad_offset.svg",       "Offset / Öteleme"),
-            ("trim",         "cad_trim.svg",         "Trim / Budama"),
-            ("extend",       "cad_extend.svg",       "Extend / Uzatma"),
-            ("fillet",       "cad_fillet.svg",       "Fillet / Köşe Yuvarlama"),
-            ("buffer",       "cad_buffer.svg",       "Buffer / Tampon"),
-            ("array",        "cad_array.svg",        "Array / Çoklu Kopyalama"),
-            ("vertex_edit",      "cad_vertex_edit.svg",      "Vertex Edit / Köşe Düzenleme"),
-            ("divide",           "cad_divide.svg",           "Divide / Eşit Parçaya Böl"),
-            ("multi_offset",     "cad_multi_offset.svg",     "Multi-Offset / Çoklu Öteleme"),
-            ("join",             "cad_join.svg",             "Join / Çizgileri Birleştir"),
-            ("hatch",            "cad_hatch.svg",            "Hatch / Pattern Fill"),
-            ("construction_inf", "cad_construction.svg",     "Construction line / Sonsuz referans"),
-            ("construction_ray", "cad_construction.svg",     "Construction ray / Isin referans"),
-            ("construction_seg", "cad_construction.svg",     "Construction segment / Segment referans"),
+            ("offset",       "cad_offset.svg",       "Offset"),
+            ("trim",         "cad_trim.svg",         "Trim"),
+            ("extend",       "cad_extend.svg",       "Extend"),
+            ("fillet",       "cad_fillet.svg",       "Fillet"),
+            ("buffer",       "cad_buffer.svg",       "Buffer"),
+            ("array",        "cad_array.svg",        "Array"),
+            ("vertex_edit",      "cad_vertex_edit.svg",      "Vertex Edit"),
+            ("divide",           "cad_divide.svg",           "Divide"),
+            ("multi_offset",     "cad_multi_offset.svg",     "Multi-Offset"),
+            ("join",             "cad_join.svg",             "Join"),
+            ("hatch",            "cad_hatch.svg",            "Hatch (Pattern Fill)"),
+            ("construction_inf", "cad_construction.svg",     "Construction Line"),
+            ("construction_ray", "cad_construction.svg",     "Construction Ray"),
+            ("construction_seg", "cad_construction.svg",     "Construction Segment"),
         ]
         edit_content = QWidget()
         edit_content.setLayout(edit_grid)
@@ -423,17 +435,17 @@ class CADDockWidget(QDockWidget):
         edit_group.set_content_widget(edit_content)
         layout.addWidget(edit_group)
 
-        # ── Transform Tools / Dönüşüm Araçları ──────────────────────────────
-        transform_group = CollapsibleGroupBox("🔄 Transform / Dönüşüm")
+        # ── Transform Tools ───────────────────────────────────────────────
+        transform_group = CollapsibleGroupBox("🔄 Transform")
         transform_grid = QGridLayout()
         self._configure_compact_grid(transform_grid)
 
         transform_tools = [
-            ("move",    "cad_move.svg",    "Move / Taşı"),
-            ("copy",    "cad_copy.svg",    "Copy / Kopyala"),
-            ("rotate",  "cad_rotate.svg",  "Rotate / Döndür (Ctrl: 90°)"),
-            ("scale",   "cad_scale.svg",   "Scale / Ölçekle"),
-            ("mirror",  "cad_mirror.svg",  "Mirror / Aynala"),
+            ("move",    "cad_move.svg",    "Move"),
+            ("copy",    "cad_copy.svg",    "Copy"),
+            ("rotate",  "cad_rotate.svg",  "Rotate (Ctrl: 90° snap)"),
+            ("scale",   "cad_scale.svg",   "Scale"),
+            ("mirror",  "cad_mirror.svg",  "Mirror"),
         ]
         transform_content = QWidget()
         transform_content.setLayout(transform_grid)
@@ -448,16 +460,16 @@ class CADDockWidget(QDockWidget):
         transform_group.set_content_widget(transform_content)
         layout.addWidget(transform_group)
 
-        # ── Measurement Tools / Ölçüm Araçları ──────────────────────────────
-        measure_group = CollapsibleGroupBox("📐 Measurement / Ölçüm")
+        # ── Measurement Tools ─────────────────────────────────────────────
+        measure_group = CollapsibleGroupBox("📐 Measurement")
         measure_grid = QGridLayout()
         self._configure_compact_grid(measure_grid)
 
-        self._add_tool_button(measure_grid, 0, 0, "measure", "cad_measure.svg", "Measure Distance / Mesafe Ölç")
-        self._add_tool_button(measure_grid, 0, 1, "measure_area", "cad_measure_area.svg", "Measure Area / Alan Ölç")
-        self._add_tool_button(measure_grid, 0, 2, "dimension", "cad_dimension.svg", "Dimension / Kalıcı Etiket")
-        self._add_tool_button(measure_grid, 1, 0, "measure_select_line", "cad_measure_select_line.svg", "Select and Measure Line / Seç ve Çizgi Ölç")
-        self._add_tool_button(measure_grid, 1, 1, "measure_select_area", "cad_measure_select_area.svg", "Select and Measure Area / Seç ve Alan Ölç")
+        self._add_tool_button(measure_grid, 0, 0, "measure", "cad_measure.svg", "Measure Distance")
+        self._add_tool_button(measure_grid, 0, 1, "measure_area", "cad_measure_area.svg", "Measure Area")
+        self._add_tool_button(measure_grid, 0, 2, "dimension", "cad_dimension.svg", "Dimension")
+        self._add_tool_button(measure_grid, 1, 0, "measure_select_line", "cad_measure_select_line.svg", "Measure Selected Line")
+        self._add_tool_button(measure_grid, 1, 1, "measure_select_area", "cad_measure_select_area.svg", "Measure Selected Area")
 
         measure_content = QWidget()
         measure_content.setLayout(measure_grid)
@@ -470,13 +482,13 @@ class CADDockWidget(QDockWidget):
         measure_group.set_content_widget(measure_content)
         layout.addWidget(measure_group)
 
-        # ── Urban Planning Tools / Şehir Planlama Araçları ────────────────────
-        urban_group = CollapsibleGroupBox("🏙️ Urban Planning / Şehir Planlama")
+        # ── Urban Planning Tools ──────────────────────────────────────────
+        urban_group = CollapsibleGroupBox("🏙️ Urban Planning")
         urban_grid = QGridLayout()
         self._configure_compact_grid(urban_grid)
 
         # Draw Road button
-        road_btn = QPushButton("🛣️ Draw Road / Yol Çiz")
+        road_btn = QPushButton("🛣️ Draw Road")
         road_btn.setMinimumHeight(26)
         road_btn.setCheckable(True)
         road_btn.setStyleSheet("""
@@ -489,15 +501,15 @@ class CADDockWidget(QDockWidget):
             QPushButton:checked { background: #0f766e; color: white; border-color: #0f766e; }
         """)
         road_btn.setAccessibleName("Draw Road")
-        road_btn.setAccessibleDescription("Draw Road / Yol Çiz — interactive road platform tool")
+        road_btn.setAccessibleDescription("Interactive road-platform drawing tool")
         road_btn.clicked.connect(lambda: self._on_button_clicked("road"))
         urban_grid.addWidget(road_btn, 0, 0)
         self.buttons["road"] = road_btn
         self.button_group.addButton(road_btn)
-        self._register_tool_terms("road", "Draw Road / Yol Ciz")
+        self._register_tool_terms("road", "Draw Road")
 
         # Junction button
-        junction_btn = QPushButton("🔵 Junction / Kavşak")
+        junction_btn = QPushButton("🔵 Junction")
         junction_btn.setMinimumHeight(26)
         junction_btn.setCheckable(True)
         junction_btn.setStyleSheet("""
@@ -510,15 +522,15 @@ class CADDockWidget(QDockWidget):
             QPushButton:checked { background: #0f766e; color: white; border-color: #0f766e; }
         """)
         junction_btn.setAccessibleName("Junction")
-        junction_btn.setAccessibleDescription("Junction / Kavşak — road intersection tool")
+        junction_btn.setAccessibleDescription("Road-intersection design tool")
         junction_btn.clicked.connect(lambda: self._on_button_clicked("junction"))
         urban_grid.addWidget(junction_btn, 0, 1)
         self.buttons["junction"] = junction_btn
         self.button_group.addButton(junction_btn)
-        self._register_tool_terms("junction", "Junction / Kavsak")
+        self._register_tool_terms("junction", "Junction Intersection")
 
         # Block Chamfer button
-        ada_btn = QPushButton("🔶 Block Chamfer / Ada Kırma")
+        ada_btn = QPushButton("🔶 Block Chamfer")
         ada_btn.setMinimumHeight(26)
         ada_btn.setCheckable(True)
         ada_btn.setStyleSheet("""
@@ -531,12 +543,12 @@ class CADDockWidget(QDockWidget):
             QPushButton:checked { background: #b45309; color: white; border-color: #b45309; }
         """)
         ada_btn.setAccessibleName("Block Chamfer")
-        ada_btn.setAccessibleDescription("Block Chamfer / Ada Kırma — corner chamfering tool")
+        ada_btn.setAccessibleDescription("Urban-block corner chamfering tool")
         ada_btn.clicked.connect(lambda: self._on_button_clicked("ada_kirma"))
         urban_grid.addWidget(ada_btn, 1, 0, 1, 2)
         self.buttons["ada_kirma"] = ada_btn
         self.button_group.addButton(ada_btn)
-        self._register_tool_terms("ada_kirma", "Block Chamfer / Ada Kirma")
+        self._register_tool_terms("ada_kirma", "Block Chamfer")
 
         urban_content = QWidget()
         urban_content.setLayout(urban_grid)
@@ -555,7 +567,7 @@ class CADDockWidget(QDockWidget):
         sep.setFrameShadow(QFrame.Shadow.Sunken)
         layout.addWidget(sep)
 
-        # ── Quick Actions — 3 × 4 compact grid (fits 160 px minimum dock) ──
+        # ── Quick Actions: 3 × 4 compact grid (fits 160 px minimum dock) ──
         # Each row is a themed group: workflow | docs | diagnostics.
         # Less-frequently-used actions (Key Audit, Help Tool, Reset Filter)
         # remain accessible via the plugin menu and keyboard shortcuts.
@@ -568,8 +580,7 @@ class CADDockWidget(QDockWidget):
         def _mk_qa(label, tip, bg, fg, border, hover_bg):
             b = QPushButton(label)
             b.setToolTip(tip)
-            # Accessibility: the visible label is terse ("Diag", "↻ Last"); the
-            # tooltip carries the full bilingual action + shortcut for readers.
+            # The tooltip expands terse labels such as "Diag" for screen readers.
             b.setAccessibleName(label.replace("↻ ", "").strip())
             b.setAccessibleDescription(tip)
             b.setMinimumHeight(24)
@@ -584,75 +595,75 @@ class CADDockWidget(QDockWidget):
 
         # Row 0 — layer & tool workflow controls
         self.edit_btn = _mk_qa(
-            "Edit", "Toggle layer editing [Ctrl+Alt+E] / Katman duzenlemeyi ac-kapat",
+            "Edit", "Toggle layer editing [Ctrl+Alt+E]",
             "#eff6ff", "#1d4ed8", "#bfdbfe", "#dbeafe")
         self.edit_btn.clicked.connect(lambda: self.edit_toggle_requested.emit())
         qa_grid.addWidget(self.edit_btn, 0, 0)
 
         cancel_btn = _mk_qa(
-            "Cancel", "Cancel active tool [Ctrl+Alt+C] / Aktif araci iptal et",
+            "Cancel", "Cancel active tool [Ctrl+Alt+C]",
             "#fff1f2", "#9f1239", "#fecdd3", "#ffe4e6")
         cancel_btn.clicked.connect(lambda: self.cancel_requested.emit())
         qa_grid.addWidget(cancel_btn, 0, 1)
 
         repeat_btn = _mk_qa(
-            "↻ Last", "Repeat last tool [Ctrl+Shift+Space] / Son araci tekrarla",
+            "↻ Last", "Repeat last tool [Ctrl+Shift+Space]",
             "#eef6f4", "#0f766e", "#bfe8dc", "#dce9ed")
         repeat_btn.clicked.connect(lambda: self.tool_activated.emit("__repeat__"))
         qa_grid.addWidget(repeat_btn, 0, 2)
 
         preflight_btn = _mk_qa(
-            "Preflight", "Readiness check [Ctrl+Alt+F] / Hazirlik kontrolu",
+            "Preflight", "Run readiness check [Ctrl+Alt+F]",
             "#ecfeff", "#0f766e", "#99f6e4", "#ccfbf1")
         preflight_btn.clicked.connect(self.run_preflight)
         qa_grid.addWidget(preflight_btn, 0, 3)
 
         # Row 1 — help & onboarding
         docs_btn = _mk_qa(
-            "Docs", "Command reference [Ctrl+Alt+H] / Komut kilavuzu",
+            "Docs", "Open command reference [Ctrl+Alt+H]",
             "#0f766e", "white", "#0f766e", "#115e59")
         docs_btn.clicked.connect(lambda: self.docs_requested.emit())
         qa_grid.addWidget(docs_btn, 1, 0)
 
         keys_btn = _mk_qa(
-            "Keys", "Shortcut guide [Ctrl+Shift+/] / Kisayol rehberi",
+            "Keys", "Open shortcut guide [Ctrl+Shift+/]",
             "#f8fafc", "#0f766e", "#bfe8dc", "#eef6f4")
         keys_btn.clicked.connect(lambda: self.shortcuts_requested.emit())
         qa_grid.addWidget(keys_btn, 1, 1)
 
         start_btn = _mk_qa(
-            "Start", "Quick start guide [Ctrl+Alt+Q] / Hizli baslangic",
+            "Start", "Open quick-start guide [Ctrl+Alt+Q]",
             "#fef9c3", "#854d0e", "#fde68a", "#fef08a")
         start_btn.clicked.connect(lambda: self.quick_start_requested.emit())
         qa_grid.addWidget(start_btn, 1, 2)
 
         health_btn = _mk_qa(
-            "Health", "Runtime health check [Ctrl+Alt+W] / Saglik kontrolu",
+            "Health", "Run runtime health check [Ctrl+Alt+W]",
             "#f0fdf4", "#166534", "#bbf7d0", "#dcfce7")
         health_btn.clicked.connect(lambda: self.health_check_requested.emit())
         qa_grid.addWidget(health_btn, 1, 3)
 
         # Row 2 — diagnostics & workspace
         stats_btn = _mk_qa(
-            "Stats", "Usage statistics [Ctrl+Alt+T] / Kullanim istatistikleri",
+            "Stats", "Open usage statistics [Ctrl+Alt+T]",
             "#eff6ff", "#1e3a8a", "#bfdbfe", "#dbeafe")
         stats_btn.clicked.connect(lambda: self.usage_stats_requested.emit())
         qa_grid.addWidget(stats_btn, 2, 0)
 
         diag_btn = _mk_qa(
-            "Diag", "Diagnostics report [Ctrl+Alt+D] / Tani raporu",
+            "Diag", "Open diagnostics report [Ctrl+Alt+D]",
             "#ede9fe", "#5b21b6", "#c4b5fd", "#ddd6fe")
         diag_btn.clicked.connect(lambda: self.diagnostics_requested.emit())
         qa_grid.addWidget(diag_btn, 2, 1)
 
         pin_btn = _mk_qa(
-            "Pin", "Pin last tool to favorites [Ctrl+Alt+Z] / Son araci sabitle",
+            "Pin", "Pin last tool to favorites [Ctrl+Alt+Z]",
             "#fef3c7", "#92400e", "#fde68a", "#fde68a")
         pin_btn.clicked.connect(self.pin_last_tool)
         qa_grid.addWidget(pin_btn, 2, 2)
 
         reset_ws_btn = _mk_qa(
-            "Reset WS", "Reset workspace [Ctrl+Alt+R] / Calisma alanini sifirla",
+            "Reset WS", "Reset workspace [Ctrl+Alt+R]",
             "#fff7ed", "#9a3412", "#fed7aa", "#ffedd5")
         reset_ws_btn.clicked.connect(lambda: self.workspace_reset_requested.emit())
         qa_grid.addWidget(reset_ws_btn, 2, 3)
@@ -660,7 +671,7 @@ class CADDockWidget(QDockWidget):
         layout.addLayout(qa_grid)
 
         recent_row = QHBoxLayout()
-        recent_label = QLabel("Recent / Son:")
+        recent_label = QLabel("Recent:")
         recent_label.setStyleSheet("color: #64748b; font-size: 9px;")
         recent_row.addWidget(recent_label)
         for _ in range(3):
@@ -676,7 +687,7 @@ class CADDockWidget(QDockWidget):
             self._recent_buttons.append(b)
             recent_row.addWidget(b)
         clear_recent_btn = QPushButton("Clear")
-        clear_recent_btn.setToolTip("Clear recent tools / Son araclari temizle")
+        clear_recent_btn.setToolTip("Clear recent tools")
         clear_recent_btn.setMinimumHeight(22)
         clear_recent_btn.setStyleSheet(
             "QPushButton { background: #f8fafc; color: #0f766e; font-size: 9px;"
@@ -688,7 +699,7 @@ class CADDockWidget(QDockWidget):
         layout.addLayout(recent_row)
 
         fav_row = QHBoxLayout()
-        fav_label = QLabel("Favorites / Favoriler:")
+        fav_label = QLabel("Favorites:")
         fav_label.setStyleSheet("color: #64748b; font-size: 9px;")
         fav_row.addWidget(fav_label)
         for _ in range(3):
@@ -712,7 +723,7 @@ class CADDockWidget(QDockWidget):
         )
         hint_layout = QVBoxLayout(hint_box)
         hint_layout.setContentsMargins(0, 0, 0, 0)
-        self.hint_label = QLabel("Tip / Ipucu: Activate a tool to see best-practice guidance.")
+        self.hint_label = QLabel("Tip: Activate a tool to see best-practice guidance.")
         self.hint_label.setWordWrap(True)
         hint_layout.addWidget(self.hint_label)
         layout.addWidget(hint_box)
@@ -721,7 +732,7 @@ class CADDockWidget(QDockWidget):
         # share one horizontal row instead of two stacked rows.
         status_strip = QHBoxLayout()
         status_strip.setSpacing(4)
-        self.layer_state_label = QLabel("Layer: unknown / Katman: bilinmiyor")
+        self.layer_state_label = QLabel("Layer: unknown")
         self.layer_state_label.setWordWrap(True)
         self.layer_state_label.setStyleSheet(
             "color: #475569; font-size: 9px; padding: 2px 4px; "
@@ -733,7 +744,7 @@ class CADDockWidget(QDockWidget):
         status_strip.addWidget(self.layer_state_label, 3)
         self.usage_label = QLabel(self._format_usage(0))
         self.usage_label.setToolTip(
-            "Tool activations this session / Bu oturumdaki arac aktivasyonlari"
+            "Tool activations this session"
         )
         self.usage_label.setAccessibleName("Session tool activation count")
         self.usage_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -753,8 +764,10 @@ class CADDockWidget(QDockWidget):
             print(f"[planX-CAD] LiveCoordWidget load error: {e}")
             self.coord_widget = None
 
-        # ── Status Bar / Durum Çubuğu ──────────────────────────────────────
-        self.status_label = QLabel("Ready — type a command (L, O, TR…) or use Ctrl+Shift+<letter> / Hazır — komut yazın veya kısayol kullanın")
+        # ── Status Bar ────────────────────────────────────────────────────
+        self.status_label = QLabel(
+            "Ready — type a command (L, O, TR…) or use Ctrl+Shift+<letter>"
+        )
         self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet(
             "color: #64748b; font-size: 9px; padding: 2px 4px; "
@@ -823,9 +836,9 @@ class CADDockWidget(QDockWidget):
     def _update_hint(self, key):
         hint = self._TOOL_HINTS.get(
             key,
-            "Tip / Ipucu: Use snapping, work on editable layers, and verify topology before export."
+            "Use snapping, work on editable layers, and verify topology before export."
         )
-        self.hint_label.setText(f"Tip / Ipucu: {hint}")
+        self.hint_label.setText(f"Tip: {hint}")
 
     def _refresh_recent_buttons(self):
         for idx, btn in enumerate(self._recent_buttons):
@@ -899,11 +912,21 @@ class CADDockWidget(QDockWidget):
         """Resolve and run the command currently typed in the command line.
 
         AutoCAD command-loop conventions:
-          - Empty Enter repeats the last activated tool.
+          - Empty Enter finishes an in-progress sketch when possible.
+          - Otherwise, empty Enter repeats the last activated tool.
           - The input line is cleared after each run so commands can be chained.
         """
         raw = (self.search_input.text() or "").strip()
         if not raw:
+            if self._command_enter_handler is not None:
+                try:
+                    if self._command_enter_handler():
+                        self.search_input.clear()
+                        return
+                except Exception as error:
+                    self.search_input.clear()
+                    self.set_status(f"Unable to finish the active command: {error}")
+                    return
             self.tool_activated.emit("__repeat__")
             return
         self.search_input.add_history(raw)
@@ -915,16 +938,16 @@ class CADDockWidget(QDockWidget):
             except Exception as error:
                 self.search_input.clear()
                 self.set_status(
-                    f"Precision input failed: {error} / Hassas giriş başarısız"
+                    f"Precision input failed: {error}"
                 )
                 return
         key = self._resolve_command(raw)
         self.search_input.clear()
         if key:
-            self.set_status(f"> {key.replace('_', ' ').upper()} / Komut calistirildi")
+            self.set_status(f"> {key.replace('_', ' ').upper()}")
             self.tool_activated.emit(key)
         else:
-            self.set_status(f"Unknown command: {raw} / Bilinmeyen komut: {raw}")
+            self.set_status(f"Unknown command: {raw}")
 
     def _activate_first_match(self):
         """Backward-compatible alias for the command-line Enter handler."""
@@ -933,6 +956,10 @@ class CADDockWidget(QDockWidget):
     def set_precision_input_handler(self, handler):
         """Set the synchronous active-tool precision input dispatcher."""
         self._precision_input_handler = handler if callable(handler) else None
+
+    def set_command_enter_handler(self, handler):
+        """Set the handler that may consume Enter for an active command."""
+        self._command_enter_handler = handler if callable(handler) else None
 
     def uncheck_all(self):
         checked = self.button_group.checkedButton()
@@ -949,16 +976,16 @@ class CADDockWidget(QDockWidget):
     def reset_filter(self):
         self.search_input.clear()
         self._apply_tool_filter("")
-        self.set_status("Filter reset / Filtre sifirlandi")
+        self.set_status("Filter reset")
 
     def clear_recent(self):
         self._recent_tools = []
         self._refresh_recent_buttons()
-        self.set_status("Recent tools cleared / Son araclar temizlendi")
+        self.set_status("Recent tools cleared")
 
     def pin_last_tool(self):
         if not self._last_activated_key:
-            self.set_status("No tool to pin yet / Sabitlenecek arac yok")
+            self.set_status("No tool to pin yet")
             return
         key = self._last_activated_key
         if key in self._favorites:
@@ -966,16 +993,16 @@ class CADDockWidget(QDockWidget):
         self._favorites.insert(0, key)
         self._favorites = self._favorites[:3]
         self._refresh_favorite_buttons()
-        self.set_status(f"Pinned: {key} / Sabitlendi: {key}")
+        self.set_status(f"Pinned: {key}")
         self.pin_last_requested.emit()
 
     def refresh_layer_state(self):
         layer = self.iface.activeLayer()
         if layer is None:
-            self.layer_state_label.setText("Layer: none selected / Katman: secili degil")
+            self.layer_state_label.setText("Layer: none selected")
             self.edit_btn.setText("Edit")
             self.edit_btn.setEnabled(False)
-            self.edit_btn.setToolTip("Select a vector layer to edit / Duzenlemek icin vektor katman secin")
+            self.edit_btn.setToolTip("Select a vector layer to edit")
             self.edit_btn.setAccessibleName("Edit unavailable")
             self.edit_btn.setAccessibleDescription(self.edit_btn.toolTip())
             return
@@ -983,26 +1010,23 @@ class CADDockWidget(QDockWidget):
         name = getattr(layer, "name", lambda: "unknown")()
         is_vector = hasattr(layer, "geometryType") and hasattr(layer, "isEditable")
         if not is_vector:
-            self.layer_state_label.setText(
-                f"Layer: {name} (not vector) / Katman: {name} (vektor degil)"
-            )
+            self.layer_state_label.setText(f"Layer: {name} (not vector)")
             self.edit_btn.setText("Edit")
             self.edit_btn.setEnabled(False)
-            self.edit_btn.setToolTip("Active layer is not vector / Aktif katman vektor degil")
+            self.edit_btn.setToolTip("The active layer is not a vector layer")
             self.edit_btn.setAccessibleName("Edit unavailable")
             self.edit_btn.setAccessibleDescription(self.edit_btn.toolTip())
             return
 
         editable = getattr(layer, "isEditable", lambda: False)()
         state = "editable" if editable else "read-only"
-        state_tr = "duzenlenebilir" if editable else "salt-okunur"
-        self.layer_state_label.setText(f"Layer: {name} ({state}) / Katman: {name} ({state_tr})")
+        self.layer_state_label.setText(f"Layer: {name} ({state})")
         if editable:
             label = "Edit OFF"
-            tip = "Stop editing [Ctrl+Alt+E] / Katman duzenlemeyi kapat"
+            tip = "Stop editing [Ctrl+Alt+E]"
         else:
             label = "Edit ON"
-            tip = "Start editing [Ctrl+Alt+E] / Katman duzenlemeyi ac"
+            tip = "Start editing [Ctrl+Alt+E]"
         self.edit_btn.setText(label)
         self.edit_btn.setEnabled(True)
         self.edit_btn.setToolTip(tip)
@@ -1012,17 +1036,17 @@ class CADDockWidget(QDockWidget):
     def run_preflight(self):
         layer = self.iface.activeLayer()
         if layer is None:
-            self.set_status("Preflight: no active layer / aktif katman yok")
+            self.set_status("Preflight: no active layer")
             return
         is_vector = hasattr(layer, "geometryType")
         editable = getattr(layer, "isEditable", lambda: False)()
         if not is_vector:
-            self.set_status("Preflight: active layer is not vector / aktif katman vektor degil")
+            self.set_status("Preflight: the active layer is not a vector layer")
             return
         if not editable:
-            self.set_status("Preflight: layer is read-only (use Edit ON/OFF) / katman salt-okunur")
+            self.set_status("Preflight: layer is read-only; use Edit ON")
             return
-        self.set_status("Preflight: OK (vector + editable) / tamam (vektor + duzenlenebilir)")
+        self.set_status("Preflight: OK (vector and editable)")
 
     def _save_state(self):
         s = QSettings("PlanX", "PlanXCAD")
@@ -1073,13 +1097,13 @@ class CADDockWidget(QDockWidget):
         self._refresh_recent_buttons()
         self._refresh_favorite_buttons()
         self.usage_label.setText(self._format_usage(0))
-        self.hint_label.setText("Tip / Ipucu: Activate a tool to see best-practice guidance.")
-        self.set_status("Workspace reset complete / Calisma alani sifirlandi")
+        self.hint_label.setText("Tip: Activate a tool to see best-practice guidance.")
+        self.set_status("Workspace reset complete")
         self._save_state()
 
     def open_help_for_last_tool(self):
         if not self._last_activated_key:
-            self.set_status("No active tool; opening docs / Aktif arac yok; dokuman aciliyor")
+            self.set_status("No active tool; opening the command reference")
             self.docs_requested.emit()
             return
         self.tool_help_requested.emit(self._last_activated_key)

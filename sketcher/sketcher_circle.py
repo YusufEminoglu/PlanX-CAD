@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Daire (Circle) Sketcher"""
+"""PlanX CAD circle sketcher."""
 
 import math
 from qgis.PyQt.QtCore import Qt
@@ -9,18 +9,18 @@ from ..core.crs_utils import local_metric_crs, transform_geometry, transform_poi
 
 
 class sketcher_circle(sketcher_base):
-    """Merkez + yarıçap ile daire çizer.
-    1. tık: Merkez | 2. tık: Yarıçap
+    """Draw a circle from a centre point and radius.
+    First click: centre | Second click: radius
     """
 
-    SEGMENTS = 64  # Daire segment sayısı
+    SEGMENTS = 64  # Number of circle segments
 
     def __init__(self, canvas, iface):
         super().__init__(canvas, iface)
         self.center = None
 
     def tool_name(self):
-        return "Daire"
+        return "Circle"
 
     def geom_type(self):
         return QgsWkbTypes.PolygonGeometry
@@ -31,7 +31,7 @@ class sketcher_circle(sketcher_base):
                 self.center = point
                 self.add_vertex(point)
                 self.sketcher_message.emit(
-                    "✏️ Daire — Yarıçapı belirlemek için tıklayın"
+                    "✏️ Circle — Click to set the radius"
                 )
             else:
                 self.add_vertex(point)
@@ -68,13 +68,13 @@ class sketcher_circle(sketcher_base):
                 (radius_pt.x() - self.center.x()) ** 2 +
                 (radius_pt.y() - self.center.y()) ** 2
             )
-            # QgsGeometry.fromPointXY + buffer ile mükemmel daire
+            # Build the circle with a point buffer in the canvas CRS.
             center_geom = QgsGeometry.fromPointXY(self.center)
             return center_geom.buffer(radius, self.SEGMENTS)
         return None
 
     def _calc_circle(self, center, edge_point):
-        """Daire noktalarını hesapla (önizleme için)."""
+        """Calculate circle points for the live preview."""
         canvas_crs = self.canvas.mapSettings().destinationCrs()
         metric_crs = None
         if canvas_crs.isGeographic():

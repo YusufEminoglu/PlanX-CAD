@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-planX CAD Araç Seti — Ana Plugin Sınıfı
-18 CAD aracı, dockable panel UI, toolbar ve menü yönetimi.
-"""
+"""PlanX CAD Toolset: QGIS plugin entry point and workbench shell."""
 
 import os
 
@@ -13,7 +10,7 @@ from qgis.core import QgsProject, QgsVectorLayer, QgsWkbTypes
 
 
 class PlanXCADPlugin:
-    """planX CAD Araç Seti ana plugin sınıfı."""
+    """Manage the PlanX CAD Toolset interface, tools, and lifecycle."""
 
     def __init__(self, iface):
         self.iface = iface
@@ -30,7 +27,7 @@ class PlanXCADPlugin:
         self._unloading = False
         self._quick_start_timer = None
 
-        # Araç instance'ları (lazy loaded)
+        # Tool instances are loaded lazily.
         self._tools = {}
 
         # Tool history: most-recently activated key for "repeat last"
@@ -45,9 +42,9 @@ class PlanXCADPlugin:
     # ═══════════════════════════════════════════════════════════════════════
 
     def initGui(self):
-        """QGIS GUI'ye menü, toolbar ve dock widget ekle."""
-        # ── Menü ─────────────────────────────────────────────────────────
-        self.menu = QMenu("&planX CAD Toolset / Araç Seti")
+        """Add the menu, toolbar, dock, and shortcuts to QGIS."""
+        # ── Menu ─────────────────────────────────────────────────────────
+        self.menu = QMenu("&planX CAD Toolset")
         self.iface.mainWindow().menuBar().addMenu(self.menu)
 
         # ── Toolbar ──────────────────────────────────────────────────────
@@ -55,113 +52,113 @@ class PlanXCADPlugin:
         self.toolbar.setObjectName("PlanXCADToolbar")
         self.iface.addToolBar(self.toolbar)
 
-        # ── Ana Panel Toggle ─────────────────────────────────────────────
+        # ── Main panel toggle ────────────────────────────────────────────
         main_icon = os.path.join(self.icon_dir, "icon.png")
         self.panel_action = self._add_action(
             main_icon,
-            "planX CAD Panel / Paneli",
+            "PlanX CAD Panel",
             self._toggle_dock,
             checkable=True,
-            status_tip="Open/close planX CAD panel / planX CAD panelini aç/kapat"
+            status_tip="Open or close the PlanX CAD panel"
         )
 
-        # ── Menü Separator ───────────────────────────────────────────────
+        # ── Menu separator ───────────────────────────────────────────────
         self.menu.addSeparator()
 
-        # ── Hakkında ─────────────────────────────────────────────────────
+        # ── Help and diagnostics ─────────────────────────────────────────
         self._add_action(
             ":/images/themes/default/mActionHelpContents.svg",
-            "About / Hakkında",
+            "About",
             self._show_about,
             add_to_toolbar=False,
-            status_tip="About planX CAD Toolset / planX CAD Araç Seti hakkında"
+            status_tip="About PlanX CAD Toolset"
         )
         self._add_action(
             main_icon,
-            "Plugin Page & Rate / Eklenti Sayfası ve Puanla",
+            "Plugin Page and Rating",
             self._open_plugin_page,
             add_to_toolbar=False,
-            status_tip="Open the official QGIS plugin page / Resmi QGIS eklenti sayfasını aç",
+            status_tip="Open the official QGIS plugin page",
         )
         self._add_action(
             ":/images/themes/default/mActionHelpContents.svg",
-            "Shortcut Guide / Kisayol Rehberi",
+            "Shortcut Guide",
             self._show_shortcut_guide,
             add_to_toolbar=False,
-            status_tip="Shortcut and workflow guide / Kisayol ve is akisi rehberi"
+            status_tip="Open the keyboard shortcut and workflow guide"
         )
         self._add_action(
             ":/images/themes/default/mActionHelpContents.svg",
-            "Command Reference / Komut Kilavuzu",
+            "Command Reference",
             self._show_command_reference,
             add_to_toolbar=False,
-            status_tip="Detailed command documentation / Detayli komut dokumani"
+            status_tip="Open detailed command documentation"
         )
         self._add_action(
             ":/images/themes/default/mActionHelpContents.svg",
-            "Smoke Test Checklist / Duman Test Listesi",
+            "Smoke Test Checklist",
             self._show_smoke_test,
             add_to_toolbar=False,
-            status_tip="Open QGIS smoke test checklist / QGIS duman test listesini ac"
+            status_tip="Open the QGIS smoke-test checklist"
         )
         self._add_action(
             ":/images/themes/default/mIconExpression.svg",
-            "Command Palette / Komut Paleti",
+            "Command Palette",
             self._show_command_palette,
             add_to_toolbar=False,
-            status_tip="Fast command activation / Hizli komut aktivasyonu"
+            status_tip="Find and activate commands quickly"
         )
         self._add_action(
             ":/images/themes/default/mActionHelpContents.svg",
-            "Quick Start / Hizli Baslangic",
+            "Quick Start",
             self._show_quick_start,
             add_to_toolbar=False,
-            status_tip="Open onboarding guide / Baslangic rehberini ac"
+            status_tip="Open the onboarding guide"
         )
         self._add_action(
             ":/images/themes/default/mActionRefresh.svg",
-            "Session Checklist / Oturum Kontrol Listesi",
+            "Session Checklist",
             self._show_session_checklist,
             add_to_toolbar=False,
-            status_tip="Run beta session checklist / Beta oturum kontrol listesini ac"
+            status_tip="Open the drafting-session checklist"
         )
         self._add_action(
             ":/images/themes/default/mActionPropertiesWidget.svg",
-            "Diagnostics / Tani",
+            "Diagnostics",
             self._show_diagnostics,
             add_to_toolbar=False,
-            status_tip="Open runtime diagnostics report / Calisma tani raporunu ac"
+            status_tip="Open the runtime diagnostics report"
         )
         self._add_action(
             ":/images/themes/default/mActionOptions.svg",
-            "Health Check / Sistem Kontrolu",
+            "Health Check",
             self._show_health_check,
             add_to_toolbar=False,
-            status_tip="Run runtime readiness checks / Calisma hazirlik kontrollerini calistir"
+            status_tip="Run runtime readiness checks"
         )
         self._add_action(
             ":/images/themes/default/mIconFieldInteger.svg",
-            "Shortcut Audit / Kisayol Denetimi",
+            "Shortcut Audit",
             self._show_shortcut_audit,
             add_to_toolbar=False,
-            status_tip="Check shortcut conflicts and duplicates / Kisayol cakisma ve tekrarlarini kontrol et"
+            status_tip="Check shortcut conflicts and duplicates"
         )
         self._add_action(
             ":/images/themes/default/mIconNewText.svg",
-            "Issue Template / Hata Rapor Sablonu",
+            "Issue Template",
             self._show_issue_template,
             add_to_toolbar=False,
-            status_tip="Open copy-ready issue report template / Kopyalanabilir hata rapor sablonu ac"
+            status_tip="Open a copy-ready issue report template"
         )
         self._add_action(
             ":/images/themes/default/mActionRefresh.svg",
-            "Release Readiness / Surum Hazirlik",
+            "Release Readiness",
             self._show_release_readiness,
             add_to_toolbar=False,
-            status_tip="Open beta release readiness checks / Beta surum hazirlik kontrollerini ac"
+            status_tip="Open release-readiness checks"
         )
 
-        # ── Klavye kısayolları ─────────────────────────────────────────────
+        # ── Keyboard shortcuts ────────────────────────────────────────────
         self._setup_shortcuts()
         try:
             self.iface.mapCanvas().mapToolSet.connect(self._on_map_tool_set)
@@ -171,7 +168,7 @@ class PlanXCADPlugin:
         self._maybe_show_quick_start_once()
 
     def unload(self):
-        """Plugin kaldırıldığında temizlik yap."""
+        """Remove plugin UI and release runtime resources."""
         self._unloading = True
         if self._quick_start_timer is not None:
             self._quick_start_timer.stop()
@@ -184,7 +181,7 @@ class PlanXCADPlugin:
                 pass
             self._canvas_tool_signal_connected = False
 
-        # Aktif aracı deaktive et
+        # Deactivate the current map tool.
         if self._current_tool:
             self.iface.mapCanvas().unsetMapTool(self._current_tool)
             self._current_tool = None
@@ -205,13 +202,13 @@ class PlanXCADPlugin:
             self._dock.deleteLater()
             self._dock = None
 
-        # Araçlar
+        # Tools
         for tool in self._tools.values():
             if tool:
                 del tool
         self._tools.clear()
 
-        # Klavye kısayolları
+        # Keyboard shortcuts
         for sc in self._shortcuts:
             sc.setEnabled(False)
             sc.deleteLater()
@@ -248,7 +245,7 @@ class PlanXCADPlugin:
     # ═══════════════════════════════════════════════════════════════════════
 
     def _toggle_dock(self):
-        """Dock widget'ı aç/kapat."""
+        """Open, close, or create the CAD dock."""
         if self._dock is None:
             dock = None
             try:
@@ -261,6 +258,7 @@ class PlanXCADPlugin:
                 dock.visibilityChanged.connect(self._on_dock_visibility)
                 dock.tool_activated.connect(self._activate_tool)
                 dock.set_precision_input_handler(self._handle_precision_input)
+                dock.set_command_enter_handler(self._handle_command_enter)
                 dock.cancel_requested.connect(self._cancel_active_tool)
                 dock.edit_toggle_requested.connect(self._toggle_active_layer_editing)
                 dock.quick_start_requested.connect(self._show_quick_start)
@@ -305,8 +303,8 @@ class PlanXCADPlugin:
                 self._dock = None
                 QMessageBox.critical(
                     self.iface.mainWindow(),
-                    "Error / Hata",
-                    f"Failed to create panel / Panel oluşturulamadı:\n{str(e)}"
+                    "PlanX CAD Error",
+                    f"Failed to create the panel:\n{str(e)}"
                 )
                 if self.panel_action:
                     self.panel_action.setChecked(False)
@@ -332,14 +330,14 @@ class PlanXCADPlugin:
         if self._dock:
             self._dock.uncheck_all()
             self._dock.set_status(
-                "CAD tool paused; QGIS map tool is active / CAD araci duraklatildi"
+                "CAD tool paused; a QGIS map tool is active"
             )
 
     # ═══════════════════════════════════════════════════════════════════════
-    # Araç Yönetimi
+    # Tool management
     # ═══════════════════════════════════════════════════════════════════════
 
-    # Dialog açan araçlar — her seferinde yeni instance gerekir
+    # Dialog-based tools require a fresh instance for every activation.
     _DIALOG_TOOLS = {"buffer", "fillet", "polygon", "road", "junction", "measure_area", "ada_kirma", "array", "divide", "multi_offset", "join", "hatch"}
     # Drawing tools write to the active layer. Feature-editing tools may pick
     # from any editable vector layer in the project. Output tools (Buffer,
@@ -368,11 +366,10 @@ class PlanXCADPlugin:
     _TOOLS_REQUIRING_EDITABLE = set(_ACTIVE_TARGET_TOOLS) | set(_EDITABLE_PICK_TOOLS)
 
     # ═══════════════════════════════════════════════════════════════════════
-    # Klavye kısayolları + tool history
+    # Keyboard shortcuts and tool history
     # ═══════════════════════════════════════════════════════════════════════
 
-    # Tool-key -> shortcut spec. Ctrl+Shift+<letter> seçildi: QGIS'in built-in
-    # shortcut'larıyla çakışmıyor, kolay hatırlanır.
+    # Tool key -> shortcut. Ctrl+Shift combinations avoid common QGIS bindings.
     _SHORTCUTS = (
         ("line",                  "Ctrl+Shift+L"),
         ("polyline",              "Ctrl+Shift+P"),
@@ -416,8 +413,7 @@ class PlanXCADPlugin:
         )
 
     def _setup_shortcuts(self):
-        """QShortcut'lar QGIS main window'a bağlanır (Qt.ShortcutContext.ApplicationShortcut
-        context). Plugin yüklü iken her yerden çalışırlar; unload'da temizlenir."""
+        """Bind application-wide shortcuts to the QGIS main window."""
         parent = self.iface.mainWindow()
         for key, seq in self._SHORTCUTS:
             sc = QShortcut(QKeySequence(seq), parent)
@@ -508,7 +504,7 @@ class PlanXCADPlugin:
         if self._last_tool_key:
             self._activate_tool(self._last_tool_key)
         else:
-            self._set_status("⚠️ No previous tool to repeat / Tekrarlanacak eski bir araç yok")
+            self._set_status("⚠️ No previous tool to repeat")
 
     def _focus_dock_search(self):
         if self._dock is None:
@@ -536,17 +532,17 @@ class PlanXCADPlugin:
             self._current_tool_key = None
         if self._dock:
             self._dock.uncheck_all()
-            self._dock.set_status("Active tool cancelled / Aktif arac iptal edildi")
+            self._dock.set_status("Active tool cancelled")
             if hasattr(self._dock, "refresh_layer_state"):
                 self._dock.refresh_layer_state()
 
     def _toggle_active_layer_editing(self):
         layer = self.iface.activeLayer()
         if layer is None:
-            self._set_status("No active layer / Aktif katman yok")
+            self._set_status("No active layer")
             return
         if not isinstance(layer, QgsVectorLayer):
-            self._set_status("Active layer is not vector / Aktif katman vektor degil")
+            self._set_status("The active layer is not a vector layer")
             return
 
         try:
@@ -555,29 +551,22 @@ class PlanXCADPlugin:
                 # Save / Discard / Cancel prompt protects pending user edits.
                 toggle_action = getattr(self.iface, "actionToggleEditing", lambda: None)()
                 if toggle_action is None:
-                    msg = (
-                        "Use QGIS Toggle Editing to save or discard changes / "
-                        "Degisiklikler icin QGIS Duzenlemeyi Ac/Kapat'i kullanin"
-                    )
+                    msg = "Use QGIS Toggle Editing to save or discard changes"
                 else:
                     toggle_action.trigger()
-                    msg = (
-                        "Editing remains ON / Duzenleme ACIK"
-                        if layer.isEditable()
-                        else "Editing OFF / Duzenleme KAPALI"
-                    )
+                    msg = "Editing remains ON" if layer.isEditable() else "Editing OFF"
             else:
                 started = bool(layer.startEditing())
                 msg = (
-                    "Editing ON / Duzenleme ACIK"
+                    "Editing ON"
                     if started
-                    else "Could not start editing (layer may be read-only) / Duzenleme baslatilamadi"
+                    else "Could not start editing; the layer may be read-only"
                 )
             self._set_status(msg)
             if self._dock and hasattr(self._dock, "refresh_layer_state"):
                 self._dock.refresh_layer_state()
         except Exception as e:
-            self._set_status(f"Editing toggle failed / Duzenleme degistirilemedi: {e}")
+            self._set_status(f"Editing toggle failed: {e}")
 
     def _on_current_layer_changed(self, _layer):
         self._bind_active_layer(_layer)
@@ -696,7 +685,7 @@ class PlanXCADPlugin:
 
     def _show_shortcut_audit(self):
         rows = self._build_shortcut_audit_rows()
-        text = ["Shortcut Audit / Kisayol Denetimi", "==============================", ""]
+        text = ["Shortcut Audit", "==============", ""]
         has_issue = False
         for row in rows:
             line = f"[{row['status']}] {row['shortcut']} -> {row['commands']}"
@@ -708,7 +697,7 @@ class PlanXCADPlugin:
         try:
             from .dialogs.diagnostics_dialog import DiagnosticsDialog
             dlg = DiagnosticsDialog("\n".join(text), self.iface.mainWindow())
-            dlg.setWindowTitle("PlanX CAD - Shortcut Audit / Kisayol Denetimi")
+            dlg.setWindowTitle("PlanX CAD - Shortcut Audit")
             dlg.exec()
         except Exception as e:
             QMessageBox.warning(
@@ -813,8 +802,8 @@ class PlanXCADPlugin:
             dock_data = self._dock.diagnostics_snapshot()
 
         lines = [
-            "PlanX CAD Diagnostics / Tani Raporu",
-            "===================================",
+            "PlanX CAD Diagnostics",
+            "=====================",
             f"Plugin directory: {self.plugin_dir}",
             f"Current tool key: {self._last_tool_key or 'None'}",
             f"Loaded tool instances: {sorted(list(self._tools.keys()))}",
@@ -836,7 +825,7 @@ class PlanXCADPlugin:
             from .dialogs.diagnostics_dialog import DiagnosticsDialog
             report = self._build_issue_template_text()
             dlg = DiagnosticsDialog(report, self.iface.mainWindow())
-            dlg.setWindowTitle("PlanX CAD - Issue Template / Hata Rapor Sablonu")
+            dlg.setWindowTitle("PlanX CAD - Issue Template")
             dlg.exec()
         except Exception as e:
             QMessageBox.warning(
@@ -848,19 +837,19 @@ class PlanXCADPlugin:
     def _build_issue_template_text(self):
         diagnostics = self._build_diagnostics_report()
         return (
-            "PlanX CAD Issue Template / Hata Rapor Sablonu\n"
-            "============================================\n\n"
-            "1) Summary / Ozet:\n"
+            "PlanX CAD Issue Template\n"
+            "========================\n\n"
+            "1) Summary:\n"
             "-\n\n"
-            "2) Expected behavior / Beklenen davranis:\n"
+            "2) Expected behavior:\n"
             "-\n\n"
-            "3) Actual behavior / Gercek davranis:\n"
+            "3) Actual behavior:\n"
             "-\n\n"
-            "4) Reproduction steps / Tekrarlama adimlari:\n"
+            "4) Reproduction steps:\n"
             "1.\n2.\n3.\n\n"
-            "5) Data context / Veri baglami:\n"
+            "5) Data context:\n"
             "- CRS:\n- Layer type:\n- Editable state:\n\n"
-            "6) Attach diagnostics / Tani metni:\n\n"
+            "6) Diagnostics:\n\n"
             f"{diagnostics}\n"
         )
 
@@ -928,7 +917,7 @@ class PlanXCADPlugin:
         return rows
 
     def _activate_tool(self, tool_key):
-        """Araç tuşuna basıldığında ilgili map tool'u aktifleştirir."""
+        """Activate the requested CAD map tool."""
         # "Repeat last" button in dock emits the sentinel key.
         if tool_key == "__repeat__":
             self._repeat_last_tool()
@@ -941,18 +930,18 @@ class PlanXCADPlugin:
         previous_tool = self._current_tool
         previous_key = self._current_tool_key
 
-        # Dialog tabanlı araçlar → her seferinde yeni instance
+        # Dialog-based tools require a fresh instance every time.
         if tool_key in self._DIALOG_TOOLS:
             tool = self._create_tool(tool_key)
         else:
-            # Lazy load: araç henüz oluşturulmadıysa oluştur
+            # Create reusable map tools lazily.
             if tool_key not in self._tools:
                 self._tools[tool_key] = self._create_tool(tool_key)
             tool = self._tools.get(tool_key)
 
         if tool is None:
             self._set_status(
-                f"⚠️ Failed to load tool '{tool_key}' / '{tool_key}' aracı yüklenemedi"
+                f"⚠️ Failed to load tool '{tool_key}'"
             )
             self._restore_dock_active_state()
             return
@@ -970,7 +959,7 @@ class PlanXCADPlugin:
                 self._current_tool = None
                 self._current_tool_key = None
                 self._restore_dock_active_state()
-                self._set_status("Tool setup cancelled / Arac ayari iptal edildi")
+                self._set_status("Tool setup cancelled")
                 return
         except Exception as e:
             self._current_tool = previous_tool
@@ -981,7 +970,7 @@ class PlanXCADPlugin:
                 except Exception:
                     self._current_tool = None
                     self._current_tool_key = None
-            self._set_status(f"Tool activation failed / Arac baslatilamadi: {e}")
+            self._set_status(f"Tool activation failed: {e}")
             self._restore_dock_active_state()
             return
 
@@ -1020,8 +1009,20 @@ class PlanXCADPlugin:
             return bool(handler(text))
         except Exception as error:
             self._set_status(
-                f"Precision input failed / Hassas giriş başarısız: {error}"
+                f"Precision input failed: {error}"
             )
+            return True
+
+    def _handle_command_enter(self):
+        """Let the active map tool consume an empty command-line Enter."""
+        tool = self._current_tool
+        handler = getattr(tool, "handle_command_enter", None)
+        if tool is None or not callable(handler):
+            return False
+        try:
+            return bool(handler())
+        except Exception as error:
+            self._set_status(f"Unable to finish the active command: {error}")
             return True
 
     def _on_tool_finished(self):
@@ -1035,7 +1036,7 @@ class PlanXCADPlugin:
 
         if tool_key in self._ACTIVE_TARGET_TOOLS:
             if not isinstance(layer, QgsVectorLayer):
-                self._set_status("Select a target vector layer first / Once hedef vektor katmani secin")
+                self._set_status("Select a target vector layer first")
                 return False
 
             expected = self._ACTIVE_TARGET_GEOMETRY.get(tool_key)
@@ -1046,19 +1047,18 @@ class PlanXCADPlugin:
                     else "polygon"
                 )
                 self._set_status(
-                    f"{tool_key.replace('_', ' ').title()} needs a {target_name} layer / "
-                    f"Bu arac {target_name} katmani gerektirir"
+                    f"{tool_key.replace('_', ' ').title()} needs a {target_name} layer"
                 )
                 return False
 
             if not layer.isEditable():
                 if not layer.startEditing():
                     self._set_status(
-                        "Target layer is read-only / Hedef katman salt-okunur"
+                        "The target layer is read-only"
                     )
                     return False
                 self._set_status(
-                    "Editing started automatically / Duzenleme otomatik baslatildi"
+                    "Editing started automatically"
                 )
 
         elif tool_key in self._EDITABLE_PICK_TOOLS:
@@ -1070,11 +1070,11 @@ class PlanXCADPlugin:
                 if layer.startEditing():
                     editable_layers.append(layer)
                     self._set_status(
-                        "Editing started automatically / Duzenleme otomatik baslatildi"
+                        "Editing started automatically"
                     )
             if not editable_layers:
                 self._set_status(
-                    "Start editing a vector layer first / Once bir vektor katmanini duzenlemeye acin"
+                    "Start editing a vector layer first"
                 )
                 return False
 
@@ -1085,18 +1085,18 @@ class PlanXCADPlugin:
             )
             if not has_vector:
                 self._set_status(
-                    "Add a vector source layer first / Once bir vektor kaynak katmani ekleyin"
+                    "Add a vector source layer first"
                 )
                 return False
 
         return True
 
     def _create_tool(self, key):
-        """Araç instance'ı oluşturur."""
+        """Create a CAD map-tool instance."""
         canvas = self.iface.mapCanvas()
 
         try:
-            # ── Çizim Araçları ───────────────────────────────────────────
+            # ── Drawing Tools ────────────────────────────────────────────
             if key == "line":
                 from .sketcher.sketcher_line import sketcher_line
                 t = sketcher_line(canvas, self.iface)
@@ -1116,7 +1116,7 @@ class PlanXCADPlugin:
                 from .sketcher.sketcher_arc import sketcher_arc
                 t = sketcher_arc(canvas, self.iface)
 
-            # ── Düzenleme Araçları ───────────────────────────────────────
+            # ── Editing Tools ────────────────────────────────────────────
             elif key == "offset":
                 from .tools.tool_offset import tool_offset
                 t = tool_offset(canvas, self.iface)
@@ -1133,7 +1133,7 @@ class PlanXCADPlugin:
                 from .tools.tool_buffer import tool_buffer
                 t = tool_buffer(canvas, self.iface)
 
-            # ── Dönüşüm Araçları ────────────────────────────────────────
+            # ── Transform Tools ──────────────────────────────────────────
             elif key == "move":
                 from .tools.tool_move import tool_move
                 t = tool_move(canvas, self.iface)
@@ -1150,7 +1150,7 @@ class PlanXCADPlugin:
                 from .tools.tool_mirror import tool_mirror
                 t = tool_mirror(canvas, self.iface)
 
-            # ── Yeni: Array & Dimension ─────────────────────────────────
+            # ── Array, construction, and dimension tools ────────────────
             elif key == "array":
                 from .tools.tool_array import tool_array
                 t = tool_array(canvas, self.iface)
@@ -1182,7 +1182,7 @@ class PlanXCADPlugin:
                 from .tools.tool_join import tool_join
                 t = tool_join(canvas, self.iface)
 
-            # ── Ölçüm ───────────────────────────────────────────────────
+            # ── Measurement ──────────────────────────────────────────────
             elif key == "measure":
                 from .tools.tool_measure import tool_measure
                 t = tool_measure(canvas, self.iface, mode=0)
@@ -1196,7 +1196,7 @@ class PlanXCADPlugin:
                 from .tools.tool_measure_select import tool_measure_select
                 t = tool_measure_select(canvas, self.iface, mode=1)
 
-            # ── Şehir Planlama ──────────────────────────────────────────
+            # ── Urban Planning ───────────────────────────────────────────
             elif key == "road":
                 from .urban.road_sketcher import RoadSketcher
                 t = RoadSketcher(canvas, self.iface)
@@ -1227,18 +1227,18 @@ class PlanXCADPlugin:
             return t
 
         except Exception as e:
-            print(f"[planX-CAD] Araç yüklenemedi ({key}): {e}")
+            print(f"[PlanX CAD] Failed to load tool '{key}': {e}")
             import traceback
             traceback.print_exc()
             return None
 
     # ═══════════════════════════════════════════════════════════════════════
-    # Yardımcı
+    # Helpers
     # ═══════════════════════════════════════════════════════════════════════
 
     def _add_action(self, icon_path, text, callback, add_to_toolbar=True,
                     add_to_menu=True, checkable=False, status_tip=None):
-        """Toolbar/menüye action ekle."""
+        """Add an action to the toolbar and/or menu."""
         icon = QIcon(icon_path)
         action = QAction(icon, text, self.iface.mainWindow())
         action.triggered.connect(callback)
@@ -1257,7 +1257,7 @@ class PlanXCADPlugin:
         return action
 
     def _show_about(self):
-        """Hakkında dialog'unu göster."""
+        """Show plugin version and capability information."""
         version = "1.0.0"
         try:
             meta_path = os.path.join(self.plugin_dir, "metadata.txt")
@@ -1272,22 +1272,22 @@ class PlanXCADPlugin:
 
         QMessageBox.about(
             self.iface.mainWindow(),
-            "About planX CAD Toolset / planX CAD Araç Seti Hakkında",
+            "About PlanX CAD Toolset",
             f"""
-<h2>planX CAD Toolset / Araç Seti</h2>
-<p>Version / Versiyon: {version}</p>
+<h2>PlanX CAD Toolset</h2>
+<p>Version: {version}</p>
 
-<h3>Features / Özellikler:</h3>
+<h3>Features</h3>
 <ul>
-<li><b>6 Drawing Tools / Çizim Aracı:</b> Line, Polyline, Rectangle, Polygon, Circle, Arc</li>
-<li><b>14 Editing &amp; Construction Tools / Düzenleme Aracı:</b> Offset, Trim, Extend, Fillet, Buffer, Array, Vertex Edit, Divide, Multi-Offset, Join, Hatch, XLine, Ray, Segment</li>
-<li><b>5 Transform Tools / Dönüşüm Aracı:</b> Move, Copy, Rotate, Scale, Mirror</li>
-<li><b>5 Measurement Tools / Ölçüm Aracı:</b> Distance, Area, Dimension, Select Line, Select Area</li>
-<li><b>3 Urban Planning Tools / Şehir Planlama Aracı:</b> Road, Junction, Block Chamfer</li>
+<li><b>6 Drawing Tools:</b> Line, Polyline, Rectangle, Polygon, Circle, Arc</li>
+<li><b>14 Editing and Construction Tools:</b> Offset, Trim, Extend, Fillet, Buffer, Array, Vertex Edit, Divide, Multi-Offset, Join, Hatch, XLine, Ray, Segment</li>
+<li><b>5 Transform Tools:</b> Move, Copy, Rotate, Scale, Mirror</li>
+<li><b>5 Measurement Tools:</b> Distance, Area, Dimension, Select Line, Select Area</li>
+<li><b>3 Urban Planning Tools:</b> Road, Junction, Block Chamfer</li>
 </ul>
 
-<p>Designed for urban planning workflows / Şehir planlama süreçleri için tasarlanmıştır.</p>
-<p><i>Integrates with QGIS snapping / QGIS native snap desteği ile çalışır.</i></p>
+<p>Designed for precise CAD and urban-planning workflows inside QGIS.</p>
+<p><i>Integrates with native QGIS snapping and editing.</i></p>
 """
         )
 

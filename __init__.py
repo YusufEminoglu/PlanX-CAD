@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-planX — CAD Araç Seti
-Şehir planlama süreçleri için hafif ve hızlı QGIS CAD eklentisi.
+PlanX CAD Toolset.
+
+A lightweight, fast QGIS CAD plugin for urban-planning workflows.
 """
 
 from .main_plugin import PlanXCADPlugin

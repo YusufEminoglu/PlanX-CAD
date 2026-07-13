@@ -155,6 +155,74 @@ def test_affine_transforms_preserve_curves_and_zm():
     )
 
 
+def test_rotate_and_mirror_are_metric_safe_in_geographic_crs():
+    from planX_CAD_arac_Seti.core.crs_utils import (
+        local_metric_crs,
+        transform_geometry,
+        transform_point,
+    )
+    from planX_CAD_arac_Seti.core.sketcher_utils import (
+        mirror_geometry,
+        rotate_geometry,
+    )
+
+    geographic = QgsCoordinateReferenceSystem.fromEpsgId(4326)
+    center = QgsPointXY(20.0, 60.0)
+    metric = local_metric_crs(center, geographic)
+    metric_center = transform_point(center, geographic, metric)
+    cx, cy = metric_center.x(), metric_center.y()
+    source_metric = QgsGeometry.fromPolylineXY([
+        QgsPointXY(cx + 100.0, cy),
+        QgsPointXY(cx, cy),
+        QgsPointXY(cx, cy + 100.0),
+    ])
+    source = transform_geometry(source_metric, metric, geographic)
+    axis_end = transform_point(
+        QgsPointXY(cx, cy + 100.0), metric, geographic
+    )
+
+    rotated = rotate_geometry(source, center, 90.0, geographic)
+    mirrored = mirror_geometry(source, center, axis_end, geographic)
+    distance = QgsDistanceArea()
+    distance.setSourceCrs(geographic, QgsProject.instance().transformContext())
+    distance.setEllipsoid("WGS84")
+
+    def segment_lengths(geometry):
+        points = geometry.asPolyline()
+        return [
+            distance.measureLine(points[index], points[index + 1])
+            for index in range(len(points) - 1)
+        ]
+
+    rotated_lengths = segment_lengths(rotated) if rotated else []
+    mirrored_lengths = segment_lengths(mirrored) if mirrored else []
+    lengths = rotated_lengths + mirrored_lengths
+
+    curved = QgsGeometry.fromWkt(
+        "CompoundCurve ZM (CircularString ZM ("
+        "20 60 1 10, 20.001 60.001 2 20, 20.002 60 3 30))"
+    )
+    expected_zm = [(point.z(), point.m()) for point in curved.vertices()]
+    curved_results = (
+        rotate_geometry(curved, center, 90.0, geographic),
+        mirror_geometry(curved, center, axis_end, geographic),
+    )
+    curves_preserved = all(
+        result is not None
+        and result.wkbType() == curved.wkbType()
+        and result.constGet().hasCurvedSegments()
+        and [(point.z(), point.m()) for point in result.vertices()] == expected_zm
+        for result in curved_results
+    )
+    return _ok(
+        "rotate/mirror preserve metric lengths and curved Z/M in geographic CRS",
+        len(lengths) == 4
+        and all(99.8 < value < 100.2 for value in lengths)
+        and curves_preserved,
+        f"lengths={[round(value, 3) for value in lengths]}",
+    )
+
+
 def test_same_name_incompatible_layer_is_not_reused():
     from planX_CAD_arac_Seti.core.sketcher_layer_utils import get_or_create_layer
 
@@ -410,6 +478,7 @@ def run_all():
         test_extend_never_chooses_boundary_behind_endpoint(),
         test_offset_uses_cross_version_join_enum(),
         test_affine_transforms_preserve_curves_and_zm(),
+        test_rotate_and_mirror_are_metric_safe_in_geographic_crs(),
         test_same_name_incompatible_layer_is_not_reused(),
         test_divide_preserves_all_multipart_components(),
         test_trim_splits_at_every_intersection(),

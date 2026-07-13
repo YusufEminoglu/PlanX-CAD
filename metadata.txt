@@ -3,11 +3,11 @@ name=PlanX CAD Toolset
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=AutoCAD-style drafting inside QGIS: 30+ tools for precise drawing, editing, snapping, dimensions, hatching, transforms, and urban road design.
-version=1.25.1
-author=Yusuf Eminoglu
+version=1.26.0
+author=Yusuf Eminoğlu
 email=yusuf.eminoglu@deu.edu.tr
 
-about=PlanX CAD Toolset brings a keyboard-first, AutoCAD-style drafting workflow to QGIS 3.28 LTR through QGIS 4. Its 30+ tools cover line and polygon drawing, offset, trim, extend, tangent fillet, transform, array, vertex editing, hatch, construction geometry, measurement, dimensions, and urban road-platform design. The dock includes command aliases, history, favorites, live coordinates, layer-readiness guidance, and native QGIS snapping. It has no external dependencies and is developed with feedback from urban-planning education at Dokuz Eylul University.
+about=PlanX CAD Toolset brings a keyboard-first, AutoCAD-style drafting workflow to QGIS 3.28 LTR through QGIS 4. Its 30+ tools cover line and polygon drawing, offset, trim, extend, tangent fillet, transform, array, vertex editing, hatch, construction geometry, measurement, dimensions, and urban road-platform design. The dock includes command aliases, history, favorites, live coordinates, layer-readiness guidance, and native QGIS snapping. It has no external dependencies and is developed with feedback from urban-planning education at Dokuz Eylül University.
 
 tracker=https://github.com/YusufEminoglu/PlanX-CAD/issues
 repository=https://github.com/YusufEminoglu/PlanX-CAD
@@ -24,98 +24,12 @@ experimental=False
 deprecated=False
 
 changelog=
-    PlanX CAD Toolset 1.23.0 - Accurate AutoCAD-style picking + self-pick safety + new PNG icon.
-        - Pick aperture is now enforced on real geometry distance: previously a long diagonal line or large polygon could be selected from far away because only its bounding box covered the click. Picks now respect the 10-pixel pickbox like AutoCAD.
-        - Fillet, Trim and Extend can no longer operate a feature on itself: the second pick excludes the first selected feature, so clicking near the first line cannot fillet/trim it against itself.
-        - New crisp 256x256 PNG icon replaces the SVG (SVG icons render blank in some QGIS builds).
-        - Static smoke test extended to lock the new pick behaviour (11 checks).
-    PlanX CAD Toolset 1.22.0 - QGIS 4 drawing fix + command-loop and fillet preview polish.
-        - Fixed a QGIS 4 crash that stopped Line/Polyline from finishing: an unscoped Qt.Key_Z enum raised AttributeError in the key handler before Enter could complete a sketch. Drawing now works on both QGIS 3 and QGIS 4.
-        - Fillet preview now reliably shows: the preview rubber band is recreated if missing and drawn as a bold orange dashed arc (the old thin blue line was easy to miss / silently failed).
-        - Command line now follows AutoCAD's command loop: empty Enter repeats the last command, and the input clears after each run so commands can be chained.
-        - Added an end-to-end draw-pipeline runtime check and stricter static Qt-enum scanning (catches unscoped Qt.Key_*/button/modifier members).
-    PlanX CAD Toolset 1.21.0 - AutoCAD-style command line.
-        - The dock search box is now a command line: type an AutoCAD-style alias (L, PL, REC, O, TR, EX, F, CO, MI, RO, SC, AR, H, DIM...) and press Enter to launch the matching tool.
-        - Autocomplete popup suggests commands as you type; Up/Down arrows recall command history like a terminal.
-        - Resolution precedence: alias, then exact tool key, then fuzzy name match; unknown commands echo a clear message instead of failing silently.
-        - Alias-to-tool mapping is verified on both QGIS 3 LTR and QGIS 4 in the runtime smoke test.
-    PlanX CAD Toolset 1.20.0 - Stable release: full accessibility coverage, verified on QGIS 3 LTR and QGIS 4.
-        - Completed the screen-reader pass: tool search box and Road/Junction/Block-Chamfer buttons now expose accessible names/descriptions (every interactive control in the dock is now reader-friendly).
-        - Verified clean dock construction on both QGIS 3.x LTR and QGIS 4 runtimes via the full release gate.
-    PlanX CAD Toolset 1.19.0 - Accessibility pass + compact status strip.
-        - Screen-reader support: icon-only tool buttons and quick-action buttons now expose accessible names/descriptions; the dock has an accessible name.
-        - Keyboard navigation: tool buttons are tab-focusable with a visible focus ring.
-        - Compact footer: layer-state and session usage counter now share one horizontal strip instead of two stacked rows, reclaiming vertical space.
-        - Smoke test now includes a dock-accessibility check (9 checks total).
-    PlanX CAD Toolset 1.18.0 - Compact GUI overhaul + static compatibility smoke test.
-        - Replaced 15-button single-row overflow layout with a compact 3x4 QGridLayout that fits the 160px minimum dock width.
-        - Added tests/smoke_compat.py: 8-check static smoke test (no QGIS runtime needed) covering Qt6 enum safety, metadata, imports, and layout correctness.
-    PlanX CAD Toolset 1.16.0 - Onboarding and operational visibility improvements.
-        - Added Quick Start dialog with menu, dock Start button, and Ctrl+Alt+Q shortcut.
-        - Added live dock usage counter for session activation tracking.
-        - Updated shortcut references for quick-start access.
-    PlanX CAD Toolset 1.15.0 - Session control and readiness improvements.
-        - Added Edit ON/OFF and Preflight quick actions in dock.
-        - Added shortcuts Ctrl+Alt+E (toggle editing) and Ctrl+Alt+F (run preflight).
-        - Added auto refresh for active layer state with safe signal disconnect on unload.
-    PlanX CAD Toolset 1.13.0 - Operational control and safety pass.
-        - Added cancel active tool action (dock button + Ctrl+Alt+C).
-        - Added active-layer editable/read-only state indicator in dock.
-        - Improved dock state synchronization after tool cancel/activate.
-    PlanX CAD Toolset 1.12.0 - Command palette and workflow reset controls.
-        - Added global command palette (Ctrl+Alt+P) for rapid command activation.
-        - Added dock reset filter and clear recent controls.
-        - Updated shortcut references in both dialog and HTML docs.
-    PlanX CAD Toolset 1.11.0 - English-first docs and beta usability upgrades.
-        - Revised docs to English-first with Turkish secondary guidance.
-        - Added searchable shortcut center with category filter.
-        - Added live workflow hint panel in dock and Ctrl+Alt+H global docs shortcut.
-    PlanX CAD Toolset 1.10.0 - HTML docs and in-dock help integration.
-        - Added command reference HTML and shortcuts HTML documents under docs/.
-        - Added dock quick-access buttons (Docs / Keys) to open help content without leaving drafting workflow.
-        - Added menu action "Command Reference / Komut Kilavuzu".
-    PlanX CAD Toolset 1.9.0 - Beta completion hardening for CAD accessibility.
-        - Added dedicated dock buttons for construction ray and construction segment modes.
-        - Added advanced shortcuts: Ctrl+Alt+K (ray), Ctrl+Alt+L (segment), Ctrl+Shift+S (focus search), Ctrl+Shift+/ (shortcut guide).
-        - Added in-plugin shortcut guide dialog for onboarding and quick reference.
-    PlanX CAD Toolset 1.8.0 - Beta completion candidate for CAD productivity.
-        - Dock quick search: type a tool name/alias and press Enter to activate the first matching tool.
-        - Recent tools strip: keeps the last three activated tools in one-click reach.
-        - Tool activation sync: keyboard-triggered tools now update dock selection and recent history.
-    PlanX CAD Toolset 1.7.0 - Hatch / Pattern Fill + Construction Lines.
-        - Hatch tool: pick a closed polygon, choose pattern (parallel / cross / diag up / diag down), spacing, angle and colour. Hatch lines are clipped to the polygon and written to the auto-created planx_hatch layer with full attribute metadata (source layer, pattern, spacing, angle, colour) so they survive export to other GIS/CAD formats.
-        - Construction Line tool: 2-click reference line on the auto-created planx_construction layer with a dashed cyan style. Three modes registered via the dispatcher (infinite reference / ray / segment) - the dock exposes the infinite mode; ray and segment are reachable through the construction_ray / construction_seg dispatch keys.
-        - Shortcuts: Hatch = Ctrl+Shift+H, Construction (infinite) = Ctrl+Shift+K.
-        - New icons cad_hatch.svg and cad_construction.svg.
-    PlanX CAD Toolset 1.6.0 - Join, Divide, Multi-Offset and a bilingual/compact UI pass.
-    PlanX CAD Toolset 1.5.0 - Vertex Edit + Live coordinate read-out.
-        - New Vertex Edit tool: click a feature to render every vertex as a handle; drag a handle to MOVE, click on the line to INSERT a vertex at the click point, right-click a handle to DELETE. Refuses deletes that would invalidate the ring.
-        - New Live coordinate widget in the dock: real-time cursor X/Y, current CRS auth-id, and scale denominator. Updates from the canvas xyCoordinates/scaleChanged signals.
-        - Vertex Edit shortcut Ctrl+Shift+V; new cad_vertex_edit.svg icon in the Edit group.
-    PlanX CAD Toolset 1.4.0 - Keyboard shortcuts framework + tool history.
-        - 15 Ctrl+Shift+<letter> shortcuts (Line=L, Polyline=P, Rectangle=R, Polygon=G, Circle=C, Arc=A, Offset=O, Trim=T, Extend=E, Fillet=F, Buffer=B, Move=M, Array=Y, Dimension=D, Measure=I) registered as ApplicationShortcut on the QGIS main window.
-        - Ctrl+Shift+Space: repeat the last activated tool (CAD convention).
-        - Dock: new 'Repeat Last Tool / Son araci tekrarla' button next to the status bar; tool button tooltips now include the keyboard shortcut.
-        - main_plugin remembers the last tool key in self._last_tool_key; shortcuts are owned by the plugin and cleaned up in unload.
-    PlanX CAD Toolset 1.3.0 - Two new tools: Array and Linear Dimension.
-        - Array (rectangular + polar): pick a feature, choose rows/cols + dx/dy or count + sweep angle, optional polar center on canvas with live preview. Multipart-safe via the existing rotate_geometry helper.
-        - Linear Dimension: click two points (with snap), creates a permanent dimension line on an auto-created planx_dimensions layer with distance_m, label, and from/to coordinate attributes. Auto-enables label rendering on first use. Right-click resets, Esc cancels.
-        - New icons cad_array.svg and cad_dimension.svg in the dock; main_plugin dispatch updated; array added to the dialog-tool set so each invocation re-asks parameters.
-    PlanX CAD Toolset 1.2.0 - UI scroll fix + correctness pass.
-        - Dock panel now scrolls; fits on small/narrow screens.
-        - Trim: splitGeometry tuple-unpack fix (QGIS 3.x).
-        - Fillet: shortest-arc selection (was forcing CCW long way around).
-        - Scale/Mirror: multipart-safe transform preserves holes and multi-rings.
-        - Extend: multipart-safe + closest intersection.
-        - add_feature_to_layer: no longer commits the user's open edits.
-        - Buffer: attributes set on feature before insert (order-safe).
-        - QInputDialog parented to main window.
-        - Removed broken helpers (trim_geometry_at_point, fillet_corner) and dead code in tool_fillet.
-    PlanX CAD Toolset 1.1.1 - Standardized Plugin Hub metadata, aligned icon metadata, added DEU educational context, and refreshed the stable release package.
-    PlanX CAD Toolset 1.1.0 - Added advanced urban planning, UX, and measurement enhancements.
-        - Fixed intersection topology (A-B road connection).
-        - Renewed block chamfering logic via EasyFillet integration.
-        - Custom 'O' cursor added.
-        - Improved distance and area measurements by selection.
-    PlanX CAD Toolset 1.0.0 - Initial release.
-        - 18 CAD tools, dockable interface, interactive road platform
+    PlanX CAD Toolset 1.26.0 - Global English workbench and documentation.
+        - Standardized all user-facing labels, dialogs, tooltips, status messages, help pages, onboarding content, and release surfaces on concise English terminology.
+        - Removed bilingual display copy and legacy localized search aliases for a consistent global command-discovery experience.
+        - Added English road-platform, junction-island, and buffer output schemas while preserving legacy project layers through compatibility mapping.
+        - Fixed in-progress sketch completion with Enter and active-tool cancellation with Escape from the command line.
+        - Made Rotate and Mirror metric-safe in geographic CRSs and corrected mixed-CRS Multi-Offset previews.
+        - Preserved internal tool keys, settings keys, AutoCAD-style aliases, shortcuts, and project compatibility.
+        - Refreshed the command reference, shortcut map, smoke-test checklist, README, Plugin Hub notes, and citation metadata.
+        - Added release checks that guard against accidental bilingual user-facing copy while allowing author and institution proper names.

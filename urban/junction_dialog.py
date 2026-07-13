@@ -1,24 +1,21 @@
 # -*- coding: utf-8 -*-
-"""
-planX CAD — Kavşak Parametre Dialog'u
-NetCAD tarzı kavşak çözümü parametreleri.
-"""
+"""Junction-solution parameter dialog."""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QLabel, QDoubleSpinBox, QSpinBox, QComboBox,
-    QPushButton, QGroupBox, QFrame, QCheckBox
+    QLabel, QDoubleSpinBox, QComboBox,
+    QPushButton, QGroupBox, QFrame
 )
 from qgis.PyQt.QtGui import QFont, QPixmap, QPainter, QColor, QPen, QBrush
 
 
 class JunctionDialog(QDialog):
-    """Kavşak oluşturma parametreleri dialog'u."""
+    """Collect curb-corner and traffic-island solution parameters."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("🔵 Kavşak Çözümü Parametreleri")
+        self.setWindowTitle("🔵 Junction Solution Parameters")
         self.setMinimumWidth(420)
         self.setModal(True)
         self._setup_ui()
@@ -27,8 +24,8 @@ class JunctionDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
 
-        # ── Başlık ───────────────────────────────────────────────────────
-        title = QLabel("🔵 Kavşak Çözümü")
+        # Header
+        title = QLabel("🔵 Junction Solution")
         f = QFont()
         f.setPointSize(12)
         f.setBold(True)
@@ -38,15 +35,15 @@ class JunctionDialog(QDialog):
         layout.addWidget(title)
 
         desc = QLabel(
-            "Yol kesişimindeki kaldırım köşelerini düz kırma veya\n"
-            "teğet fillet yayı ile çözün."
+            "Resolve curb corners at road intersections with a straight\n"
+            "chamfer or a tangent fillet arc."
         )
         desc.setWordWrap(True)
         desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
         desc.setStyleSheet("color: #546e7a; font-size: 10px;")
         layout.addWidget(desc)
 
-        # ── Şematik Çizim ────────────────────────────────────────────────
+        # Schematic preview
         self.schema_label = QLabel()
         self.schema_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.schema_label.setMinimumHeight(120)
@@ -57,8 +54,8 @@ class JunctionDialog(QDialog):
         sep.setFrameShape(QFrame.Shape.HLine)
         layout.addWidget(sep)
 
-        # ── Kavşak Yarıçapı ──────────────────────────────────────────────
-        radius_group = QGroupBox("Kavşak Alanı")
+        # Junction search area
+        radius_group = QGroupBox("Junction Area")
         radius_form = QFormLayout(radius_group)
 
         self.spn_radius = QDoubleSpinBox()
@@ -67,29 +64,29 @@ class JunctionDialog(QDialog):
         self.spn_radius.setSuffix(" m")
         self.spn_radius.setSingleStep(1.0)
         self.spn_radius.setToolTip(
-            "Kavşak merkezi etrafında etkilenecek alan yarıçapı"
+            "Radius of the area affected around the junction center"
         )
-        radius_form.addRow("Etki yarıçapı:", self.spn_radius)
+        radius_form.addRow("Impact radius:", self.spn_radius)
 
         layout.addWidget(radius_group)
 
-        # ── Köşe çözümü ─────────────────────────────────────────────────
-        corner_group = QGroupBox("Kaldırım Köşe Çözümü")
+        # Curb-corner solution
+        corner_group = QGroupBox("Curb Corner Solution")
         corner_form = QFormLayout(corner_group)
 
         self.cmb_corner_mode = QComboBox()
         self.cmb_corner_mode.addItems([
-            "Düz kırma (Chamfer)",
-            "Yuvarlatma (Fillet)",
+            "Straight Chamfer",
+            "Tangent Fillet",
         ])
         self.cmb_corner_mode.setToolTip(
-            "Kaldırım destek doğrularının gerçek kesişiminde uygulanacak "
-            "köşe çözümü"
+            "Corner solution applied at the true intersection of the curb "
+            "support lines"
         )
         self.cmb_corner_mode.currentIndexChanged.connect(
             self._on_corner_mode_changed
         )
-        corner_form.addRow("Çözüm tipi:", self.cmb_corner_mode)
+        corner_form.addRow("Solution type:", self.cmb_corner_mode)
 
         self.spn_chamfer_dist = QDoubleSpinBox()
         self.spn_chamfer_dist.setRange(0.5, 50.0)
@@ -97,11 +94,11 @@ class JunctionDialog(QDialog):
         self.spn_chamfer_dist.setSuffix(" m")
         self.spn_chamfer_dist.setSingleStep(0.5)
         self.spn_chamfer_dist.setToolTip(
-            "Dış kaldırım köşelerinin düz çizgi ile kırılma mesafesi.\n"
-            "Kesişim noktasından bu mesafe kadar geriye kesilir ve\n"
-            "düz bir çizgi ile bağlanır (ark değil, düz kırma)."
+            "Setback distance for a straight outer-curb chamfer.\n"
+            "Each curb is trimmed by this distance from the support-line\n"
+            "intersection and connected with a straight segment."
         )
-        corner_form.addRow("Kırma mesafesi:", self.spn_chamfer_dist)
+        corner_form.addRow("Chamfer distance:", self.spn_chamfer_dist)
 
         self.spn_fillet_radius = QDoubleSpinBox()
         self.spn_fillet_radius.setRange(0.5, 50.0)
@@ -109,49 +106,50 @@ class JunctionDialog(QDialog):
         self.spn_fillet_radius.setSuffix(" m")
         self.spn_fillet_radius.setSingleStep(0.5)
         self.spn_fillet_radius.setToolTip(
-            "Kaldırım destek doğrularının kesişiminde uygulanacak\n"
-            "teğet yay yarıçapı."
+            "Radius of the tangent arc at the curb support-line intersection."
         )
-        corner_form.addRow("Fillet yarıçapı:", self.spn_fillet_radius)
+        corner_form.addRow("Fillet radius:", self.spn_fillet_radius)
 
         layout.addWidget(corner_group)
         self._on_corner_mode_changed(0)
 
-        # ── Kavşak Adası ─────────────────────────────────────────────────
-        island_group = QGroupBox("Kavşak Adası")
+        # Traffic island
+        island_group = QGroupBox("Traffic Island")
         island_form = QFormLayout(island_group)
 
-        self.cmb_ada_tipi = QComboBox()
-        self.cmb_ada_tipi.addItems([
-            "Yok (Ada oluşturma)",
-            "Yuvarlak (Roundabout)",
-            "Su Damlası (Teardrop)",
+        self.island_type_combo = QComboBox()
+        self.island_type_combo.addItems([
+            "None",
+            "Round",
+            "Teardrop",
         ])
-        self.cmb_ada_tipi.setCurrentIndex(1)
-        self.cmb_ada_tipi.currentIndexChanged.connect(self._on_ada_changed)
-        island_form.addRow("Ada tipi:", self.cmb_ada_tipi)
+        self.island_type_combo.setCurrentIndex(1)
+        self.island_type_combo.currentIndexChanged.connect(
+            self._on_island_changed
+        )
+        island_form.addRow("Island type:", self.island_type_combo)
 
-        self.spn_ada_radius = QDoubleSpinBox()
-        self.spn_ada_radius.setRange(0.5, 30.0)
-        self.spn_ada_radius.setValue(3.0)
-        self.spn_ada_radius.setSuffix(" m")
-        self.spn_ada_radius.setSingleStep(0.5)
-        island_form.addRow("Ada yarıçapı:", self.spn_ada_radius)
+        self.island_radius_spin = QDoubleSpinBox()
+        self.island_radius_spin.setRange(0.5, 30.0)
+        self.island_radius_spin.setValue(3.0)
+        self.island_radius_spin.setSuffix(" m")
+        self.island_radius_spin.setSingleStep(0.5)
+        island_form.addRow("Island radius:", self.island_radius_spin)
 
-        self.spn_teardrop_uzunluk = QDoubleSpinBox()
-        self.spn_teardrop_uzunluk.setRange(1.0, 50.0)
-        self.spn_teardrop_uzunluk.setValue(6.0)
-        self.spn_teardrop_uzunluk.setSuffix(" m")
-        self.spn_teardrop_uzunluk.setSingleStep(0.5)
-        self.spn_teardrop_uzunluk.setEnabled(False)
-        island_form.addRow("Su damlası uzunluk:", self.spn_teardrop_uzunluk)
+        self.teardrop_length_spin = QDoubleSpinBox()
+        self.teardrop_length_spin.setRange(1.0, 50.0)
+        self.teardrop_length_spin.setValue(6.0)
+        self.teardrop_length_spin.setSuffix(" m")
+        self.teardrop_length_spin.setSingleStep(0.5)
+        self.teardrop_length_spin.setEnabled(False)
+        island_form.addRow("Teardrop length:", self.teardrop_length_spin)
 
         layout.addWidget(island_group)
 
-        # ── Butonlar ─────────────────────────────────────────────────────
+        # Actions
         btn_layout = QHBoxLayout()
 
-        btn_ok = QPushButton("✅ Kavşak Oluştur")
+        btn_ok = QPushButton("✅ Create Junction")
         btn_ok.setMinimumHeight(40)
         btn_ok.setStyleSheet(
             "QPushButton { background: #1a237e; color: white; "
@@ -162,16 +160,16 @@ class JunctionDialog(QDialog):
         btn_ok.clicked.connect(self.accept)
         btn_layout.addWidget(btn_ok)
 
-        btn_cancel = QPushButton("İptal")
+        btn_cancel = QPushButton("Cancel")
         btn_cancel.setMinimumHeight(40)
         btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(btn_cancel)
 
         layout.addLayout(btn_layout)
 
-    def _on_ada_changed(self, index):
-        self.spn_ada_radius.setEnabled(index > 0)
-        self.spn_teardrop_uzunluk.setEnabled(index == 2)
+    def _on_island_changed(self, index):
+        self.island_radius_spin.setEnabled(index > 0)
+        self.teardrop_length_spin.setEnabled(index == 2)
 
     def _on_corner_mode_changed(self, index):
         """Enable only the parameter consumed by the selected solver."""
@@ -180,7 +178,7 @@ class JunctionDialog(QDialog):
         self._draw_schema()
 
     def _draw_schema(self):
-        """Kavşak şemasını çiz."""
+        """Draw a compact junction-solution preview."""
         px = QPixmap(380, 110)
         px.fill(QColor(245, 245, 255))
         p = QPainter(px)
@@ -188,12 +186,12 @@ class JunctionDialog(QDialog):
 
         cx, cy = 190, 55
 
-        # Yollar
+        # Road centerlines
         p.setPen(QPen(QColor(26, 35, 126), 2))
-        p.drawLine(40, cy, 340, cy)   # Yatay yol
-        p.drawLine(cx, 5, cx, 105)     # Dikey yol
+        p.drawLine(40, cy, 340, cy)  # Horizontal road
+        p.drawLine(cx, 5, cx, 105)  # Vertical road
 
-        # Kaldırım çizgileri
+        # Curb lines
         p.setPen(QPen(QColor(100, 100, 100), 1, Qt.PenStyle.DashLine))
         for offset in [-18, 18]:
             p.drawLine(40, cy + offset, cx - 30, cy + offset)
@@ -218,29 +216,29 @@ class JunctionDialog(QDialog):
             p.drawArc(cx - 42, cy - 6, 48, 48, 270 * 16, 90 * 16)
             p.drawArc(cx - 6, cy - 6, 48, 48, 180 * 16, 90 * 16)
 
-        # Ada
+        # Island
         p.setPen(QPen(QColor(76, 175, 80), 2))
         p.setBrush(QBrush(QColor(76, 175, 80, 60)))
         p.drawEllipse(cx - 8, cy - 8, 16, 16)
 
-        # Etiketler
+        # Labels
         p.setPen(QColor(255, 109, 0))
         font = QFont("Arial", 7)
         p.setFont(font)
         p.drawText(
             cx - 72, cy - 22,
-            "kırma (düz)" if mode == 0 else "fillet (teğet)",
+            "straight chamfer" if mode == 0 else "tangent fillet",
         )
 
         p.setPen(QColor(76, 175, 80))
-        p.drawText(cx + 12, cy + 4, "ada")
+        p.drawText(cx + 12, cy + 4, "island")
 
         p.end()
         self.schema_label.setPixmap(px)
 
     def get_params(self):
-        """Dialog parametrelerini döndür."""
-        ada_tipi_map = {0: "yok", 1: "yuvarlak", 2: "su_damlasi"}
+        """Return normalized English parameter keys and values."""
+        island_type_map = {0: "none", 1: "round", 2: "teardrop"}
         return {
             "radius": self.spn_radius.value(),
             "corner_mode": (
@@ -249,7 +247,9 @@ class JunctionDialog(QDialog):
             ),
             "chamfer_dist": self.spn_chamfer_dist.value(),
             "fillet_radius": self.spn_fillet_radius.value(),
-            "ada_tipi": ada_tipi_map.get(self.cmb_ada_tipi.currentIndex(), "yok"),
-            "ada_radius": self.spn_ada_radius.value(),
-            "teardrop_uzunluk": self.spn_teardrop_uzunluk.value(),
+            "island_type": island_type_map.get(
+                self.island_type_combo.currentIndex(), "none"
+            ),
+            "island_radius": self.island_radius_spin.value(),
+            "teardrop_length": self.teardrop_length_spin.value(),
         }

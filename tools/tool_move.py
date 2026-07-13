@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Taşı (Move) Aracı"""
+"""PlanX CAD Move tool."""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry, QgsPointXY
@@ -9,8 +9,9 @@ from ..core.precision_input import PrecisionInputError, looks_like_precision_inp
 
 
 class tool_move(tool_base):
-    """Objeyi taşıma aracı.
-    1. Objeyi seç | 2. Başlangıç noktası | 3. Hedef nokta
+    """Move a feature from its picked base point to a target point.
+
+    1. Select feature | 2. Base point | 3. Target point
     """
 
     def __init__(self, canvas, iface):
@@ -18,12 +19,12 @@ class tool_move(tool_base):
         self.base_point = None
 
     def tool_name(self):
-        return "Taşı"
+        return "Move"
 
     def on_entity_selected(self, layer, feature, point):
         self.base_point = point
         self._step = 2
-        self.tool_message.emit("↔️ Taşı — Hedef noktayı tıklayın")
+        self.tool_message.emit("↔️ Move — Click the target point")
 
     def on_click(self, point, button):
         if self._step == 2 and button == Qt.MouseButton.LeftButton:
@@ -53,7 +54,7 @@ class tool_move(tool_base):
             return False
         if self._step != 2 or self.base_point is None:
             self.tool_message.emit(
-                "⚠️ Taşı — Hassas hedef girmeden önce bir obje seçin"
+                "⚠️ Move — Select a feature before entering a precise target"
             )
             return True
         try:
@@ -61,7 +62,7 @@ class tool_move(tool_base):
                 text, self.base_point, self.selected_layer
             )
         except PrecisionInputError as error:
-            self.tool_message.emit(f"⚠️ Taşı — {error}")
+            self.tool_message.emit(f"⚠️ Move — {error}")
             return True
         self.on_click(target, Qt.MouseButton.LeftButton)
         return True

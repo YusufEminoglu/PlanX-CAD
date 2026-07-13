@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""
-planX CAD — Sketcher Görsel Geri Bildirim Yöneticisi
-RubberBand oluşturma, snap noktası gösterimi ve cursor yönetimi.
+"""Visual feedback helpers for PlanX CAD sketching tools.
+
+Creates rubber bands, snap markers, and consistent drawing previews.
 """
 
 from qgis.PyQt.QtCore import Qt
@@ -10,22 +10,22 @@ from qgis.core import QgsWkbTypes
 from qgis.gui import QgsRubberBand
 
 
-# ── Renk Sabitleri ──────────────────────────────────────────────────────────
-COLOR_PRIMARY = QColor(26, 35, 126, 200)      # Koyu mavi
-COLOR_ACCENT = QColor(255, 109, 0, 200)       # Turuncu
+# ── Colour constants ──────────────────────────────────────────────────────────
+COLOR_PRIMARY = QColor(26, 35, 126, 200)      # Dark blue
+COLOR_ACCENT = QColor(255, 109, 0, 200)       # Orange
 COLOR_PREVIEW = QColor(100, 149, 237, 150)    # Cornflower blue
-COLOR_SNAP = QColor(255, 0, 0, 220)           # Kırmızı
+COLOR_SNAP = QColor(255, 0, 0, 220)           # Red
 
 
 def create_sketcher_rubberband(canvas, geom_type=QgsWkbTypes.LineGeometry,
                                color=None, width=2):
-    """Yeni bir RubberBand oluşturur.
+    """Create a new sketch rubber band.
 
     Args:
         canvas: QgsMapCanvas
-        geom_type: QgsWkbTypes geometri tipi
-        color: QColor (varsayılan: COLOR_PRIMARY)
-        width: Çizgi kalınlığı
+        geom_type: QgsWkbTypes geometry type
+        color: QColor (defaults to COLOR_PRIMARY)
+        width: Line width
 
     Returns:
         QgsRubberBand
@@ -45,7 +45,7 @@ def create_sketcher_rubberband(canvas, geom_type=QgsWkbTypes.LineGeometry,
 
 
 def create_preview_rubberband(canvas, geom_type=QgsWkbTypes.LineGeometry):
-    """Önizleme (preview) için yarı saydam RubberBand."""
+    """Create a translucent rubber band for live previews."""
     rb = QgsRubberBand(canvas, geom_type)
     rb.setColor(COLOR_PREVIEW)
     rb.setWidth(1)
@@ -59,10 +59,10 @@ def create_preview_rubberband(canvas, geom_type=QgsWkbTypes.LineGeometry):
 
 
 def create_snap_marker(canvas):
-    """Snap noktası göstergesi oluşturur.
+    """Create the snap-point marker.
 
     Returns:
-        QgsRubberBand (nokta tipi)
+        QgsRubberBand configured for point geometry
     """
     rb = QgsRubberBand(canvas, QgsWkbTypes.PointGeometry)
     rb.setColor(COLOR_SNAP)
@@ -73,7 +73,7 @@ def create_snap_marker(canvas):
 
 
 def cleanup_sketcher_rubberband(canvas, rb):
-    """RubberBand'i temizleyip sahiden kaldırır."""
+    """Reset a rubber band and remove it from the canvas scene."""
     if rb is not None:
         rb.reset()
         canvas.scene().removeItem(rb)

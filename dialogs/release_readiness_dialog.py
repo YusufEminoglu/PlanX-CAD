@@ -10,7 +10,7 @@ from qgis.PyQt.QtWidgets import (
 class ReleaseReadinessDialog(QDialog):
     def __init__(self, rows, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("PlanX CAD - Release Readiness / Surum Hazirlik")
+        self.setWindowTitle("PlanX CAD - Release Readiness")
         self.setMinimumWidth(780)
         self.setMinimumHeight(520)
         self._rows = rows or []
@@ -19,8 +19,7 @@ class ReleaseReadinessDialog(QDialog):
         warn_count = len([r for r in self._rows if str(r.get("status", "")) != "OK"])
         ready = warn_count == 0
         state = "READY" if ready else "NOT READY"
-        state_tr = "HAZIR" if ready else "HAZIR DEGIL"
-        intro = QLabel(f"Beta release gate checks collected in one place. Result: {state} / {state_tr}")
+        intro = QLabel(f"Release gate checks collected in one place. Result: {state}")
         intro.setStyleSheet("color: #334155; padding: 4px;")
         layout.addWidget(intro)
 
@@ -46,11 +45,11 @@ class ReleaseReadinessDialog(QDialog):
         table.resizeColumnsToContents()
         layout.addWidget(table)
 
-        copy_btn = QPushButton("Copy Report / Raporu Kopyala")
+        copy_btn = QPushButton("Copy Report")
         copy_btn.clicked.connect(self._copy_report)
         layout.addWidget(copy_btn, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        close_btn = QPushButton("Close / Kapat")
+        close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
 

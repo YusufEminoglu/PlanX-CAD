@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Buffer Aracı
-Dialog ile join style seçimi + otomatik katman oluşturma.
-"""
+"""PlanX CAD metric Buffer tool with managed output layers."""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry, QgsFeature, QgsPointXY, Qgis
@@ -16,11 +14,11 @@ from ..urban.crs_utils import local_metric_crs, transform_geometry
 
 
 class BufferDialog(QDialog):
-    """Buffer parametre dialog'u."""
+    """Collect buffer distance and join-style parameters."""
 
     def __init__(self, parent=None, default_distance=5.0):
         super().__init__(parent)
-        self.setWindowTitle("◎ Buffer Parametreleri")
+        self.setWindowTitle("◎ Buffer Parameters")
         self.setMinimumWidth(320)
         self.setModal(True)
         self._setup_ui(default_distance)
@@ -28,7 +26,7 @@ class BufferDialog(QDialog):
     def _setup_ui(self, default_distance):
         layout = QVBoxLayout(self)
 
-        title = QLabel("◎ Buffer (Tampon) Parametreleri")
+        title = QLabel("◎ Buffer Parameters")
         f = QFont()
         f.setPointSize(11)
         f.setBold(True)
@@ -44,27 +42,27 @@ class BufferDialog(QDialog):
         self.spn_distance.setSuffix(" m")
         self.spn_distance.setSingleStep(0.5)
         self.spn_distance.setDecimals(2)
-        form.addRow("Tampon mesafesi:", self.spn_distance)
+        form.addRow("Buffer distance:", self.spn_distance)
 
         self.cmb_join = QComboBox()
         self.cmb_join.addItems([
-            "Yuvarlak (Round)",
-            "Düz (Flat / Bevel)",
-            "Köşeli (Miter)"
+            "Round",
+            "Bevel",
+            "Miter"
         ])
-        form.addRow("Köşe stili:", self.cmb_join)
+        form.addRow("Join style:", self.cmb_join)
 
         self.spn_segments = QDoubleSpinBox()
         self.spn_segments.setRange(4, 128)
         self.spn_segments.setValue(16)
         self.spn_segments.setDecimals(0)
-        form.addRow("Segment sayısı:", self.spn_segments)
+        form.addRow("Segments:", self.spn_segments)
 
         layout.addLayout(form)
 
-        # Butonlar
+        # Dialog buttons.
         btn_layout = QHBoxLayout()
-        btn_ok = QPushButton("✅ Uygula")
+        btn_ok = QPushButton("✅ Apply")
         btn_ok.setMinimumHeight(36)
         btn_ok.setStyleSheet(
             "QPushButton { background: #1a237e; color: white; "
@@ -74,7 +72,7 @@ class BufferDialog(QDialog):
         btn_ok.clicked.connect(self.accept)
         btn_layout.addWidget(btn_ok)
 
-        btn_cancel = QPushButton("İptal")
+        btn_cancel = QPushButton("Cancel")
         btn_cancel.setMinimumHeight(36)
         btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(btn_cancel)
@@ -91,7 +89,7 @@ class BufferDialog(QDialog):
 
 
 class tool_buffer(tool_base):
-    """Tampon bölge oluşturma — otomatik katman ile."""
+    """Create a metric buffer in a plugin-managed output layer."""
 
     def __init__(self, canvas, iface):
         super().__init__(canvas, iface)
@@ -116,26 +114,26 @@ class tool_buffer(tool_base):
             self.join_style = params["join_style"]
             self.segments = params["segments"]
 
-            join_names = {1: "Yuvarlak", 2: "Düz", 3: "Köşeli"}
+            join_names = {1: "Round", 2: "Bevel", 3: "Miter"}
             self.tool_message.emit(
-                f"◎ Buffer ({self.distance}m, {join_names.get(self.join_style, '?')}) "
-                f"— Tamponlanacak objeyi seçin"
+                f"◎ Buffer ({self.distance} m, {join_names.get(self.join_style, '?')}) "
+                "— Select the feature to buffer"
             )
         else:
             self._activation_cancelled = True
-            self.tool_message.emit("◎ Buffer — İptal edildi")
+            self.tool_message.emit("◎ Buffer — Cancelled")
 
     def on_entity_selected(self, layer, feature, point):
         geom = feature.geometry()
         centroid = geom.centroid()
         if centroid is None or centroid.isEmpty() or not layer.crs().isValid():
-            self.tool_message.emit("⚠️ Buffer — Geçerli bir kaynak CRS gerekli")
+            self.tool_message.emit("⚠️ Buffer — A valid source CRS is required")
             self._reset()
             return
         metric_crs = local_metric_crs(QgsPointXY(centroid.asPoint()), layer.crs())
         metric_geom = transform_geometry(geom, layer.crs(), metric_crs)
         if metric_geom is None or metric_geom.isEmpty():
-            self.tool_message.emit("⚠️ Buffer — CRS dönüşümü başarısız")
+            self.tool_message.emit("⚠️ Buffer — CRS transformation failed")
             self._reset()
             return
 
@@ -156,37 +154,37 @@ class tool_buffer(tool_base):
         buffered = transform_geometry(buffered_metric, metric_crs, layer.crs())
 
         if buffered and not buffered.isEmpty():
-            # Otomatik katman: planx_buffer
+            # Plugin-managed output layer.
             buffer_layer = get_or_create_layer(
                 "planx_buffer",
                 geom_type="Polygon",
                 crs=layer.crs(),
                 fields=[
-                    ("kaynak_katman", "string"),
-                    ("buffer_mesafe", "double"),
-                    ("join_stili", "string"),
+                    ("source_layer", "string"),
+                    ("buffer_distance", "double"),
+                    ("join_style", "string"),
                 ]
             )
 
             if buffer_layer:
                 join_names = {1: "round", 2: "bevel", 3: "miter"}
                 feat = add_feature_to_layer(buffer_layer, buffered, {
-                    "kaynak_katman": layer.name(),
-                    "buffer_mesafe": self.distance,
-                    "join_stili": join_names.get(self.join_style, "round"),
+                    "source_layer": layer.name(),
+                    "buffer_distance": self.distance,
+                    "join_style": join_names.get(self.join_style, "round"),
                 })
                 if feat is None:
-                    self.tool_message.emit("⚠️ Buffer — Obje katmana eklenemedi")
+                    self.tool_message.emit("⚠️ Buffer — Feature could not be added")
                     self._reset()
                     return
                 buffer_layer.triggerRepaint()
 
                 self.tool_message.emit(
-                    f"✅ Buffer ({self.distance}m) — planx_buffer katmanına eklendi"
+                    f"✅ Buffer ({self.distance} m) — Added to planx_buffer"
                 )
             else:
-                self.tool_message.emit("⚠️ Buffer — Katman oluşturulamadı")
+                self.tool_message.emit("⚠️ Buffer — Output layer could not be created")
         else:
-            self.tool_message.emit("⚠️ Buffer — Tampon oluşturulamadı")
+            self.tool_message.emit("⚠️ Buffer — Buffer geometry could not be created")
 
         self._reset()

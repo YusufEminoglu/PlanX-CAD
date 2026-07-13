@@ -12,15 +12,12 @@ from qgis.PyQt.QtWidgets import (
 class DiagnosticsDialog(QDialog):
     def __init__(self, report_text, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("PlanX CAD - Diagnostics / Tani")
+        self.setWindowTitle("PlanX CAD - Diagnostics")
         self.setMinimumWidth(760)
         self.setMinimumHeight(520)
 
         layout = QVBoxLayout(self)
-        intro = QLabel(
-            "Copy this report when sharing support details.\n"
-            "Destek icin bu raporu kopyalayip paylasin."
-        )
+        intro = QLabel("Copy this report when sharing support details.")
         intro.setWordWrap(True)
         intro.setStyleSheet("color: #334155; padding: 4px;")
         layout.addWidget(intro)
@@ -32,16 +29,16 @@ class DiagnosticsDialog(QDialog):
         layout.addWidget(self.report_box)
 
         row = QHBoxLayout()
-        copy_btn = QPushButton("Copy Report / Raporu Kopyala")
+        copy_btn = QPushButton("Copy Report")
         copy_btn.clicked.connect(self._copy_report)
         row.addWidget(copy_btn)
 
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self._stamp_label = QLabel(f"Generated / Uretildi: {ts}")
+        self._stamp_label = QLabel(f"Generated: {ts}")
         self._stamp_label.setStyleSheet("color: #64748b;")
         row.addWidget(self._stamp_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        close_btn = QPushButton("Close / Kapat")
+        close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.accept)
         row.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
         layout.addLayout(row)

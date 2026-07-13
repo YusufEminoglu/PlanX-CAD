@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Kopyala (Copy) Aracı"""
+"""PlanX CAD Copy tool."""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsGeometry
@@ -8,8 +8,9 @@ from ..core.precision_input import PrecisionInputError, looks_like_precision_inp
 
 
 class tool_copy(tool_base):
-    """Objeyi kopyalama aracı.
-    1. Objeyi seç | 2. Başlangıç noktası | 3. Hedef nokta
+    """Copy a feature from its picked base point to a target point.
+
+    1. Select feature | 2. Base point | 3. Target point
     """
 
     def __init__(self, canvas, iface):
@@ -17,12 +18,12 @@ class tool_copy(tool_base):
         self.base_point = None
 
     def tool_name(self):
-        return "Kopyala"
+        return "Copy"
 
     def on_entity_selected(self, layer, feature, point):
         self.base_point = point
         self._step = 2
-        self.tool_message.emit("⎘ Kopyala — Hedef noktayı tıklayın")
+        self.tool_message.emit("⎘ Copy — Click the target point")
 
     def on_click(self, point, button):
         if self._step == 2 and button == Qt.MouseButton.LeftButton:
@@ -36,7 +37,7 @@ class tool_copy(tool_base):
                 self.selected_layer, new_geom, self.selected_feature
             )
             if added is not None:
-                self.tool_message.emit("✅ Kopyala — Obje kopyalandı")
+                self.tool_message.emit("✅ Copy — Feature copied")
             self.base_point = None
             self._reset()
 
@@ -56,7 +57,7 @@ class tool_copy(tool_base):
             return False
         if self._step != 2 or self.base_point is None:
             self.tool_message.emit(
-                "⚠️ Kopyala — Hassas hedef girmeden önce bir obje seçin"
+                "⚠️ Copy — Select a feature before entering a precise target"
             )
             return True
         try:
@@ -64,7 +65,7 @@ class tool_copy(tool_base):
                 text, self.base_point, self.selected_layer
             )
         except PrecisionInputError as error:
-            self.tool_message.emit(f"⚠️ Kopyala — {error}")
+            self.tool_message.emit(f"⚠️ Copy — {error}")
             return True
         self.on_click(target, Qt.MouseButton.LeftButton)
         return True

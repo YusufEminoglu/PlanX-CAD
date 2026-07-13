@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Ölçekle (Scale) Aracı"""
+"""PlanX CAD Scale tool."""
 
 import math
 
@@ -11,9 +11,10 @@ from ..core.precision_input import PrecisionInputError, looks_like_precision_inp
 
 
 class tool_scale(tool_base):
-    """Objeyi ölçekleme aracı.
-    1. Objeyi seç | 2. Ölçek merkezi |
-    3. Referans mesafesi | 4. Hedef mesafesi
+    """Scale a feature around its picked center.
+
+    1. Select feature | 2. Scale center |
+    3. Reference distance | 4. Target distance
     """
 
     def __init__(self, canvas, iface):
@@ -22,13 +23,13 @@ class tool_scale(tool_base):
         self.ref_distance = None
 
     def tool_name(self):
-        return "Ölçekle"
+        return "Scale"
 
     def on_entity_selected(self, layer, feature, point):
         self.center = point
         self._step = 2
         self.tool_message.emit(
-            "⤡ Ölçekle — Referans mesafesini belirleyin (tıklayın)"
+            "⤡ Scale — Click to define the reference distance"
         )
 
     def on_click(self, point, button):
@@ -36,11 +37,11 @@ class tool_scale(tool_base):
             if self._step == 2:
                 self.ref_distance = point_distance(self.center, point)
                 if self.ref_distance < 0.001:
-                    self.tool_message.emit("⚠️ Referans mesafesi çok küçük")
+                    self.tool_message.emit("⚠️ Scale — Reference distance is too small")
                     return
                 self._step = 3
                 self.tool_message.emit(
-                    "⤡ Ölçekle — Hedef mesafeyi belirleyin (tıklayın)"
+                    "⤡ Scale — Click to define the target distance"
                 )
             elif self._step == 3:
                 target_distance = point_distance(self.center, point)
@@ -66,9 +67,9 @@ class tool_scale(tool_base):
                 self.selected_layer, self.selected_feature, scaled
             )
             if applied:
-                self.tool_message.emit(f"✅ Ölçekle — Faktör {factor:.6g}")
+                self.tool_message.emit(f"✅ Scale — Factor {factor:.6g}")
         else:
-            self.tool_message.emit("⚠️ Ölçekleme yapılamadı")
+            self.tool_message.emit("⚠️ Scale operation failed")
         self.center = None
         self.ref_distance = None
         self._reset()
@@ -78,7 +79,7 @@ class tool_scale(tool_base):
             return False
         if self._step not in (2, 3) or self.center is None:
             self.tool_message.emit(
-                "⚠️ Ölçekle — Hassas değer girmeden önce bir obje seçin"
+                "⚠️ Scale — Select a feature before entering a precise value"
             )
             return True
         token = (text or "").strip()
@@ -89,7 +90,7 @@ class tool_scale(tool_base):
                     raise ValueError
             except ValueError:
                 self.tool_message.emit(
-                    "⚠️ Ölçekle — Sıfırdan büyük bir faktör girin"
+                    "⚠️ Scale — Enter a factor greater than zero"
                 )
                 return True
             self._apply_factor(factor)
@@ -99,7 +100,7 @@ class tool_scale(tool_base):
                 token, self.center, self.selected_layer
             )
         except PrecisionInputError as error:
-            self.tool_message.emit(f"⚠️ Ölçekle — {error}")
+            self.tool_message.emit(f"⚠️ Scale — {error}")
             return True
         self.on_click(point, Qt.MouseButton.LeftButton)
         return True

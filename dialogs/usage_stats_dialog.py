@@ -10,15 +10,12 @@ from qgis.PyQt.QtWidgets import (
 class UsageStatsDialog(QDialog):
     def __init__(self, usage_counts, total_activations, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("PlanX CAD - Usage Stats / Kullanim Istatistikleri")
+        self.setWindowTitle("PlanX CAD - Usage Statistics")
         self.setMinimumWidth(560)
         self.setMinimumHeight(460)
 
         layout = QVBoxLayout(self)
-        intro = QLabel(
-            f"Total activations: {int(total_activations)}\n"
-            f"Toplam aktivasyon: {int(total_activations)}"
-        )
+        intro = QLabel(f"Total activations: {int(total_activations)}")
         intro.setStyleSheet("color: #334155; padding: 4px;")
         intro.setWordWrap(True)
         layout.addWidget(intro)
@@ -49,6 +46,6 @@ class UsageStatsDialog(QDialog):
         table.resizeColumnsToContents()
         layout.addWidget(table)
 
-        close_btn = QPushButton("Close / Kapat")
+        close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 planX CAD — Tool Base Class
-Düzenleme ve dönüşüm araçlarının temel sınıfı.
-Feature seçimi, preview, undo desteği.
+Base class for editing and transform tools.
+Provides feature picking, previews, precision input, and undo-safe edits.
 """
 
 from qgis.PyQt.QtCore import Qt, pyqtSignal
@@ -27,20 +27,20 @@ from ..core.precision_input import (
 
 
 class tool_base(QgsMapTool):
-    """Edit/Transform araçlarının temel sınıfı.
+    """Base class for editing and transform tools.
 
-    Alt sınıflar şunları override etmelidir:
+    Subclasses should override:
         - tool_name(): str
-        - on_entity_selected(layer, feature, point): feature seçildiğinde
-        - on_click(point, button): ek tıklama işlemi
-        - on_move(point): fare hareketi (opsiyonel)
+        - on_entity_selected(layer, feature, point): selection handler
+        - on_click(point, button): additional click handler
+        - on_move(point): optional pointer-move handler
     """
 
     tool_finished = pyqtSignal()
     tool_message = pyqtSignal(str)
     precision_key_started = pyqtSignal(str)
 
-    # Feature seçim toleransı (piksel)
+    # Feature-picking tolerance in pixels.
     PICK_TOLERANCE = 10
 
     def __init__(self, canvas, iface):
@@ -51,11 +51,11 @@ class tool_base(QgsMapTool):
         self.selected_feature = None
         self.selected_point = None
         self.preview_rb = None
-        self._step = 0  # Araç adımı
-        self.require_editable = True  # Varsayılan olarak düzenlenebilir katmanlarda ara
+        self._step = 0  # Current interaction step
+        self.require_editable = True  # Search editable layers by default.
         self._last_cursor_canvas_point = None
 
-        # Görsel geri bildirimler (Snap Marker ve Obje Vurgusu)
+        # Visual feedback: snap marker and feature highlight.
         self.snap_marker = QgsVertexMarker(self.canvas)
         self.snap_marker.setIconType(QgsVertexMarker.ICON_CIRCLE)
         self.snap_marker.setColor(QColor(13, 148, 136))
@@ -70,7 +70,7 @@ class tool_base(QgsMapTool):
         self._set_cursor()
 
     def _set_cursor(self):
-        """EasyFillet stili şeffaf pembe dolgulu yeşil halkalı cursor (Aperture)."""
+        """Create the EasyFillet-style green aperture cursor."""
         size = 32
         pixmap = QPixmap(size, size)
         pixmap.fill(Qt.GlobalColor.transparent)
@@ -88,21 +88,21 @@ class tool_base(QgsMapTool):
     # ── Override edilecek ─────────────────────────────────────────────────
 
     def tool_name(self):
-        return "Araç"
+        return "Tool"
 
     def on_entity_selected(self, layer, feature, point):
-        """Feature seçildiğinde çağrılır."""
+        """Handle a selected feature."""
         pass
 
     def on_click(self, point, button):
-        """Tıklama işlemi."""
+        """Handle an additional canvas click."""
         pass
 
     def on_move(self, point):
-        """Fare hareketi."""
+        """Handle pointer movement."""
         pass
 
-    # ── Yaşam Döngüsü ───────────────────────────────────────────────────
+    # ── Lifecycle ───────────────────────────────────────────────────
 
     def activate(self):
         super().activate()
@@ -126,7 +126,7 @@ class tool_base(QgsMapTool):
         self._set_cursor()
 
         self.tool_message.emit(
-            f"🔧 {self.tool_name()} — Bir obje seçin"
+            f"🔧 {self.tool_name()} — Select a feature"
         )
 
     def deactivate(self):
@@ -202,18 +202,18 @@ class tool_base(QgsMapTool):
                 return None
         return result
 
-    # ── Olay İşleyiciler ─────────────────────────────────────────────────
+    # ── Event handlers ─────────────────────────────────────────────────
 
     def canvasPressEvent(self, event):
         point = self.toMapCoordinates(event.pos())
 
-        # Snap uygula
+        # Apply native snapping.
         snapped = self._snap_point(event.pos())
         if snapped is not None:
             point = snapped
 
         if self._step == 0 and event.button() == Qt.MouseButton.LeftButton:
-            # Feature seç
+            # Pick a feature.
             result = self._pick_feature(event.pos())
             if result:
                 layer, feature = result
@@ -222,7 +222,7 @@ class tool_base(QgsMapTool):
                 self.selected_point = self.to_layer_coordinates(point, layer)
                 self._step = 1
 
-                # Obje vurgusu
+                # Highlight the selected feature.
                 geom = feature.geometry()
                 self.highlight_rb.reset(geom.type())
                 self.highlight_rb.setToGeometry(geom, layer)
@@ -230,7 +230,7 @@ class tool_base(QgsMapTool):
                 self.on_entity_selected(layer, feature, self.selected_point)
             else:
                 self.tool_message.emit(
-                    f"⚠️ {self.tool_name()} — Obje bulunamadı, tekrar deneyin"
+                    f"⚠️ {self.tool_name()} — No feature found; try again"
                 )
         else:
             layer_point = self.to_layer_coordinates(point)
@@ -249,8 +249,7 @@ class tool_base(QgsMapTool):
                 self.snap_marker.hide()
 
         self._last_cursor_canvas_point = QgsPointXY(point)
-        # Obje üzerine gelince vurgulama (Opsiyonel hover efekti eklenebilir)
-        # Şimdilik sadece on_move tetikliyoruz.
+        # A hover highlight can be added later; for now, dispatch on_move only.
         layer_point = self.to_layer_coordinates(point)
         self.on_move(layer_point)
 
@@ -279,7 +278,7 @@ class tool_base(QgsMapTool):
         elif event.key() == Qt.Key.Key_Escape:
             self._reset()
 
-    # ── Yardımcı ─────────────────────────────────────────────────────────
+    # ── Helpers ─────────────────────────────────────────────────────────
 
     def _snap_point(self, pos):
         snapper = self.canvas.snappingUtils()
@@ -291,21 +290,22 @@ class tool_base(QgsMapTool):
         return None
 
     def _pick_feature(self, pos, exclude=None):
-        """Tıklanan noktadaki feature'ı bul.
+        """Find the closest feature at the clicked point.
 
-        exclude: (layer, feature) — iki adımlı araçlarda (Fillet/Trim/Extend)
-        ikinci seçimde birinci objenin yeniden seçilmesini engeller.
+        ``exclude`` is a ``(layer, feature)`` pair used by two-step tools such
+        as Fillet, Trim, and Extend to prevent selecting the first feature
+        again during the second pick.
         """
         point = self.toMapCoordinates(pos)
 
-        # Tolerans hesapla
+        # Calculate the map-unit pick tolerance.
         map_tol = self.canvas.mapUnitsPerPixel() * self.PICK_TOLERANCE
         search_rect = QgsRectangle(
             point.x() - map_tol, point.y() - map_tol,
             point.x() + map_tol, point.y() + map_tol
         )
 
-        # Aktif katmanda ara (Aktif layer her zaman önceliklidir)
+        # Search the active layer first.
         layer = self.iface.activeLayer()
         if layer and isinstance(layer, QgsVectorLayer):
             if not self.require_editable or layer.isEditable():
@@ -313,7 +313,7 @@ class tool_base(QgsMapTool):
                 if result:
                     return result
 
-        # Tüm vektör katmanlarında ara
+        # Search the remaining vector layers.
         active_id = layer.id() if isinstance(layer, QgsVectorLayer) else None
         for lyr in QgsProject.instance().mapLayers().values():
             if isinstance(lyr, QgsVectorLayer):
@@ -328,13 +328,12 @@ class tool_base(QgsMapTool):
         return None
 
     def _search_layer(self, layer, search_rect, point, exclude=None):
-        """Bir katmanda feature ara."""
+        """Search one layer for the closest eligible feature."""
         query_rect = search_rect
         query_point = point
 
-        # QGIS 4 projelerinde map CRS ile layer CRS ayrisabildigi icin
-        # secim penceresini layer CRS'e tasiyoruz; aksi halde secim/preview
-        # hic feature bulamiyor gibi gorunur.
+        # In QGIS 4 the canvas and layer CRS can differ. Transform the search
+        # window into the layer CRS so picking and previews remain reliable.
         try:
             canvas_crs = self.canvas.mapSettings().destinationCrs()
             layer_crs = layer.crs()
@@ -368,33 +367,33 @@ class tool_base(QgsMapTool):
                 best_dist = dist
                 best_feat = feat
 
-        # getFeatures(rect) bbox kesişimine bakar; uzun/çapraz bir objenin
-        # bbox'ı tıklanan noktayı kapsayıp geometrisi uzakta kalabilir.
-        # Aperture (PICK_TOLERANCE) gerçek geometri mesafesinde de uygulanır.
+        # getFeatures(rect) only checks bounding-box overlap. A long or
+        # diagonal feature can have a box that covers the click while its
+        # geometry remains far away, so enforce the aperture on true distance.
         pick_tol = max(query_rect.width(), query_rect.height()) / 2.0
         if best_feat is not None and best_dist <= pick_tol:
             return (layer, best_feat)
         return None
 
     def _reset(self):
-        """Aracı sıfırla."""
+        """Reset the tool for another feature selection."""
         self._cleanup()
         self.preview_rb = create_preview_rubberband(self.canvas)
-        self.tool_message.emit(f"🔧 {self.tool_name()} — Bir obje seçin")
+        self.tool_message.emit(f"🔧 {self.tool_name()} — Select a feature")
 
     def _apply_edit(self, layer, feature, new_geometry):
-        """Feature geometrisini güncelle."""
+        """Update a feature geometry in one undoable edit command."""
         if (layer is None or feature is None or new_geometry is None or
                 new_geometry.isEmpty() or
                 new_geometry.type() != layer.geometryType()):
             self.tool_message.emit(
-                f"⚠️ {self.tool_name()} — Geometri katmanla uyumlu değil"
+                f"⚠️ {self.tool_name()} — Geometry is incompatible with the layer"
             )
             return False
 
         if not layer.isEditable() and not layer.startEditing():
             self.tool_message.emit(
-                f"⚠️ {self.tool_name()} — Katman düzenleme moduna açılamadı"
+                f"⚠️ {self.tool_name()} — Layer could not enter edit mode"
             )
             return False
 
@@ -402,16 +401,16 @@ class tool_base(QgsMapTool):
         if not layer.changeGeometry(feature.id(), QgsGeometry(new_geometry)):
             layer.destroyEditCommand()
             self.tool_message.emit(
-                f"⚠️ {self.tool_name()} — Geometri güncellenemedi"
+                f"⚠️ {self.tool_name()} — Geometry could not be updated"
             )
             return False
         layer.endEditCommand()
         layer.triggerRepaint()
-        self.tool_message.emit(f"✅ {self.tool_name()} — Düzenleme uygulandı")
+        self.tool_message.emit(f"✅ {self.tool_name()} — Edit applied")
         return True
 
     def _add_feature(self, layer, geometry, source_feature=None):
-        """Katmana yeni feature ekle."""
+        """Add one new feature to a layer."""
         added = self._add_features(layer, [geometry], source_feature)
         return added[0] if added else None
 
@@ -433,7 +432,7 @@ class tool_base(QgsMapTool):
             return []
         if not layer.isEditable() and not layer.startEditing():
             self.tool_message.emit(
-                f"⚠️ {self.tool_name()} — Katman düzenleme moduna açılamadı"
+                f"⚠️ {self.tool_name()} — Layer could not enter edit mode"
             )
             return []
 
@@ -454,7 +453,7 @@ class tool_base(QgsMapTool):
         if not layer.addFeatures(features):
             layer.destroyEditCommand()
             self.tool_message.emit(
-                f"⚠️ {self.tool_name()} — Yeni objeler eklenemedi"
+                f"⚠️ {self.tool_name()} — New features could not be added"
             )
             return []
         layer.endEditCommand()

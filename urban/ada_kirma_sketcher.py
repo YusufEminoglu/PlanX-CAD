@@ -1,12 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-planX CAD — Ada Kırma (Köşe Chamfer/Fillet) Aracı
-
-İmar adası köşelerini kırar:
- - İki dış kaldırım çizgisinin kesiştiği köşeye tıkla
- - Çizgiler trimlensin, arasına düz/eğri bağlantı oluşsun
- - Arta kalan kısa parçalar temizlensin
-"""
+"""Interactive straight-chamfer and curved-fillet tool for block corners."""
 
 from qgis.PyQt.QtCore import Qt, pyqtSignal
 from qgis.PyQt.QtWidgets import QDialog
@@ -31,11 +24,11 @@ def _geometry_for_layer(layer, geometry):
 
 
 class AdaKirmaSketcher(QgsMapTool):
-    """Ada köşe kırma aracı.
+    """Resolve a corner between two curb lines.
 
-    1. Dialog açılır → kırma tipi (düz/eğri, mesafe) girilir
-    2. Köşeye tıkla → iki çizgi bulunur → kırma uygulanır
-    3. Sağ tık / Esc ile biter
+    1. Collect the mode, distance, tolerance, and cleanup threshold.
+    2. Click a corner to find two lines and apply the selected solution.
+    3. Finish with right-click or Escape.
     """
 
     sketcher_finished = pyqtSignal()
@@ -57,11 +50,11 @@ class AdaKirmaSketcher(QgsMapTool):
         self._step = 0
         self._corner_count = 0
 
-        # Dialog
+        # Collect operation parameters.
         dlg = AdaKirmaDialog(self.iface.mainWindow())
         if dlg.exec() != QDialog.DialogCode.Accepted:
             self._activation_cancelled = True
-            self.sketcher_message.emit("🔶 Ada Kırma — İptal edildi")
+            self.sketcher_message.emit("🔶 Block Chamfer — Cancelled")
             self.sketcher_finished.emit()
             return
 
@@ -71,10 +64,12 @@ class AdaKirmaSketcher(QgsMapTool):
         )
         self._step = 1
 
-        tip_text = "Eğri" if self.params["tip"] == "egri" else "Düz"
+        mode_label = (
+            "Curved" if self.params["mode"] == "curved" else "Straight"
+        )
         self.sketcher_message.emit(
-            f"🔶 Ada Kırma ({tip_text}, {self.params['mesafe']}m) — "
-            f"Kırılacak köşeye tıklayın | Sağ tık: Bitir"
+            f"🔶 Block Chamfer ({mode_label}, {self.params['distance']} m) — "
+            "Click a corner to resolve | Right-click: Finish"
         )
 
     def deactivate(self):
@@ -101,7 +96,7 @@ class AdaKirmaSketcher(QgsMapTool):
         elif event.button() == Qt.MouseButton.RightButton:
             if self._corner_count > 0:
                 self.sketcher_message.emit(
-                    f"✅ Ada Kırma — {self._corner_count} köşe kırıldı"
+                    f"✅ Block Chamfer — {self._corner_count} corners resolved"
                 )
             self.sketcher_finished.emit()
 
@@ -109,73 +104,77 @@ class AdaKirmaSketcher(QgsMapTool):
         if event.key() == Qt.Key.Key_Escape:
             if self._corner_count > 0:
                 self.sketcher_message.emit(
-                    f"✅ Ada Kırma — {self._corner_count} köşe kırıldı"
+                    f"✅ Block Chamfer — {self._corner_count} corners resolved"
                 )
             else:
-                self.sketcher_message.emit("🔶 Ada Kırma — İptal edildi")
+                self.sketcher_message.emit("🔶 Block Chamfer — Cancelled")
             self.sketcher_finished.emit()
 
     # ════════════════════════════════════════════════════════════════════════
-    # Ana Köşe Kırma İşlemi
+    # Main corner operation
     # ════════════════════════════════════════════════════════════════════════
 
     def _chamfer_corner(self, click_point):
-        """Tıklanan noktadaki köşeyi kır."""
+        """Resolve the corner nearest the clicked point."""
         p = self.params
-        tolerans = p["tolerans"]
-        mesafe = p["mesafe"]
-        tip = p["tip"]
-        artik_esik = p["artik_esik"]
+        tolerance = p["tolerance"]
+        distance = p["distance"]
+        mode = p["mode"]
+        cleanup_threshold = p["cleanup_threshold"]
 
         canvas_crs = self.canvas.mapSettings().destinationCrs()
         metric_crs = local_metric_crs(click_point, canvas_crs)
         metric_click = transform_point(click_point, canvas_crs, metric_crs)
 
-        # 1. Tıklanan noktanın etrafındaki çizgileri bul
+        # Find candidate lines around the clicked point.
         candidates = self._find_lines_near_point(
-            metric_click, tolerans * 3, metric_crs
+            metric_click, tolerance * 3, metric_crs
         )
 
         if len(candidates) < 2:
             self.sketcher_message.emit(
-                f"⚠️ Ada Kırma — En az 2 çizgi gerekli "
-                f"(bulunan: {len(candidates)})"
+                "⚠️ Block Chamfer — At least two lines are required "
+                f"(found: {len(candidates)})"
             )
             return
 
-        # 2. En yakın iki çizgiyi ve kesişim noktasını bul
+        # Find the nearest intersecting pair and its intersection point.
         pair = self._find_intersecting_pair(
-            candidates, metric_click, tolerans
+            candidates, metric_click, tolerance
         )
 
         if pair is None:
             self.sketcher_message.emit(
-                "⚠️ Ada Kırma — Kesişen çizgi çifti bulunamadı"
+                "⚠️ Block Chamfer — No intersecting line pair was found"
             )
             return
 
         layer1, feat1, geom1, layer2, feat2, geom2, int_point = pair
 
-        # 3. Kırma mesafesi veya yay teğeti hesapla
-        if tip == "duz":
-            trim_dist = mesafe
+        # Calculate either a straight setback or tangent fillet.
+        if mode == "straight":
+            trim_dist = distance
             trim1 = self._trim_line_from_point(geom1, int_point, trim_dist)
             trim2 = self._trim_line_from_point(geom2, int_point, trim_dist)
             
             if trim1 is None or trim2 is None:
-                self.sketcher_message.emit("⚠️ Ada Kırma — Çizgi kesilemedi")
+                self.sketcher_message.emit(
+                    "⚠️ Block Chamfer — Lines could not be trimmed"
+                )
                 return
 
             trimmed_geom1, cut_pt1 = trim1
             trimmed_geom2, cut_pt2 = trim2
             connection = QgsGeometry.fromPolylineXY([cut_pt1, cut_pt2])
         else:
-            # Eğri (Fillet) -> mesafe = Radius
+            # Curved mode uses the configured distance as the fillet radius.
             from ..core.sketcher_utils import create_fillet_and_trims
             
-            fillet_result = create_fillet_and_trims(geom1, geom2, mesafe)
+            fillet_result = create_fillet_and_trims(geom1, geom2, distance)
             if not fillet_result:
-                self.sketcher_message.emit("⚠️ Ada Kırma — Yay hesaplanamadı")
+                self.sketcher_message.emit(
+                    "⚠️ Block Chamfer — Fillet arc could not be calculated"
+                )
                 return
                 
             fillet_intersection = QgsPointXY(fillet_result['inter_pt'])
@@ -190,7 +189,9 @@ class AdaKirmaSketcher(QgsMapTool):
                 fillet_intersection.distance(fillet_result['tp2']),
             )
             if trim1 is None or trim2 is None:
-                self.sketcher_message.emit("⚠️ Ada Kırma — Teğet noktaları uygulanamadı")
+                self.sketcher_message.emit(
+                    "⚠️ Block Chamfer — Tangent points could not be applied"
+                )
                 return
             trimmed_geom1, _ = trim1
             trimmed_geom2, _ = trim2
@@ -203,36 +204,38 @@ class AdaKirmaSketcher(QgsMapTool):
             layer2, feat2, trimmed_geom2,
             connection, metric_crs,
         ):
-            self.sketcher_message.emit("⚠️ Ada Kırma — Değişiklikler kaydedilemedi")
+            self.sketcher_message.emit(
+                "⚠️ Block Chamfer — Changes could not be saved"
+            )
             return
 
-        # 7. Artık kısa parçaları temizle
-        if artik_esik > 0:
+        # Remove short remnants left near the resolved corner.
+        if cleanup_threshold > 0:
             cleaned = self._clean_remnants(
-                metric_click, tolerans * 5, artik_esik,
+                metric_click, tolerance * 5, cleanup_threshold,
                 (layer1, layer2), metric_crs, connection,
             )
         else:
             cleaned = 0
 
-        # Sonuç
+        # Result
         self._corner_count += 1
-        tip_text = "eğri" if tip == "egri" else "düz"
+        mode_label = "curved" if mode == "curved" else "straight"
         msg = (
-            f"🔶 Köşe #{self._corner_count} — "
-            f"{tip_text} kırma uygulandı ({mesafe}m)"
+            f"🔶 Corner #{self._corner_count} — "
+            f"{mode_label} solution applied ({distance} m)"
         )
         if cleaned > 0:
-            msg += f" | {cleaned} artık temizlendi"
-        msg += " | Devam etmek için tıklayın"
+            msg += f" | {cleaned} remnants removed"
+        msg += " | Click to continue"
         self.sketcher_message.emit(msg)
 
     # ════════════════════════════════════════════════════════════════════════
-    # Çizgi Arama
+    # Line search
     # ════════════════════════════════════════════════════════════════════════
 
     def _find_lines_near_point(self, point, search_radius, metric_crs):
-        """Noktanın etrafındaki çizgileri bul.
+        """Find nearby line features around a point.
 
         Returns:
             list[(QgsVectorLayer, QgsFeature, distance, metric_geometry)]
@@ -261,15 +264,16 @@ class AdaKirmaSketcher(QgsMapTool):
                 if dist <= search_radius:
                     results.append((layer, feat, dist, geom))
 
-        # Mesafeye göre sırala
+        # Nearest candidates are evaluated first.
         results.sort(key=lambda x: x[2])
         return results
 
-    def _find_intersecting_pair(self, candidates, click_point, tolerans):
-        """En yakın kesişen çizgi çiftini bul.
+    def _find_intersecting_pair(self, candidates, click_point, tolerance):
+        """Find the nearest intersecting line pair.
 
         Returns:
-            (layer1, feat1, layer2, feat2, intersection_point) veya None
+            The two layer/feature/geometry records plus intersection, or
+            ``None``.
         """
         best = None
         best_dist = float('inf')
@@ -279,10 +283,9 @@ class AdaKirmaSketcher(QgsMapTool):
                 l1, f1, _, g1 = candidates[i]
                 l2, f2, _, g2 = candidates[j]
 
-                # Kesişim kontrolü
+                # Use the true intersection, or a virtual one within tolerance.
                 if not g1.intersects(g2):
-                    # Yakınlarsa uzatarak kesişim ara
-                    int_pt = self._find_near_intersection(g1, g2, tolerans)
+                    int_pt = self._find_near_intersection(g1, g2, tolerance)
                     if int_pt is None:
                         continue
                 else:
@@ -301,19 +304,19 @@ class AdaKirmaSketcher(QgsMapTool):
 
         return best
 
-    def _find_near_intersection(self, geom1, geom2, tolerans):
-        """Çok yakın ama kesişmeyen çizgilerin sanal kesişimini bul."""
+    def _find_near_intersection(self, geom1, geom2, tolerance):
+        """Find a virtual intersection for lines separated by a small gap."""
         closest = geom1.nearestPoint(geom2)
         if closest is None or closest.isEmpty():
             return None
 
         dist = geom1.distance(geom2)
-        if dist <= tolerans:
+        if dist <= tolerance:
             return QgsPointXY(closest.asPoint())
         return None
 
     def _extract_nearest_point(self, geom, reference_point):
-        """Geometriden referans noktaya en yakın noktayı çıkar."""
+        """Extract the point nearest a reference from any geometry."""
         if geom.type() == QgsWkbTypes.PointGeometry:
             if geom.isMultipart():
                 pts = geom.asMultiPoint()
@@ -330,14 +333,14 @@ class AdaKirmaSketcher(QgsMapTool):
         return None
 
     # ════════════════════════════════════════════════════════════════════════
-    # Geometri İşlemleri
+    # Geometry operations
     # ════════════════════════════════════════════════════════════════════════
 
     def _trim_line_from_point(self, geom, int_point, distance):
-        """Çizgiyi kesişim noktasından belirli mesafe geriye kes.
+        """Trim a line back from an intersection by an along-line distance.
 
         Returns:
-            (trimmed_geom, cut_point) veya None
+            ``(trimmed_geometry, cut_point)`` or ``None``.
         """
         if geom is None or geom.isEmpty() or distance < 0:
             return None
@@ -409,7 +412,7 @@ class AdaKirmaSketcher(QgsMapTool):
         return None
 
     def _point_along_line(self, pts, distance, from_start=True):
-        """Çizgi üzerinde belirli mesafedeki noktayı hesapla."""
+        """Return the point at a distance along a line."""
         if from_start:
             remaining = distance
             for i in range(len(pts) - 1):
@@ -433,8 +436,8 @@ class AdaKirmaSketcher(QgsMapTool):
         return None
 
     def _trim_from_start(self, pts, cut_pt):
-        """Başlangıçtan cut_pt'ye kadar olan kısmı kaldır."""
-        # cut_pt'den sonraki noktaları al
+        """Remove the section between the start and ``cut_pt``."""
+        # Keep vertices after the cut point.
         result = [cut_pt]
         total_to_cut = pts[0].distance(cut_pt)
 
@@ -450,7 +453,7 @@ class AdaKirmaSketcher(QgsMapTool):
         return result
 
     def _trim_from_end(self, pts, cut_pt):
-        """Sondan cut_pt'ye kadar olan kısmı kaldır."""
+        """Remove the section between the end and ``cut_pt``."""
         result = []
         total_to_cut = pts[-1].distance(cut_pt)
 
@@ -484,7 +487,7 @@ class AdaKirmaSketcher(QgsMapTool):
                 return False
 
         for layer in layers:
-            layer.beginEditCommand("Ada köşesi kır")
+            layer.beginEditCommand("Resolve block corner")
 
         try:
             native_geometry1 = _geometry_for_layer(
@@ -530,15 +533,15 @@ class AdaKirmaSketcher(QgsMapTool):
         return True
 
     # ════════════════════════════════════════════════════════════════════════
-    # Artık Temizleme
+    # Remnant cleanup
     # ════════════════════════════════════════════════════════════════════════
 
     def _clean_remnants(self, center_point, search_radius, min_length,
                         source_layers, metric_crs, protected_geometry=None):
-        """Kısa artık çizgi parçalarını temizle.
+        """Remove short remnant line segments from the two source layers.
 
         Returns:
-            int — silinen parça sayısı
+            Number of deleted segments.
         """
         cleaned = 0
         point_geometry = QgsGeometry.fromPointXY(center_point)
@@ -571,7 +574,7 @@ class AdaKirmaSketcher(QgsMapTool):
 
                 length = geom.length()
                 if length < min_length:
-                    # Merkeze yakın mı kontrol et
+                    # Delete only remnants close to the selected corner.
                     if geom.distance(point_geometry) <= search_radius:
                         to_delete.append(feat.id())
 
@@ -579,7 +582,7 @@ class AdaKirmaSketcher(QgsMapTool):
                 was_editing = layer.isEditable()
                 if not was_editing and not layer.startEditing():
                     continue
-                layer.beginEditCommand("Kısa çizgi artıklarını temizle")
+                layer.beginEditCommand("Remove short line remnants")
                 for fid in to_delete:
                     if layer.deleteFeature(fid):
                         cleaned += 1

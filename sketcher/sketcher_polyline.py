@@ -7,8 +7,8 @@ from .sketcher_base import sketcher_base
 
 
 class sketcher_polyline(sketcher_base):
-    """Çoklu bağlı çizgi segmentleri çizer.
-    Sol tık: Nokta ekle | Sağ tık / Enter: Bitir
+    """Draw a connected sequence of line segments.
+    Left click: add a point | Right click or Enter: finish
     """
 
     def tool_name(self):

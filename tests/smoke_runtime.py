@@ -13,12 +13,21 @@ import tempfile
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from qgis.PyQt.QtCore import QObject, QSettings, pyqtSignal
+from qgis.PyQt.QtCore import QObject, QSettings, Qt, pyqtSignal
+from qgis.PyQt.QtTest import QTest
 from qgis.PyQt.QtWidgets import QAction, QMainWindow, QToolBar
-from qgis.core import QgsApplication, QgsProject, QgsVectorLayer
+from qgis.core import (
+    QgsApplication,
+    QgsFeature,
+    QgsGeometry,
+    QgsPointXY,
+    QgsProject,
+    QgsVectorLayer,
+)
 from qgis.gui import QgsMapCanvas, QgsMapTool
 
 from ..main_plugin import PlanXCADPlugin
+from ..tools.tool_multi_offset import tool_multi_offset
 from ..urban.junction_dialog import JunctionDialog
 
 
@@ -135,6 +144,123 @@ def run_all() -> bool:
             plugin._dock.search_input.text() == "@",
         ))
         plugin._dock.search_input.clear()
+
+        plugin._activate_tool("polyline")
+        plugin._dock.search_input.setText("200,200")
+        plugin._dock._run_command()
+        plugin._dock.search_input.setText("@10,0")
+        plugin._dock._run_command()
+        in_progress_tool = plugin._current_tool
+        feature_count = line.featureCount()
+        plugin._dock._run_command()
+        checks.append((
+            "empty Enter finishes an in-progress sketch",
+            line.featureCount() == feature_count + 1
+            and plugin._current_tool is in_progress_tool
+            and not in_progress_tool.vertices,
+        ))
+
+        plugin._dock.search_input.setText("300,300")
+        plugin._dock._run_command()
+        feature_count = line.featureCount()
+        plugin._dock._run_command()
+        checks.append((
+            "empty Enter preserves an insufficient sketch",
+            line.featureCount() == feature_count
+            and plugin._current_tool is in_progress_tool
+            and len(in_progress_tool.vertices) == 1,
+        ))
+
+        class _EnterEvent:
+            def __init__(self):
+                self.accepted = False
+
+            @staticmethod
+            def text():
+                return ""
+
+            @staticmethod
+            def key():
+                return Qt.Key.Key_Return
+
+            def accept(self):
+                self.accepted = True
+
+        enter_event = _EnterEvent()
+        in_progress_tool.keyPressEvent(enter_event)
+        checks.append((
+            "canvas Enter preserves an insufficient sketch",
+            enter_event.accepted
+            and line.featureCount() == feature_count
+            and len(in_progress_tool.vertices) == 1,
+        ))
+
+        plugin._dock.search_input.setText("@10,0")
+        plugin._dock._run_command()
+        feature_count = line.featureCount()
+        enter_event = _EnterEvent()
+        in_progress_tool.keyPressEvent(enter_event)
+        checks.append((
+            "canvas Enter finishes a valid sketch",
+            enter_event.accepted
+            and line.featureCount() == feature_count + 1
+            and not in_progress_tool.vertices,
+        ))
+
+        plugin._dock.search_input.setText("320,300")
+        plugin._dock._run_command()
+
+        plugin._dock.search_input.setText("pending input")
+        plugin._dock.search_input.setFocus()
+        QTest.keyClick(plugin._dock.search_input, Qt.Key.Key_Escape)
+        app.processEvents()
+        checks.append((
+            "command-line Escape clears input and cancels the active tool",
+            not plugin._dock.search_input.text()
+            and plugin._current_tool is None
+            and plugin._current_tool_key is None,
+        ))
+
+        plugin._dock._run_command()
+        checks.append((
+            "idle empty Enter still repeats the last tool",
+            plugin._current_tool is not None
+            and plugin._current_tool_key == "polyline",
+        ))
+
+        mixed_crs_layer = QgsVectorLayer(
+            "LineString?crs=EPSG:4326", "mixed_crs_offset", "memory"
+        )
+        mixed_crs_feature = QgsFeature(mixed_crs_layer.fields())
+        mixed_crs_feature.setGeometry(QgsGeometry.fromPolylineXY([
+            QgsPointXY(27.1400, 38.4200),
+            QgsPointXY(27.1420, 38.4200),
+        ]))
+
+        class _PreviewSpy:
+            def __init__(self):
+                self.layer = None
+
+            def reset(self, *_args):
+                return None
+
+            def setToGeometry(self, _geometry, layer=None):
+                self.layer = layer
+
+        offset_tool = tool_multi_offset(iface.mapCanvas(), iface)
+        offset_tool.selected_layer = mixed_crs_layer
+        offset_tool.selected_feature = mixed_crs_feature
+        offset_tool.parsed_distances = [5.0]
+        offset_tool._step = 2
+        preview_spy = _PreviewSpy()
+        offset_tool.preview_rb = preview_spy
+        offset_tool.on_move(QgsPointXY(27.1410, 38.4210))
+        checks.append((
+            "multi-offset preview carries its layer CRS",
+            preview_spy.layer is mixed_crs_layer,
+        ))
+        offset_tool.preview_rb = None
+        offset_tool.deactivate()
 
         polygon = QgsVectorLayer("Polygon?crs=EPSG:3857", "wrong_target", "memory")
         project.addMapLayer(polygon)

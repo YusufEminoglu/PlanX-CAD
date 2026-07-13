@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""
-planX CAD — Geometri Yardımcı Fonksiyonları
-Offset, trim, extend, fillet, buffer ve ölçüm işlemleri.
+"""Geometry helpers for PlanX CAD.
+
+Provides offset, trim, extend, fillet, buffer, measurement, and transform operations.
 """
 
 import math
@@ -11,17 +11,19 @@ from qgis.core import (
     QgsWkbTypes, QgsDistanceArea, QgsProject, QgsFeature, Qgis
 )
 
+from .crs_utils import local_metric_crs, transform_geometry, transform_point
+
 
 def offset_geometry(geom, distance, side="left"):
-    """Geometriyi belirtilen mesafe kadar offset yapar.
+    """Offset a geometry by the specified distance.
 
     Args:
         geom: QgsGeometry (LineString)
-        distance: float (metre)
-        side: "left" veya "right"
+        distance: float (metres)
+        side: "left" or "right"
 
     Returns:
-        QgsGeometry veya None
+        QgsGeometry or None
     """
     if geom is None or geom.isEmpty():
         return None
@@ -39,12 +41,12 @@ def offset_geometry(geom, distance, side="left"):
 
 
 def buffer_geometry(geom, distance, segments=16):
-    """Geometriye tampon bölge uygular.
+    """Create a buffer around a geometry.
 
     Args:
         geom: QgsGeometry
-        distance: float (metre)
-        segments: Segment sayısı
+        distance: float (metres)
+        segments: Number of segments
 
     Returns:
         QgsGeometry (Polygon)
@@ -59,14 +61,14 @@ def buffer_geometry(geom, distance, segments=16):
 
 
 def extend_geometry_to_boundary(target_geom, boundary_geom):
-    """Hedef geometriyi sınır geometrisine kadar uzatır.
+    """Extend the target geometry until it reaches a boundary.
 
     Args:
         target_geom: QgsGeometry (LineString)
         boundary_geom: QgsGeometry
 
     Returns:
-        QgsGeometry veya None
+        QgsGeometry or None
     """
     if (target_geom is None or boundary_geom is None or
             target_geom.isEmpty() or boundary_geom.isEmpty()):
@@ -83,7 +85,7 @@ def extend_geometry_to_boundary(target_geom, boundary_geom):
     if len(line) < 2:
         return None
 
-    # Son segmentin yönünü al
+    # Read the direction of the final segment.
     p1 = line[-2]
     p2 = line[-1]
     dx = p2.x() - p1.x()
@@ -144,15 +146,15 @@ def extend_geometry_to_boundary(target_geom, boundary_geom):
 
 
 def measure_distance(point1, point2, crs=None):
-    """İki nokta arasındaki mesafeyi ölçer.
+    """Measure the distance between two points.
 
     Args:
         point1: QgsPointXY
         point2: QgsPointXY
-        crs: QgsCoordinateReferenceSystem (varsayılan: proje CRS)
+        crs: QgsCoordinateReferenceSystem (defaults to the project CRS)
 
     Returns:
-        float — mesafe (metre)
+        float — distance in metres
     """
     da = QgsDistanceArea()
     if crs:
@@ -167,14 +169,14 @@ def measure_distance(point1, point2, crs=None):
 
 
 def measure_area(geom, crs=None):
-    """Geometrinin alanını ölçer.
+    """Measure the area of a geometry.
 
     Args:
         geom: QgsGeometry (Polygon)
         crs: QgsCoordinateReferenceSystem
 
     Returns:
-        float — alan (m²)
+        float — area in square metres
     """
     da = QgsDistanceArea()
     if crs:
@@ -188,21 +190,30 @@ def measure_area(geom, crs=None):
     return da.measureArea(geom)
 
 
-def rotate_geometry(geom, center, angle_degrees):
-    """Geometriyi merkez etrafında döndürür.
+def rotate_geometry(geom, center, angle_degrees, source_crs=None):
+    """Rotate a geometry around a centre point.
 
     Args:
         geom: QgsGeometry
-        center: QgsPointXY — dönüş merkezi
-        angle_degrees: float — derece cinsinden açı
+        center: QgsPointXY — rotation centre
+        angle_degrees: float — angle in degrees
 
     Returns:
         QgsGeometry
     """
+    work_crs = None
     result = QgsGeometry(geom)
-    operation = result.rotate(angle_degrees, center)
+    work_center = QgsPointXY(center)
+    if source_crs is not None and source_crs.isValid():
+        work_crs = local_metric_crs(work_center, source_crs)
+        result = transform_geometry(result, source_crs, work_crs)
+        work_center = transform_point(work_center, source_crs, work_crs)
+
+    operation = result.rotate(angle_degrees, work_center)
     if operation != Qgis.GeometryOperationResult.Success:
         return None
+    if work_crs is not None:
+        return transform_geometry(result, work_crs, source_crs)
     return result
 
 
@@ -228,8 +239,16 @@ def scale_geometry(geom, center, factor):
     return _affine_transform(geom, transform)
 
 
-def mirror_geometry(geom, line_start, line_end):
+def mirror_geometry(geom, line_start, line_end, source_crs=None):
     """Mirror across a line without linearizing curves or dropping Z/M."""
+    original_crs = source_crs
+    work_crs = None
+    if source_crs is not None and source_crs.isValid():
+        work_crs = local_metric_crs(line_start, source_crs)
+        geom = transform_geometry(geom, source_crs, work_crs)
+        line_start = transform_point(line_start, source_crs, work_crs)
+        line_end = transform_point(line_end, source_crs, work_crs)
+
     dx = line_end.x() - line_start.x()
     dy = line_end.y() - line_start.y()
     length_sq = dx * dx + dy * dy
@@ -244,67 +263,76 @@ def mirror_geometry(geom, line_start, line_end):
     tx = line_start.x() - (a * line_start.x() + b * line_start.y())
     ty = line_start.y() - (b * line_start.x() + d * line_start.y())
     transform = QTransform(a, b, b, d, tx, ty)
-    return _affine_transform(geom, transform)
+    result = _affine_transform(geom, transform)
+    if result is not None and work_crs is not None:
+        return transform_geometry(result, work_crs, original_crs)
+    return result
 
 
 def point_distance(p1, p2):
-    """İki QgsPointXY arasındaki Öklid mesafesi."""
+    """Return the Euclidean distance between two QgsPointXY values."""
     return math.sqrt((p1.x() - p2.x()) ** 2 + (p1.y() - p2.y()) ** 2)
 
 
-def angle_between_points(p1, p2):
-    """İki nokta arasındaki açıyı derece olarak döndürür."""
+def angle_between_points(p1, p2, source_crs=None):
+    """Return the angle between two points in degrees."""
+    if source_crs is not None and source_crs.isValid():
+        metric_crs = local_metric_crs(p1, source_crs)
+        p1 = transform_point(p1, source_crs, metric_crs)
+        p2 = transform_point(p2, source_crs, metric_crs)
     return math.degrees(math.atan2(p2.y() - p1.y(), p2.x() - p1.x()))
 
 
 def calc_tangent_fillet_arc(int_pt, angle1, angle2, radius, segments=16):
-    """İki doğru parçası arasına (kesişim noktasından dışa doğru) teğet yay oluşturur.
-    Doğru parçaları int_pt'den angle1 ve angle2 yönünde uzaklaşıyor varsayılır.
+    """Create a tangent arc between two rays extending from an intersection.
+
+    The rays are assumed to extend from ``int_pt`` along ``angle1`` and
+    ``angle2``.
 
     Args:
-        int_pt: QgsPointXY - Kesişim noktası
-        angle1: float - 1. çizginin yönü (radyan)
-        angle2: float - 2. çizginin yönü (radyan)
-        radius: float - Yay yarıçapı
-        segments: int - Yay bölüm sayısı
+        int_pt: QgsPointXY - intersection point
+        angle1: float - direction of the first ray in radians
+        angle2: float - direction of the second ray in radians
+        radius: float - arc radius
+        segments: int - number of arc segments
 
     Returns:
-        tuple (list[QgsPointXY], float): (Yay noktaları dizisi, kesişimden kesilme mesafesi)
+        tuple (list[QgsPointXY], float): arc points and tangent distance
     """
     if radius <= 0:
         return [], 0.0
 
-    # Adım 1: Açılardan (radyan) üniter vektörleri oluştur
+    # Step 1: build unit vectors from the two angles.
     v1_x, v1_y = math.cos(angle1), math.sin(angle1)
     v2_x, v2_y = math.cos(angle2), math.sin(angle2)
 
-    # İki vektör arasındaki açıyı hesapla (dot product)
+    # Calculate the angle between the vectors with their dot product.
     dot = v1_x * v2_x + v1_y * v2_y
-    # Kayan nokta (float) hatalarına karşı sınırla (-1.0 ile 1.0 arasına)
+    # Clamp the dot product to protect against floating-point drift.
     dot_clamped = max(-1.0, min(1.0, dot))
     angle = math.acos(dot_clamped)
 
     if abs(angle) < 1e-6 or abs(angle - math.pi) < 1e-6:
-        return [], 0.0  # Paralel veya doğrusal hatası
+        return [], 0.0  # Parallel or collinear rays.
 
-    # Adım 2: Kesişimden teğet noktasına olan mesafe
+    # Step 2: distance from the intersection to each tangent point.
     tan_dist = radius / math.tan(angle / 2.0)
     
     tp1 = QgsPointXY(int_pt.x() + v1_x * tan_dist, int_pt.y() + v1_y * tan_dist)
     tp2 = QgsPointXY(int_pt.x() + v2_x * tan_dist, int_pt.y() + v2_y * tan_dist)
 
-    # Adım 3: İki vektörün tam ortasından (açıortay) merkeze giden vektör ('v1 + v2')
+    # Step 3: locate the centre along the angular bisector (v1 + v2).
     bisec_angle = math.atan2(v1_y + v2_y, v1_x + v2_x)
     center_dist = radius / math.sin(angle / 2.0)
     
     center = QgsPointXY(int_pt.x() + math.cos(bisec_angle) * center_dist,
                         int_pt.y() + math.sin(bisec_angle) * center_dist)
 
-    # Adım 4: Yayları oluştur
+    # Step 4: construct the arc.
     a1 = math.atan2(tp1.y() - center.y(), tp1.x() - center.x())
     a2 = math.atan2(tp2.y() - center.y(), tp2.x() - center.x())
 
-    # Dönüş yönünü en kısa ark olacak şekilde güvenceye al
+    # Choose the shortest angular sweep.
     diff = a2 - a1
     while diff > math.pi:
         diff -= 2 * math.pi
@@ -322,10 +350,7 @@ def calc_tangent_fillet_arc(int_pt, angle1, angle2, radius, segments=16):
     return pts, tan_dist
 
 def line_intersection(p1, p2, p3, p4):
-    """
-    İki doğru parçasının kesişim noktasını döndürür.
-    Paralelse None döner.
-    """
+    """Return the intersection of two lines, or None when they are parallel."""
     x1, y1 = p1.x(), p1.y()
     x2, y2 = p2.x(), p2.y()
     x3, y3 = p3.x(), p3.y()
@@ -339,7 +364,7 @@ def line_intersection(p1, p2, p3, p4):
 
 def create_fillet_and_trims(geom1, geom2, radius):
     """
-    İki QgsGeometry (LineString) arasında fillet yayı oluşturur.
+    Create a fillet arc between two QgsGeometry LineStrings.
     Returns: { 'arc': QgsGeometry, 'tp1': QgsPointXY, 'tp2': QgsPointXY, 'inter_pt': QgsPointXY }
     """
     if geom1.isMultipart():
@@ -416,9 +441,7 @@ def create_fillet_and_trims(geom1, geom2, radius):
     }
 
 def trim_line_to_point(geom, pt, inter_pt=None):
-    """
-    Çizgiyi belirtilen noktaya kadar (kesişim noktasına en yakın uçundan) budar.
-    """
+    """Trim the endpoint nearest the intersection to the specified point."""
     if geom.isMultipart():
         pts = geom.asMultiPolyline()[0]
     else:

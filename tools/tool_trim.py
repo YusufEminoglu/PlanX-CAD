@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Trim Aracı
-Tamamen yeniden yazıldı: intersection tipinden bağımsız,
-difference() tabanlı güvenilir trim işlemi.
+"""PlanX CAD Trim tool.
+
+Uses geometry splitting with a difference fallback for robust trimming across
+intersection types.
 """
 
 from qgis.PyQt.QtCore import Qt
@@ -10,8 +11,9 @@ from .tool_base import tool_base
 
 
 class tool_trim(tool_base):
-    """Kesme sınırına göre çizgiyi kırpar.
-    1. Kesme sınırını seç | 2. Kesilecek çizginin silinecek tarafına tıkla
+    """Trim a line against a selected cutting boundary.
+
+    1. Select the cutting boundary | 2. Click the side of the line to remove
     """
 
     def __init__(self, canvas, iface):
@@ -24,19 +26,19 @@ class tool_trim(tool_base):
 
     def activate(self):
         super().activate()
-        self.tool_message.emit("✂️ Trim — Kesme sınırını seçin")
+        self.tool_message.emit("✂️ Trim — Select the cutting boundary")
 
     def on_entity_selected(self, layer, feature, point):
         self.cutting_layer = layer
         self.cutting_feature = feature
         self._step = 2
         self.tool_message.emit(
-            "✂️ Trim — Kesilecek çizginin SİLİNECEK tarafına tıklayın"
+            "✂️ Trim — Click the side of the target line to remove"
         )
 
     def on_click(self, point, button):
         if self._step == 2 and button == Qt.MouseButton.LeftButton:
-            # Kesme sınırı dışlanır — sınır kendisiyle kırpılamaz
+            # Exclude the cutting boundary; a feature cannot trim itself.
             result = self._pick_feature(
                 self.canvas.mouseLastXY(),
                 exclude=(self.cutting_layer, self.cutting_feature),
@@ -52,57 +54,57 @@ class tool_trim(tool_base):
                 target_point = self.to_layer_coordinates(canvas_point, layer)
                 self._do_trim(layer, feature, target_point)
             else:
-                self.tool_message.emit("⚠️ Trim — Obje bulunamadı")
+                self.tool_message.emit("⚠️ Trim — No target feature found")
 
             self._reset()
             self.cutting_layer = None
             self.cutting_feature = None
 
     def _do_trim(self, layer, feature, click_point):
-        """Gerçek trim işlemi — difference tabanlı."""
+        """Apply the trim operation in the target layer CRS."""
         target_geom = feature.geometry()
         cutting_geom = self.geometry_to_layer_crs(
             self.cutting_feature.geometry(), self.cutting_layer, layer
         )
         if cutting_geom is None:
-            self.tool_message.emit("⚠️ Trim — CRS dönüşümü başarısız")
+            self.tool_message.emit("⚠️ Trim — CRS transformation failed")
             return
 
-        # Kesişim kontrolü
+        # Verify that the target and cutting boundary intersect.
         if not target_geom.intersects(cutting_geom):
-            self.tool_message.emit("⚠️ Trim — Kesişim noktası bulunamadı")
+            self.tool_message.emit("⚠️ Trim — The target does not intersect the boundary")
             return
 
-        # Kesişim noktalarını bul (tip ne olursa olsun)
+        # Calculate the intersection regardless of its geometry type.
         intersection = target_geom.intersection(cutting_geom)
         if intersection is None or intersection.isEmpty():
-            self.tool_message.emit("⚠️ Trim — Kesişim hesaplanamadı")
+            self.tool_message.emit("⚠️ Trim — Could not calculate the intersection")
             return
 
-        # Kesişim noktalarını çıkar
+        # Extract usable split points from the intersection.
         int_points = self._extract_points(intersection)
         if not int_points:
-            self.tool_message.emit("⚠️ Trim — Kesişim noktası çıkarılamadı")
+            self.tool_message.emit("⚠️ Trim — Could not extract an intersection point")
             return
 
-        # Hedef çizgiyi noktalardan böl
+        # Split the target line at the intersection points.
         line_pts = self._get_line_points(target_geom)
         if not line_pts or len(line_pts) < 2:
-            self.tool_message.emit("⚠️ Trim — Çizgi noktaları okunamadı")
+            self.tool_message.emit("⚠️ Trim — Could not read the target line vertices")
             return
 
-        # Kesişim noktalarını çizgi üzerindeki konumlarına göre sırala
+        # Sort intersection points by their position along the target line.
         locations = []
         for ip in int_points:
             loc = target_geom.lineLocatePoint(QgsGeometry.fromPointXY(ip))
             locations.append((loc, ip))
         locations.sort(key=lambda x: x[0])
 
-        # Çizgiyi segmentlere böl
+        # Split the line into segments.
         segments = self._split_line_at_points(target_geom, [p for _, p in locations])
 
         if not segments or len(segments) < 2:
-            # Alternatif: Küçük buffer ile difference
+            # Fallback: subtract a narrow buffer around the cutting boundary.
             small_buf = cutting_geom.buffer(0.001, 4)
             diff = target_geom.difference(small_buf)
             if diff and not diff.isEmpty():
@@ -111,12 +113,12 @@ class tool_trim(tool_base):
                     kept = self._keep_farthest(parts, click_point)
                     if kept:
                         if self._apply_edit(layer, feature, kept):
-                            self.tool_message.emit("✅ Trim — Kırpma uygulandı")
+                            self.tool_message.emit("✅ Trim — Trim applied")
                         return
-            self.tool_message.emit("⚠️ Trim — Bölme yapılamadı")
+            self.tool_message.emit("⚠️ Trim — Could not split the target line")
             return
 
-        # Tıklanan noktaya en yakın segmenti bul → onu SİL, kalanları birleştir
+        # Remove the segment nearest the click and preserve the others.
         click_geom = QgsGeometry.fromPointXY(click_point)
         min_dist = float('inf')
         remove_idx = 0
@@ -127,31 +129,31 @@ class tool_trim(tool_base):
                 min_dist = d
                 remove_idx = i
 
-        # Kalan parçaları al
+        # Collect the remaining segments.
         remaining = [seg for i, seg in enumerate(segments) if i != remove_idx]
 
         if remaining:
             if len(remaining) == 1:
                 if self._apply_edit(layer, feature, remaining[0]):
-                    self.tool_message.emit("✅ Trim — Kırpma uygulandı")
+                    self.tool_message.emit("✅ Trim — Trim applied")
                 return
 
             if QgsWkbTypes.isMultiType(layer.wkbType()):
                 keep_geom = QgsGeometry.collectGeometry(remaining)
                 if self._apply_edit(layer, feature, keep_geom):
-                    self.tool_message.emit("✅ Trim — Kırpma uygulandı")
+                    self.tool_message.emit("✅ Trim — Trim applied")
             else:
                 # A single-part LineString layer cannot accept a disconnected
                 # MultiLineString. Keep one part on the original feature and
                 # add the other valid parts as features with copied attributes.
                 if self._replace_single_part_feature(layer, feature, remaining):
-                    self.tool_message.emit("✅ Trim — Kırpma uygulandı")
+                    self.tool_message.emit("✅ Trim — Trim applied")
                 else:
                     self.tool_message.emit(
-                        "⚠️ Trim — Yazma hatası; tüm değişiklikler geri alındı"
+                        "⚠️ Trim — Write failed; all changes were rolled back"
                     )
         else:
-            self.tool_message.emit("⚠️ Trim — Kalan parça bulunamadı")
+            self.tool_message.emit("⚠️ Trim — No geometry remains after trimming")
 
     @staticmethod
     def _replace_single_part_feature(layer, feature, geometries):
@@ -175,12 +177,12 @@ class tool_trim(tool_base):
         return True
 
     def _extract_points(self, geom):
-        """Herhangi bir geometriden nokta listesi çıkar."""
+        """Extract a point list from any intersection geometry."""
         points = []
         if geom is None or geom.isEmpty():
             return points
 
-        # Multipart'ı aç
+        # Expand multipart input into individual geometry parts.
         if geom.isMultipart():
             parts = geom.asGeometryCollection()
         else:
@@ -194,7 +196,7 @@ class tool_trim(tool_base):
                 else:
                     points.append(QgsPointXY(part.asPoint()))
             elif part.type() == QgsWkbTypes.LineGeometry:
-                # Çizgi kesişimleri: uç noktalarını al
+                # For linear intersections, use their vertices.
                 if part.isMultipart():
                     for line in part.asMultiPolyline():
                         for p in line:
@@ -203,7 +205,7 @@ class tool_trim(tool_base):
                     for p in part.asPolyline():
                         points.append(QgsPointXY(p))
             else:
-                # Centroid'i kullan
+                # Use a centroid for other geometry types.
                 c = part.centroid()
                 if c and not c.isEmpty():
                     points.append(QgsPointXY(c.asPoint()))
@@ -211,7 +213,7 @@ class tool_trim(tool_base):
         return points
 
     def _get_line_points(self, geom):
-        """Geometriden çizgi noktalarını al."""
+        """Return the line vertices from a geometry."""
         if geom.isMultipart():
             lines = geom.asMultiPolyline()
             if lines:
@@ -224,7 +226,7 @@ class tool_trim(tool_base):
         return []
 
     def _split_line_at_points(self, line_geom, split_points):
-        """Çizgiyi verilen noktalarda böl."""
+        """Split a line at the supplied points."""
         # Apply each split to every current part. splitGeometry mutates only
         # the geometry it is invoked on; the old implementation kept newly
         # created parts aside, so a second intersection falling on one of
@@ -241,17 +243,17 @@ class tool_trim(tool_base):
                 next_parts.extend(new_geoms)
             all_parts = next_parts
 
-        # Boş parçaları filtrele
+        # Discard empty parts.
         return [p for p in all_parts if p and not p.isEmpty()]
 
     def _explode_multipart(self, geom):
-        """Multipart geometriyi parçalara ayır."""
+        """Expand multipart geometry into individual parts."""
         if geom.isMultipart():
             return geom.asGeometryCollection()
         return [geom]
 
     def _keep_farthest(self, parts, click_point):
-        """Tıklanan noktaya en uzak parçayı döndür."""
+        """Return the part farthest from the clicked point."""
         click_geom = QgsGeometry.fromPointXY(click_point)
         max_dist = -1
         best = None

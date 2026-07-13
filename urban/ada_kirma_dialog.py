@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-planX CAD — Ada Kırma (Köşe Chamfer) Dialog'u
-İmar adası köşe kırma parametreleri.
-"""
+"""Block-chamfer parameter dialog."""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import (
@@ -14,11 +11,11 @@ from qgis.PyQt.QtGui import QFont, QPixmap, QPainter, QColor, QPen, QBrush
 
 
 class AdaKirmaDialog(QDialog):
-    """Ada kırma parametreleri dialog'u."""
+    """Collect straight-chamfer or curved-fillet parameters."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("🔶 Ada Kırma (Köşe Chamfer)")
+        self.setWindowTitle("🔶 Block Chamfer")
         self.setMinimumWidth(400)
         self.setModal(True)
         self._setup_ui()
@@ -27,8 +24,8 @@ class AdaKirmaDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
 
-        # ── Başlık ───────────────────────────────────────────────────────
-        title = QLabel("🔶 Ada Kırma — Köşe Düzleştirme")
+        # Header
+        title = QLabel("🔶 Block Chamfer — Corner Resolution")
         f = QFont()
         f.setPointSize(12)
         f.setBold(True)
@@ -38,15 +35,15 @@ class AdaKirmaDialog(QDialog):
         layout.addWidget(title)
 
         desc = QLabel(
-            "Yolların dış kaldırım çizgilerinin kesiştiği köşeler\n"
-            "kırılır ve arta kalan çizgi parçaları temizlenir."
+            "Resolve intersections between outer curb lines and optionally\n"
+            "remove short remnants left by the operation."
         )
         desc.setWordWrap(True)
         desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
         desc.setStyleSheet("color: #546e7a; font-size: 10px;")
         layout.addWidget(desc)
 
-        # ── Şematik Çizim ────────────────────────────────────────────────
+        # Schematic preview
         self.schema_label = QLabel()
         self.schema_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.schema_label.setMinimumHeight(130)
@@ -57,67 +54,63 @@ class AdaKirmaDialog(QDialog):
         sep.setFrameShape(QFrame.Shape.HLine)
         layout.addWidget(sep)
 
-        # ── Kırma Tipi ───────────────────────────────────────────────────
-        tip_group = QGroupBox("Kırma Tipi")
-        tip_form = QFormLayout(tip_group)
+        # Corner mode
+        mode_group = QGroupBox("Corner Mode")
+        mode_form = QFormLayout(mode_group)
 
-        self.cmb_tip = QComboBox()
-        self.cmb_tip.addItems([
-            "Eğri (Radius ile yuvarlatma)",
-            "Düz (Chamfer — düz çizgi ile kırma)",
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItems([
+            "Curved (Tangent Fillet)",
+            "Straight Chamfer",
         ])
-        self.cmb_tip.currentIndexChanged.connect(self._on_tip_changed)
-        tip_form.addRow("Kırma tipi:", self.cmb_tip)
+        self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
+        mode_form.addRow("Corner mode:", self.mode_combo)
 
-        layout.addWidget(tip_group)
+        layout.addWidget(mode_group)
 
-        # ── Parametre ────────────────────────────────────────────────────
-        param_group = QGroupBox("Parametreler")
+        # Parameters
+        param_group = QGroupBox("Parameters")
         param_form = QFormLayout(param_group)
 
-        self.spn_mesafe = QDoubleSpinBox()
-        self.spn_mesafe.setRange(0.5, 50.0)
-        self.spn_mesafe.setValue(5.0)
-        self.spn_mesafe.setSuffix(" m")
-        self.spn_mesafe.setSingleStep(0.5)
-        self.spn_mesafe.setToolTip(
-            "Kesişim noktasından bu mesafe kadar geriye kesilir.\n"
-            "Eğri modda: ark yarıçapı olarak kullanılır.\n"
-            "Düz modda: her iki çizgiden bu kadar kesilir."
+        self.distance_spin = QDoubleSpinBox()
+        self.distance_spin.setRange(0.5, 50.0)
+        self.distance_spin.setValue(5.0)
+        self.distance_spin.setSuffix(" m")
+        self.distance_spin.setSingleStep(0.5)
+        self.distance_spin.setToolTip(
+            "Trim back from the intersection by this value.\n"
+            "Curved mode uses it as the arc radius; straight mode uses it\n"
+            "as the setback on both lines."
         )
-        self.lbl_mesafe = QLabel("Radius (m):")
-        param_form.addRow(self.lbl_mesafe, self.spn_mesafe)
+        self.distance_label = QLabel("Radius (m):")
+        param_form.addRow(self.distance_label, self.distance_spin)
 
-        self.spn_tolerans = QDoubleSpinBox()
-        self.spn_tolerans.setRange(0.01, 5.0)
-        self.spn_tolerans.setValue(0.5)
-        self.spn_tolerans.setSuffix(" m")
-        self.spn_tolerans.setSingleStep(0.1)
-        self.spn_tolerans.setToolTip(
-            "Kesişim noktası arama toleransı.\n"
-            "Tıklanan noktanın bu mesafe etrafındaki\n"
-            "çizgi kesişimleri aranır."
+        self.tolerance_spin = QDoubleSpinBox()
+        self.tolerance_spin.setRange(0.01, 5.0)
+        self.tolerance_spin.setValue(0.5)
+        self.tolerance_spin.setSuffix(" m")
+        self.tolerance_spin.setSingleStep(0.1)
+        self.tolerance_spin.setToolTip(
+            "Search tolerance for line intersections around the clicked point."
         )
-        param_form.addRow("Arama toleransı:", self.spn_tolerans)
+        param_form.addRow("Search tolerance:", self.tolerance_spin)
 
-        self.spn_artik_temizle = QDoubleSpinBox()
-        self.spn_artik_temizle.setRange(0.0, 20.0)
-        self.spn_artik_temizle.setValue(1.0)
-        self.spn_artik_temizle.setSuffix(" m")
-        self.spn_artik_temizle.setSingleStep(0.5)
-        self.spn_artik_temizle.setToolTip(
-            "Kırma sonrası arta kalan çok kısa çizgi\n"
-            "parçalarını otomatik silme eşiği.\n"
-            "Bu uzunluktan kısa parçalar silinir."
+        self.cleanup_threshold_spin = QDoubleSpinBox()
+        self.cleanup_threshold_spin.setRange(0.0, 20.0)
+        self.cleanup_threshold_spin.setValue(1.0)
+        self.cleanup_threshold_spin.setSuffix(" m")
+        self.cleanup_threshold_spin.setSingleStep(0.5)
+        self.cleanup_threshold_spin.setToolTip(
+            "Automatically remove remnant segments shorter than this length."
         )
-        param_form.addRow("Artık temizleme:", self.spn_artik_temizle)
+        param_form.addRow("Remnant cleanup:", self.cleanup_threshold_spin)
 
         layout.addWidget(param_group)
 
-        # ── Butonlar ─────────────────────────────────────────────────────
+        # Actions
         btn_layout = QHBoxLayout()
 
-        btn_ok = QPushButton("✅ Kır")
+        btn_ok = QPushButton("✅ Apply")
         btn_ok.setMinimumHeight(40)
         btn_ok.setStyleSheet(
             "QPushButton { background: #e65100; color: white; "
@@ -128,93 +121,92 @@ class AdaKirmaDialog(QDialog):
         btn_ok.clicked.connect(self.accept)
         btn_layout.addWidget(btn_ok)
 
-        btn_cancel = QPushButton("İptal")
+        btn_cancel = QPushButton("Cancel")
         btn_cancel.setMinimumHeight(40)
         btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(btn_cancel)
 
         layout.addLayout(btn_layout)
 
-    def _on_tip_changed(self, index):
+    def _on_mode_changed(self, index):
         if index == 0:
-            self.lbl_mesafe.setText("Radius (m):")
+            self.distance_label.setText("Radius (m):")
         else:
-            self.lbl_mesafe.setText("Kırma mesafesi (m):")
+            self.distance_label.setText("Chamfer distance (m):")
 
     def _draw_schema(self):
-        """Köşe kırma şemasını çiz."""
+        """Draw the before/after corner schematic."""
         px = QPixmap(380, 120)
         px.fill(QColor(255, 248, 240))
         p = QPainter(px)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # ── ÖNCE (sol taraf) ─────────────────────────────────────
-        # İki çizgi kesişiyor — köşe keskin
+        # BEFORE: two lines meet at a sharp corner.
         p.setPen(QPen(QColor(120, 120, 120), 2))
-        p.drawLine(20, 100, 90, 30)   # Çizgi 1
-        p.drawLine(20, 30, 90, 100)  # Çizgi 2
+        p.drawLine(20, 100, 90, 30)  # Line 1
+        p.drawLine(20, 30, 90, 100)  # Line 2
 
-        # Kesişim noktası
+        # Intersection point
         p.setPen(QPen(QColor(255, 0, 0), 6))
         p.drawPoint(55, 65)
 
-        # Etiket
+        # Label
         p.setPen(QColor(120, 120, 120))
         font = QFont("Arial", 8, QFont.Weight.Bold)
         p.setFont(font)
-        p.drawText(30, 115, "ÖNCE")
+        p.drawText(30, 115, "BEFORE")
 
-        # ── OK ───────────────────────────────────────────────────
+        # Arrow
         p.setPen(QPen(QColor(100, 100, 100), 2))
         p.drawLine(120, 65, 150, 65)
         p.drawLine(145, 60, 150, 65)
         p.drawLine(145, 70, 150, 65)
 
-        # ── SONRA: Düz kırma (orta) ─────────────────────────────
+        # AFTER: straight chamfer.
         p.setPen(QPen(QColor(26, 35, 126), 2))
-        p.drawLine(170, 100, 200, 55)   # Kırpılmış çizgi 1
-        p.drawLine(170, 30, 200, 75)   # Kırpılmış çizgi 2
+        p.drawLine(170, 100, 200, 55)  # Trimmed line 1
+        p.drawLine(170, 30, 200, 75)  # Trimmed line 2
 
-        # Chamfer çizgisi
+        # Chamfer segment
         p.setPen(QPen(QColor(255, 109, 0), 3))
         p.drawLine(200, 55, 200, 75)
 
         font2 = QFont("Arial", 7)
         p.setFont(font2)
         p.setPen(QColor(255, 109, 0))
-        p.drawText(204, 68, "düz")
+        p.drawText(204, 68, "straight")
 
         p.setPen(QColor(26, 35, 126))
         p.setFont(font)
-        p.drawText(170, 115, "DÜZ")
+        p.drawText(170, 115, "CHAMFER")
 
-        # ── SONRA: Eğri kırma (sağ) ─────────────────────────────
+        # AFTER: curved fillet.
         p.setPen(QPen(QColor(26, 35, 126), 2))
         p.drawLine(270, 100, 300, 55)
         p.drawLine(270, 30, 300, 75)
 
-        # Ark
+        # Arc
         from qgis.PyQt.QtCore import QRectF
         p.setPen(QPen(QColor(76, 175, 80), 3))
-        # Basit ark çizimi
+        # Compact illustrative arc
         p.drawArc(QRectF(285, 50, 30, 30).toRect(), 60 * 16, 60 * 16)
 
         p.setPen(QColor(76, 175, 80))
         p.setFont(font2)
-        p.drawText(310, 68, "eğri")
+        p.drawText(310, 68, "curved")
 
         p.setPen(QColor(26, 35, 126))
         p.setFont(font)
-        p.drawText(270, 115, "EĞRİ")
+        p.drawText(270, 115, "FILLET")
 
         p.end()
         self.schema_label.setPixmap(px)
 
     def get_params(self):
-        """Dialog parametrelerini döndür."""
+        """Return normalized English parameter keys and values."""
         return {
-            "tip": "egri" if self.cmb_tip.currentIndex() == 0 else "duz",
-            "mesafe": self.spn_mesafe.value(),
-            "tolerans": self.spn_tolerans.value(),
-            "artik_esik": self.spn_artik_temizle.value(),
+            "mode": "curved" if self.mode_combo.currentIndex() == 0 else "straight",
+            "distance": self.distance_spin.value(),
+            "tolerance": self.tolerance_spin.value(),
+            "cleanup_threshold": self.cleanup_threshold_spin.value(),
         }

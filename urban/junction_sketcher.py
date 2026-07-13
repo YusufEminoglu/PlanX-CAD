@@ -1,28 +1,25 @@
 # -*- coding: utf-8 -*-
-"""
-planX CAD — Kavşak Oluşturma Aracı (Gelişmiş)
-NetCAD tarzı kavşak çözümü:
- - Kaldırım köşeleri: seçilebilir düz kırma (chamfer) veya teğet fillet
- - Kavşak adası: yuvarlak veya su damlası
-
-Oluşturulan katmanlar:
- - kavsak (LineString): kırma ve bağlantı çizgileri
- - kavsak_ada (Polygon): kavşak adaları
-"""
+"""Advanced junction solver for curb corners, medians, and traffic islands."""
 
 import math
 from qgis.PyQt.QtCore import Qt, pyqtSignal
 from qgis.PyQt.QtWidgets import QDialog
 from qgis.core import (
     QgsWkbTypes, QgsGeometry, QgsPointXY, QgsFeature,
-    QgsFeatureRequest,
+    QgsFeatureRequest, QgsProject, QgsVectorLayer,
 )
 from qgis.gui import QgsMapTool
 
 from ..core.sketcher_feedback import (
     create_preview_rubberband, cleanup_sketcher_rubberband, COLOR_ACCENT
 )
-from ..core.sketcher_layer_utils import get_or_create_layer, get_road_platform_layer
+from ..core.sketcher_layer_utils import (
+    get_or_create_layer,
+    get_road_platform_layer,
+    road_attribute,
+    road_field_name,
+    set_road_attribute,
+)
 from .crs_utils import local_metric_crs, transform_geometry, transform_point
 from .junction_dialog import JunctionDialog
 from .junction_geometry import (
@@ -41,15 +38,12 @@ def _geometry_for_layer(layer, geometry):
 
 
 class JunctionSketcher(QgsMapTool):
-    """Kavşak oluşturma aracı.
+    """Resolve an intersection and optionally create a traffic island.
 
-    İş akışı:
-    1. Dialog açılır → parametreler girilir
-    2. Kavşak merkezi tıklanır
-    3. Otomatik olarak:
-       a) Etki yarıçapı içindeki çizgiler trimlenir
-       b) Kaldırım köşeleri seçilen chamfer/fillet yöntemiyle çözülür
-       c) Kavşak adası oluşturulur (yuvarlak/su damlası)
+    1. Collect solver parameters.
+    2. Click the junction center.
+    3. Trim platform components, solve curb corners, and create the selected
+       round or teardrop island as one rollback-safe operation.
     """
 
     sketcher_finished = pyqtSignal()
@@ -70,11 +64,11 @@ class JunctionSketcher(QgsMapTool):
         self._activation_cancelled = False
         self._step = 0
 
-        # Parametre dialog'u
+        # Collect junction parameters.
         dlg = JunctionDialog(self.iface.mainWindow())
         if dlg.exec() != QDialog.DialogCode.Accepted:
             self._activation_cancelled = True
-            self.sketcher_message.emit("🔵 Kavşak — İptal edildi")
+            self.sketcher_message.emit("🔵 Junction — Cancelled")
             self.sketcher_finished.emit()
             return
 
@@ -84,14 +78,14 @@ class JunctionSketcher(QgsMapTool):
         )
         self._step = 1
         mode_label = (
-            f"Kırma={self.params['chamfer_dist']}m"
+            f"Chamfer={self.params['chamfer_dist']} m"
             if self.params.get("corner_mode", "chamfer") == "chamfer"
             else f"Fillet R={self.params['fillet_radius']}m"
         )
         self.sketcher_message.emit(
-            f"🔵 Kavşak (R={self.params['radius']}m, "
+            f"🔵 Junction (R={self.params['radius']} m, "
             f"{mode_label}) — "
-            f"Kavşak merkezini tıklayın"
+            "Click the junction center"
         )
 
     def deactivate(self):
@@ -142,11 +136,11 @@ class JunctionSketcher(QgsMapTool):
         if event.key() == Qt.Key.Key_Escape:
             cleanup_sketcher_rubberband(self.canvas, self.preview_rb)
             self.preview_rb = None
-            self.sketcher_message.emit("🔵 Kavşak — İptal edildi")
+            self.sketcher_message.emit("🔵 Junction — Cancelled")
             self.sketcher_finished.emit()
 
     # ════════════════════════════════════════════════════════════════════════
-    # Kavşak Oluşturma
+    # Junction creation
     # ════════════════════════════════════════════════════════════════════════
 
     def _create_junction(self, center):
@@ -157,21 +151,21 @@ class JunctionSketcher(QgsMapTool):
         except Exception as error:
             self._rollback_open_junction_edits()
             message = (
-                "⚠️ Kavşak — Beklenmeyen geometri/provider hatası; "
-                f"işlem geri alındı ({type(error).__name__})"
+                "⚠️ Junction — Unexpected geometry/provider error; "
+                f"operation rolled back ({type(error).__name__})"
             )
             self.sketcher_message.emit(message)
             self.iface.messageBar().pushWarning("planX CAD", message)
             return None
 
     def _create_junction_impl(self, center):
-        """Ana kavşak oluşturma işlemi."""
+        """Execute the main junction operation."""
         p = self.params
         radius = p["radius"]
         chamfer_dist = p["chamfer_dist"]
         fillet_radius = p["fillet_radius"]
-        ada_tipi = p["ada_tipi"]
-        ada_radius = p["ada_radius"]
+        island_type = p["island_type"]
+        island_radius = p["island_radius"]
 
         canvas_crs = self.canvas.mapSettings().destinationCrs()
         metric_crs = local_metric_crs(center, canvas_crs)
@@ -180,18 +174,22 @@ class JunctionSketcher(QgsMapTool):
         junction_buffer = center_geom.buffer(radius, 48)
         outer_buffer = center_geom.buffer(radius + 1.0, 48)
 
-        # ── Katmanları hazırla ───────────────────────────────────────────
-        kavsak_line_layer = get_road_platform_layer()
-        kavsak_ada_layer = None
+        # Prepare output layers.
+        road_layer = get_road_platform_layer()
+        island_layer = None
 
-        if not kavsak_line_layer:
-            self.sketcher_message.emit("⚠️ Kavşak — Yol katmanı oluşturulamadı")
+        if not road_layer:
+            self.sketcher_message.emit(
+                "⚠️ Junction — Road-platform layer could not be created"
+            )
             return
 
-        kavsak_id = self._next_id(kavsak_line_layer, "yol_id")
+        junction_id = self._next_id(
+            road_layer, road_field_name(road_layer, "road_id")
+        )
 
-        # ── 1. Yolları analiz et ve tek atomik edit komutunu başlat ─────
-        layer = kavsak_line_layer
+        # Analyze roads before opening the single atomic edit command.
+        layer = road_layer
         features_hit = []
         layer_search_geometry = transform_geometry(
             junction_buffer, metric_crs, layer.crs()
@@ -207,27 +205,27 @@ class JunctionSketcher(QgsMapTool):
         feature_records = []
         curb_records = []
         curb_edges = []
-        refuj_edges = []
+        median_edges = []
 
         for feat in features_hit:
             geom = transform_geometry(feat.geometry(), layer.crs(), metric_crs)
-            component = self._feature_attribute(layer, feat, "bilesen")
-            road_id = self._feature_attribute(layer, feat, "yol_id")
+            component = road_attribute(layer, feat, "component")
+            road_id = road_attribute(layer, feat, "road_id")
             feature_records.append((feat, geom, component, road_id))
 
-            if component == "kaldirim":
+            if component == "sidewalk":
                 edges = self._extract_half_edges(
                     geom, junction_buffer, center, feat.id(), road_id,
-                    component="kaldirim",
+                    component="sidewalk",
                 )
                 curb_edges.extend(edges)
                 curb_records.append((feat, geom, edges))
                 continue
 
-            if component == "refuj":
-                refuj_edges.extend(self._extract_half_edges(
+            if component == "median":
+                median_edges.extend(self._extract_half_edges(
                     geom, junction_buffer, center, feat.id(), road_id,
-                    component="refuj",
+                    component="median",
                 ))
 
         # Solve and validate every requested corner before opening an edit
@@ -251,28 +249,27 @@ class JunctionSketcher(QgsMapTool):
 
         if not corner_solutions:
             message = (
-                "⚠️ Kavşak — En az iki tam yol kolu ve güvenli bir köşe "
-                "çözümü bulunamadı; hiçbir geometri değiştirilmedi"
+                "⚠️ Junction — No safe corner solution with at least two "
+                "complete road approaches; no geometry was changed"
             )
             self.sketcher_message.emit(message)
             self.iface.messageBar().pushWarning("planX CAD", message)
             return
 
-        if ada_tipi != "yok":
-            kavsak_ada_layer = self._get_kavsak_ada_layer()
-            if not kavsak_ada_layer:
-                message = "⚠️ Kavşak — Ada katmanı oluşturulamadı"
+        if island_type != "none":
+            island_layer = self._get_junction_island_layer()
+            if not island_layer:
+                message = "⚠️ Junction — Island layer could not be created"
                 self.sketcher_message.emit(message)
                 self.iface.messageBar().pushWarning("planX CAD", message)
                 return
 
-        if ada_tipi != "yok" and (
-            layer.isEditable() or kavsak_ada_layer.isEditable()
+        if island_type != "none" and (
+            layer.isEditable() or island_layer.isEditable()
         ):
             message = (
-                "⚠️ Kavşak — Ada ile yol değişikliklerini birlikte kaydetmek "
-                "için açık yol/ada düzenlemelerini önce kaydedin veya geri alın; "
-                "hiçbir geometri değiştirilmedi"
+                "⚠️ Junction — Save or roll back open road/island edits before "
+                "creating a combined result; no geometry was changed"
             )
             self.sketcher_message.emit(message)
             self.iface.messageBar().pushWarning("planX CAD", message)
@@ -280,9 +277,11 @@ class JunctionSketcher(QgsMapTool):
 
         layer_was_editing = layer.isEditable()
         if not layer_was_editing and not layer.startEditing():
-            self.sketcher_message.emit("⚠️ Kavşak — Yol katmanı düzenlenemedi")
+            self.sketcher_message.emit(
+                "⚠️ Junction — Road-platform layer is not editable"
+            )
             return
-        layer.beginEditCommand("Kavşak köşe çözümü")
+        layer.beginEditCommand("Resolve junction corners")
         output_was_editing = layer_was_editing
         self._junction_edit_state["road"] = {
             "layer": layer,
@@ -291,9 +290,9 @@ class JunctionSketcher(QgsMapTool):
         }
         trimmed_count = 0
 
-        # ── 2. Doğrulanmış çözümü tek edit komutunda uygula ─────────────
+        # Apply the validated solution inside the single edit command.
         for feat, geom, component, _road_id in feature_records:
-            if component == "kaldirim":
+            if component == "sidewalk":
                 continue
             parts = self._annular_trim_parts(
                 geom, junction_buffer, outer_buffer
@@ -303,13 +302,13 @@ class JunctionSketcher(QgsMapTool):
             ):
                 self._abort_edit_command(
                     layer, layer_was_editing,
-                    "⚠️ Kavşak — Yol geometrisi güncellenemedi; işlem geri alındı",
+                    "⚠️ Junction — Road geometry update failed; operation rolled back",
                 )
                 return
             trimmed_count += 1
 
-        # Kaldırımlar dairesel tampon yerine gerçek çözüm teğet noktalarında
-        # kesilir. Çözülemeyen kollar güvenli biçimde etki sınırında kalır.
+        # Trim curbs at true tangent points rather than a circular buffer.
+        # Unsolved approaches remain safely at the impact boundary.
         for feat, geom, edges in curb_records:
             parts = self._trim_curb_parts(
                 geom, edges, edge_cut_points, junction_buffer
@@ -319,29 +318,32 @@ class JunctionSketcher(QgsMapTool):
             ):
                 self._abort_edit_command(
                     layer, layer_was_editing,
-                    "⚠️ Kavşak — Kaldırım kesimi uygulanamadı; işlem geri alındı",
+                    "⚠️ Junction — Curb trim failed; operation rolled back",
                 )
                 return
             trimmed_count += 1
 
         connection_component = (
-            "dis_kirma" if corner_mode == "chamfer" else "ic_baglanti"
+            "junction_chamfer"
+            if corner_mode == "chamfer" else "junction_fillet"
         )
         for solution in corner_solutions:
-            feat = QgsFeature(kavsak_line_layer.fields())
+            feat = QgsFeature(road_layer.fields())
             feat.setGeometry(_geometry_for_layer(
-                kavsak_line_layer,
+                road_layer,
                 transform_geometry(
-                    solution.connection, metric_crs, kavsak_line_layer.crs()
+                    solution.connection, metric_crs, road_layer.crs()
                 ),
             ))
-            feat.setAttribute("yol_id", kavsak_id)
-            feat.setAttribute("yol_tipi", "kavsak")
-            feat.setAttribute("bilesen", connection_component)
-            if not kavsak_line_layer.addFeature(feat):
+            set_road_attribute(feat, road_layer, "road_id", junction_id)
+            set_road_attribute(feat, road_layer, "road_type", "junction")
+            set_road_attribute(
+                feat, road_layer, "component", connection_component
+            )
+            if not road_layer.addFeature(feat):
                 self._abort_edit_command(
-                    kavsak_line_layer, output_was_editing,
-                    "⚠️ Kavşak — Köşe bağlantısı eklenemedi; işlem geri alındı",
+                    road_layer, output_was_editing,
+                    "⚠️ Junction — Corner connection failed; operation rolled back",
                 )
                 return
 
@@ -349,108 +351,118 @@ class JunctionSketcher(QgsMapTool):
         # provider failure rolls back trims and connections together.
         layer.triggerRepaint()
 
-        # ── 3.5 Refüj Kapatma Yayları (Yuvarlak kavşaklar için) ─────────
-        if ada_tipi != "yok" and refuj_edges:
-            refuj_caps = self._create_refuj_caps(center, refuj_edges)
-            for cap_line in refuj_caps:
-                feat = QgsFeature(kavsak_line_layer.fields())
+        # Close each directional median arm when an island is requested.
+        if island_type != "none" and median_edges:
+            median_caps = self._create_median_caps(center, median_edges)
+            for cap_line in median_caps:
+                feat = QgsFeature(road_layer.fields())
                 feat.setGeometry(_geometry_for_layer(
-                    kavsak_line_layer,
-                    transform_geometry(cap_line, metric_crs, kavsak_line_layer.crs()),
+                    road_layer,
+                    transform_geometry(cap_line, metric_crs, road_layer.crs()),
                 ))
-                feat.setAttribute("yol_id", kavsak_id)
-                feat.setAttribute("yol_tipi", "kavsak")
-                feat.setAttribute("bilesen", "refuj_baglanti")
-                feat.setAttribute("gorunur", 1)  # Kapatma için görünür
-                if not kavsak_line_layer.addFeature(feat):
+                set_road_attribute(feat, road_layer, "road_id", junction_id)
+                set_road_attribute(feat, road_layer, "road_type", "junction")
+                set_road_attribute(
+                    feat, road_layer, "component", "median_connection"
+                )
+                set_road_attribute(feat, road_layer, "visible", 1)
+                if not road_layer.addFeature(feat):
                     self._abort_edit_command(
-                        kavsak_line_layer, output_was_editing,
-                        "⚠️ Kavşak — Refüj bağlantısı eklenemedi; işlem geri alındı",
+                        road_layer, output_was_editing,
+                        "⚠️ Junction — Median connection failed; operation rolled back",
                     )
                     return
 
-        # ── 4. Kavşak adası ──────────────────────────────────────────────
-        if ada_tipi != "yok":
-            island_was_editing = kavsak_ada_layer.isEditable()
+        # Create the traffic island.
+        if island_type != "none":
+            island_was_editing = island_layer.isEditable()
             existing_island_ids = {
-                feature.id() for feature in kavsak_ada_layer.getFeatures()
+                feature.id() for feature in island_layer.getFeatures()
             }
-            if not island_was_editing and not kavsak_ada_layer.startEditing():
+            if not island_was_editing and not island_layer.startEditing():
                 self._abort_edit_command(
-                    kavsak_line_layer, output_was_editing,
-                    "⚠️ Kavşak — Ada katmanı düzenlenemedi; yol işlemi geri alındı",
+                    road_layer, output_was_editing,
+                    "⚠️ Junction — Island layer is not editable; road operation rolled back",
                 )
                 return
-            kavsak_ada_layer.beginEditCommand("Kavşak adası oluştur")
+            island_layer.beginEditCommand("Create junction island")
             self._junction_edit_state["island"] = {
-                "layer": kavsak_ada_layer,
+                "layer": island_layer,
                 "was_editing": island_was_editing,
                 "command_open": True,
                 "committed": False,
-                "junction_id": kavsak_id,
+                "junction_id": junction_id,
                 "existing_feature_ids": existing_island_ids,
                 "created_feature_ids": set(),
             }
 
-            if ada_tipi == "yuvarlak":
-                ada_geom = center_geom.buffer(ada_radius, 48)
-            elif ada_tipi == "su_damlasi":
+            if island_type == "round":
+                island_geometry = center_geom.buffer(island_radius, 48)
+            elif island_type == "teardrop":
                 approaches = cluster_approaches(curb_edges)
                 direction = (
                     approaches[0].outward if approaches else (0.0, -1.0)
                 )
-                ada_geom = self._create_teardrop(
-                    center, ada_radius, p["teardrop_uzunluk"], direction
+                island_geometry = self._create_teardrop(
+                    center, island_radius, p["teardrop_length"], direction
                 )
             else:
-                ada_geom = None
+                island_geometry = None
 
-            if ada_geom and not ada_geom.isEmpty():
-                feat = QgsFeature(kavsak_ada_layer.fields())
+            if island_geometry and not island_geometry.isEmpty():
+                feat = QgsFeature(island_layer.fields())
                 feat.setGeometry(
-                    transform_geometry(ada_geom, metric_crs, kavsak_ada_layer.crs())
+                    transform_geometry(
+                        island_geometry, metric_crs, island_layer.crs()
+                    )
                 )
-                feat.setAttribute("kavsak_id", kavsak_id)
-                feat.setAttribute("ada_tipi", ada_tipi)
-                feat.setAttribute("ada_radius", ada_radius)
-                if not kavsak_ada_layer.addFeature(feat):
-                    kavsak_ada_layer.destroyEditCommand()
+                self._set_island_attribute(
+                    feat, island_layer, "junction_id", junction_id
+                )
+                self._set_island_attribute(
+                    feat, island_layer, "island_type", island_type
+                )
+                self._set_island_attribute(
+                    feat, island_layer, "island_radius", island_radius
+                )
+                if not island_layer.addFeature(feat):
+                    island_layer.destroyEditCommand()
                     if not island_was_editing:
-                        kavsak_ada_layer.rollBack()
+                        island_layer.rollBack()
                     self._abort_edit_command(
-                        kavsak_line_layer, output_was_editing,
-                        "⚠️ Kavşak — Ada eklenemedi; yol işlemi geri alındı",
+                        road_layer, output_was_editing,
+                        "⚠️ Junction — Island could not be added; road operation rolled back",
                     )
                     return
 
-            kavsak_ada_layer.endEditCommand()
+            island_layer.endEditCommand()
             self._junction_edit_state["island"]["command_open"] = False
-            if not island_was_editing and not kavsak_ada_layer.commitChanges():
-                kavsak_ada_layer.rollBack()
+            if not island_was_editing and not island_layer.commitChanges():
+                island_layer.rollBack()
                 self._abort_edit_command(
-                    kavsak_line_layer, output_was_editing,
-                    "⚠️ Kavşak — Ada kaydedilemedi; yol işlemi geri alındı",
+                    road_layer, output_was_editing,
+                    "⚠️ Junction — Island could not be saved; road operation rolled back",
                 )
                 return
             self._junction_edit_state["island"]["committed"] = True
             self._junction_edit_state["island"]["created_feature_ids"] = {
-                feature.id() for feature in kavsak_ada_layer.getFeatures()
+                feature.id() for feature in island_layer.getFeatures()
             } - existing_island_ids
-            kavsak_ada_layer.triggerRepaint()
+            island_layer.triggerRepaint()
 
         # Finalize road edits only after every requested output layer has
         # accepted its changes. This keeps trim + connections rollback-able
         # when island creation fails.
-        kavsak_line_layer.endEditCommand()
+        road_layer.endEditCommand()
         self._junction_edit_state["road"]["command_open"] = False
-        if not output_was_editing and not kavsak_line_layer.commitChanges():
-            kavsak_line_layer.rollBack()
+        if not output_was_editing and not road_layer.commitChanges():
+            road_layer.rollBack()
             compensated = self._compensate_committed_island()
-            message = "⚠️ Kavşak — Yol ve bağlantılar kaydedilemedi"
+            message = "⚠️ Junction — Roads and connections could not be saved"
             if not compensated:
                 message += (
-                    f"; kavsak_ada içindeki yeni ada (ID {kavsak_id}) "
-                    "otomatik temizlenemedi, manuel kontrol edin"
+                    f"; new island {junction_id} in {island_layer.name()} "
+                    "could not be removed automatically; inspect it manually"
                 )
                 self.iface.messageBar().pushWarning("planX CAD", message)
             self.sketcher_message.emit(message)
@@ -458,24 +470,24 @@ class JunctionSketcher(QgsMapTool):
             return
         self._junction_edit_state["road"] = None
         self._junction_edit_state["island"] = None
-        kavsak_line_layer.triggerRepaint()
+        road_layer.triggerRepaint()
 
-        # ── Sonuç ────────────────────────────────────────────────────────
-        corner_label = "kırma" if corner_mode == "chamfer" else "fillet"
+        # Result
+        corner_label = "chamfer" if corner_mode == "chamfer" else "fillet"
         msg = (
-            f"✅ Kavşak — {trimmed_count} çizgi trimlendi | "
-            f"{len(corner_solutions)} {corner_label} bağlantısı"
+            f"✅ Junction — {trimmed_count} lines trimmed | "
+            f"{len(corner_solutions)} {corner_label} connections"
         )
         skipped_corners = len(proposed_solutions) - len(corner_solutions)
         if skipped_corners:
-            msg += f" | {skipped_corners} yetersiz kol atlandı"
-        if ada_tipi != "yok":
-            msg += f" | Ada: {ada_tipi}"
+            msg += f" | {skipped_corners} incomplete approaches skipped"
+        if island_type != "none":
+            msg += f" | Island: {island_type}"
         self.sketcher_message.emit(msg)
 
         self.iface.messageBar().pushSuccess("planX CAD", msg)
 
-        # Temizle
+        # Reset the preview for the next activation.
         cleanup_sketcher_rubberband(self.canvas, self.preview_rb)
         self.preview_rb = create_preview_rubberband(
             self.canvas, QgsWkbTypes.PolygonGeometry
@@ -510,9 +522,9 @@ class JunctionSketcher(QgsMapTool):
                     if not self._compensate_committed_island():
                         self.iface.messageBar().pushWarning(
                             "planX CAD",
-                            "Kavşak yol işlemi geri alındı fakat yeni ada "
-                            "otomatik temizlenemedi; kavsak_ada katmanını "
-                            "manuel kontrol edin",
+                            "The junction road operation was rolled back, but "
+                            "the new island could not be removed automatically; "
+                            "inspect the island layer manually",
                         )
                 elif not state["was_editing"] and layer.isEditable():
                     layer.rollBack()
@@ -531,10 +543,11 @@ class JunctionSketcher(QgsMapTool):
         feature_ids = set(state.get("created_feature_ids", ()))
         # If the provider did not expose the inserted identity after commit,
         # fail safe and report compensation failure. Never delete by a shared
-        # kavsak_id because an older/manual island may legitimately use it.
+        # Never delete by a shared junction id because an older or manually
+        # created island may legitimately use it.
         if not feature_ids or not layer.startEditing():
             return False
-        layer.beginEditCommand("Başarısız kavşak adasını geri al")
+        layer.beginEditCommand("Remove island after junction failure")
         deleted = all(layer.deleteFeature(feature_id) for feature_id in feature_ids)
         if not deleted:
             layer.destroyEditCommand()
@@ -548,13 +561,8 @@ class JunctionSketcher(QgsMapTool):
         return True
 
     # ════════════════════════════════════════════════════════════════════════
-    # Geometri İşlemleri
+    # Geometry operations
     # ════════════════════════════════════════════════════════════════════════
-
-    @staticmethod
-    def _feature_attribute(layer, feature, field_name):
-        index = layer.fields().indexOf(field_name)
-        return feature.attribute(index) if index >= 0 else None
 
     @staticmethod
     def _line_parts(geometry):
@@ -610,7 +618,7 @@ class JunctionSketcher(QgsMapTool):
 
     def _extract_half_edges(
         self, geometry, junction_buffer, center, source_id, road_id,
-        component="kaldirim",
+        component="sidewalk",
     ):
         """Build one outward half-edge for each curb/buffer crossing."""
         buffer_boundary = junction_buffer.convertToType(
@@ -769,7 +777,7 @@ class JunctionSketcher(QgsMapTool):
                         output_parts.append(part)
         return output_parts
 
-    def _create_refuj_caps(self, center, half_edges):
+    def _create_median_caps(self, center, half_edges):
         """Close each directional median arm locally, never across the junction."""
         caps = []
         for approach in cluster_approaches(half_edges):
@@ -807,21 +815,85 @@ class JunctionSketcher(QgsMapTool):
         return QgsGeometry.fromPolygonXY([pts])
 
     # ════════════════════════════════════════════════════════════════════════
-    # Katman Yönetimi
+    # Layer management
     # ════════════════════════════════════════════════════════════════════════
 
 
-    def _get_kavsak_ada_layer(self):
-        """kavsak_ada (Polygon) katmanını bul veya oluştur."""
-        return get_or_create_layer(
-            "kavsak_ada",
-            geom_type="Polygon",
-            fields=[
-                ("kavsak_id", "int"),
-                ("ada_tipi", "string"),     # yuvarlak / su_damlasi
-                ("ada_radius", "double"),
-            ]
+    @staticmethod
+    def _island_field_name(layer, canonical_name):
+        """Resolve a canonical island field on English or legacy schemas."""
+        aliases = {
+            "junction_id": "kavsak_id",
+            "island_type": "ada_tipi",
+            "island_radius": "ada_radius",
+        }
+        if layer.fields().indexOf(canonical_name) >= 0:
+            return canonical_name
+        legacy_name = aliases.get(canonical_name)
+        if legacy_name and layer.fields().indexOf(legacy_name) >= 0:
+            return legacy_name
+        return canonical_name
+
+    @classmethod
+    def _set_island_attribute(cls, feature, layer, canonical_name, value):
+        """Set an island value while preserving a reused legacy schema."""
+        field_name = cls._island_field_name(layer, canonical_name)
+        if field_name != canonical_name and canonical_name == "island_type":
+            value = {
+                "none": "yok",
+                "round": "yuvarlak",
+                "teardrop": "su_damlasi",
+            }.get(value, value)
+        index = layer.fields().indexOf(field_name)
+        if index >= 0:
+            feature.setAttribute(index, value)
+
+    def _get_junction_island_layer(self):
+        """Reuse a compatible legacy island layer or create an English one."""
+        project = QgsProject.instance()
+        crs = project.crs()
+        schemas = (
+            (
+                "planx_junction_islands",
+                ("junction_id", "island_type", "island_radius"),
+            ),
+            (
+                "kavsak_ada",
+                ("kavsak_id", "ada_tipi", "ada_radius"),
+            ),
         )
+        polygon_wkb = QgsWkbTypes.parseType("Polygon")
+        for layer_name, field_names in schemas:
+            for layer in project.mapLayersByName(layer_name):
+                if not isinstance(layer, QgsVectorLayer):
+                    continue
+                same_type = (
+                    QgsWkbTypes.flatType(layer.wkbType()) ==
+                    QgsWkbTypes.flatType(polygon_wkb)
+                )
+                # Island geometry is transformed at each read/write boundary;
+                # a later project-CRS change must not orphan this managed layer.
+                same_crs = layer.crs().isValid()
+                actual_fields = {field.name() for field in layer.fields()}
+                if same_type and same_crs and set(field_names).issubset(
+                    actual_fields
+                ):
+                    return layer
+
+        return get_or_create_layer(
+            "planx_junction_islands",
+            geom_type="Polygon",
+            crs=crs,
+            fields=[
+                ("junction_id", "int"),
+                ("island_type", "string"),
+                ("island_radius", "double"),
+            ],
+        )
+
+    def _get_kavsak_ada_layer(self):
+        """Backward-compatible private alias for pre-1.26 integrations."""
+        return self._get_junction_island_layer()
 
     def _make_circle(self, center, radius, segments=48):
         pts = []

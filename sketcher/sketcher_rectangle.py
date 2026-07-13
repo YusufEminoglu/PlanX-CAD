@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Dikdörtgen (Rectangle) Sketcher"""
+"""PlanX CAD rectangle sketcher."""
 
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry, QgsPointXY
@@ -8,10 +8,10 @@ from ..core.crs_utils import local_metric_crs, transform_point
 
 
 class sketcher_rectangle(sketcher_base):
-    """İki köşe noktasıyla dikdörtgen çizer."""
+    """Draw a rectangle from two opposite corners."""
 
     def tool_name(self):
-        return "Dikdörtgen"
+        return "Rectangle"
 
     def geom_type(self):
         return QgsWkbTypes.PolygonGeometry

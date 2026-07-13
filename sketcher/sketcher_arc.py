@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Ark (Arc) Sketcher"""
+"""PlanX CAD three-point arc sketcher."""
 
 import math
 from qgis.PyQt.QtCore import Qt
@@ -9,14 +9,14 @@ from ..core.crs_utils import local_metric_crs, transform_point
 
 
 class sketcher_arc(sketcher_base):
-    """3 nokta ile yay (ark) çizer.
-    1. tık: Başlangıç | 2. tık: Ara nokta | 3. tık: Bitiş
+    """Draw an arc through three points.
+    First click: start | Second click: intermediate point | Third click: end
     """
 
     ARC_SEGMENTS = 32
 
     def tool_name(self):
-        return "Ark"
+        return "Arc"
 
     def geom_type(self):
         return QgsWkbTypes.LineGeometry
@@ -26,11 +26,11 @@ class sketcher_arc(sketcher_base):
             self.add_vertex(point)
             if len(self.vertices) == 1:
                 self.sketcher_message.emit(
-                    "✏️ Ark — Ara noktayı tıklayın"
+                    "✏️ Arc — Click the intermediate point"
                 )
             elif len(self.vertices) == 2:
                 self.sketcher_message.emit(
-                    "✏️ Ark — Bitiş noktasını tıklayın"
+                    "✏️ Arc — Click the end point"
                 )
             elif len(self.vertices) == 3:
                 self._finish()
@@ -53,7 +53,7 @@ class sketcher_arc(sketcher_base):
         return None
 
     def _calc_arc(self, p1, p2, p3):
-        """3 noktadan yay hesapla (circumscribed circle yöntemi)."""
+        """Calculate the arc through three points using its circumcircle."""
         canvas_crs = self.canvas.mapSettings().destinationCrs()
         metric_crs = None
         if canvas_crs.isGeographic():
@@ -76,7 +76,7 @@ class sketcher_arc(sketcher_base):
 
         D = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by))
         if abs(D) < 1e-10:
-            # Doğrusal — düz çizgi
+            # Collinear input: retain the straight three-point path.
             return canvas_points([p1, p2, p3])
 
         ux = ((ax * ax + ay * ay) * (by - cy) +
@@ -89,12 +89,12 @@ class sketcher_arc(sketcher_base):
         center = QgsPointXY(ux, uy)
         radius = math.sqrt((ax - ux) ** 2 + (ay - uy) ** 2)
 
-        # Açıları hesapla
+        # Calculate the three radial angles.
         a1 = math.atan2(ay - uy, ax - ux)
         a2 = math.atan2(by - uy, bx - ux)
         a3 = math.atan2(cy - uy, cx - ux)
 
-        # Yönü belirle (saat yönü veya tersi)
+        # Determine whether the path runs clockwise or counter-clockwise.
         def normalize(a):
             while a < 0:
                 a += 2 * math.pi
@@ -106,7 +106,7 @@ class sketcher_arc(sketcher_base):
         a2 = normalize(a2)
         a3 = normalize(a3)
 
-        # a1'den a3'e giderken a2'yi geçecek yönü bul
+        # Choose the direction from a1 to a3 that passes through a2.
         ccw = self._is_ccw(a1, a2, a3)
 
         pts = []
@@ -130,7 +130,7 @@ class sketcher_arc(sketcher_base):
         return canvas_points(pts)
 
     def _is_ccw(self, a1, a2, a3):
-        """a1→a2→a3 sırasının CCW (counter-clockwise) olup olmadığını kontrol et."""
+        """Return whether the a1→a2→a3 sequence is counter-clockwise."""
         def normalize(a):
             return a % (2 * math.pi)
 

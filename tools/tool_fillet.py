@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""planX CAD — Fillet Aracı
-İki çizgi seçerek köşeyi yuvarlatan gelişmiş fillet.
-"""
+"""PlanX CAD Fillet tool for tangent rounding between two lines."""
 
 import math
 from qgis.PyQt.QtCore import Qt
@@ -14,11 +12,9 @@ from ..urban.crs_utils import local_metric_crs, transform_geometry
 
 
 class tool_fillet(tool_base):
-    """İki kesişen çizgi arasında fillet (yuvarlatma) yapar.
-    1. Fillet yarıçapı gir
-    2. Birinci çizgiyi seç
-    3. İkinci çizgiyi seç
-    → Kesişim noktasında yarıçaplı ark oluşturulur
+    """Create a tangent arc between two intersecting lines.
+
+    1. Enter radius | 2. Select first line | 3. Select second line
     """
 
     def __init__(self, canvas, iface):
@@ -36,34 +32,34 @@ class tool_fillet(tool_base):
         super().activate()
         self._activation_cancelled = False
         r, ok = QInputDialog.getDouble(
-            self.iface.mainWindow(), "Fillet", "Fillet yarıçapı (m):",
+            self.iface.mainWindow(), "Fillet", "Fillet radius (m):",
             self.radius, 0.01, 10000.0, 2
         )
         if ok:
             self.radius = r
         else:
             self._activation_cancelled = True
-            self.tool_message.emit("⌒ Fillet — İptal edildi")
+            self.tool_message.emit("⌒ Fillet — Cancelled")
             return
         self.first_layer = None
         self.first_feature = None
         self.tool_message.emit(
-            f"⌒ Fillet (R={self.radius}m) — Birinci çizgiyi seçin"
+            f"⌒ Fillet (R={self.radius} m) — Select the first line"
         )
 
     def on_entity_selected(self, layer, feature, point):
-        # Birinci çizgi seçildi
+        # The first line is selected.
         self.first_layer = layer
         self.first_feature = feature
         self.first_point = point
         self._step = 2
         self.tool_message.emit(
-            f"⌒ Fillet (R={self.radius}m) — İkinci çizgiyi seçin"
+            f"⌒ Fillet (R={self.radius} m) — Select the second line"
         )
 
     def on_click(self, point, button):
         if self._step == 2 and button == Qt.MouseButton.LeftButton:
-            # Birinci çizgi dışlanır — çizgi kendisiyle fillet edilemez
+            # Exclude the first line; a feature cannot fillet against itself.
             result = self._pick_feature(
                 self.canvas.mouseLastXY(),
                 exclude=(self.first_layer, self.first_feature),
@@ -72,17 +68,17 @@ class tool_fillet(tool_base):
                 layer, feature = result
                 self._do_fillet(layer, feature, point)
             else:
-                self.tool_message.emit("⚠️ Fillet — İkinci obje bulunamadı")
+                self.tool_message.emit("⚠️ Fillet — Second feature not found")
             self._cleanup_fillet()
 
     def _do_fillet(self, second_layer, second_feature, point):
-        """İki çizgi arasında fillet uygula (EasyFillet mimarisi)."""
+        """Apply a metric fillet between two line features."""
         metric_crs, fillet_result = self._metric_fillet_result(
             self.first_feature.geometry(), self.first_layer,
             second_feature.geometry(), second_layer,
         )
         if metric_crs is None or not fillet_result:
-            self.tool_message.emit("⚠️ Fillet — CRS dönüşümü başarısız")
+            self.tool_message.emit("⚠️ Fillet — CRS transformation failed")
             return
 
         arc_geom = fillet_result['arc']
@@ -111,7 +107,7 @@ class tool_fillet(tool_base):
             geom is None or geom.isEmpty()
             for geom in (new_geom1, new_geom2, arc_geom)
         ):
-            self.tool_message.emit("⚠️ Fillet — Geçerli sonuç geometrisi oluşmadı")
+            self.tool_message.emit("⚠️ Fillet — No valid result geometry was created")
             return
 
         new_geom1 = self._coerce_for_layer(new_geom1, self.first_layer)
@@ -138,14 +134,14 @@ class tool_fillet(tool_base):
             for layer in reversed(layers):
                 layer.destroyEditCommand()
             self.tool_message.emit(
-                "⚠️ Fillet — Katman yazma hatası; tüm değişiklikler geri alındı"
+                "⚠️ Fillet — Layer write failed; all changes were rolled back"
             )
             return
         for layer in layers:
             layer.endEditCommand()
             layer.triggerRepaint()
         self.tool_message.emit(
-            f"✅ Fillet (R={self.radius}m) — Başarıyla uygulandı"
+            f"✅ Fillet (R={self.radius} m) — Applied successfully"
         )
 
     def _metric_fillet_result(self, geom1, layer1, geom2, layer2):
@@ -172,13 +168,11 @@ class tool_fillet(tool_base):
         return geometry
 
     def on_move(self, point):
-        """Fare hareket ettikçe ikinci çizgiyi saptayıp on-the-fly preview (önizleme) oluştur."""
+        """Detect the second line under the cursor and update the preview."""
         if self._step != 2:
             return
 
-        # preview_rb, _reset/_cleanup sonrasında None olabilir; map tool olay
-        # işleyicileri istisnaları sessizce yutar, bu yüzden burada yeniden
-        # oluşturmazsak fillet çalışır ama önizleme hiç görünmez.
+        # Recreate the rubber band after a cleanup so previews remain visible.
         if self.preview_rb is None:
             self.preview_rb = create_preview_rubberband(self.canvas)
         self.preview_rb.reset(QgsWkbTypes.LineGeometry)
@@ -200,7 +194,7 @@ class tool_fillet(tool_base):
             fillet_result['arc'], metric_crs, self.first_layer.crs()
         )
         if arc_geom and not arc_geom.isEmpty():
-            # Belirgin turuncu, kalın kesik çizgi — ince mavi önizleme zor görünüyordu.
+            # Use a strong dashed accent so the preview remains visible.
             self.preview_rb.setColor(COLOR_ACCENT)
             self.preview_rb.setWidth(3)
             self.preview_rb.setLineStyle(Qt.PenStyle.DashLine)
