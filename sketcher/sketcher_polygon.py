@@ -6,6 +6,7 @@ from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry, QgsPointXY
 from qgis.PyQt.QtWidgets import QInputDialog
 from .sketcher_base import sketcher_base
+from ..core.crs_utils import local_metric_crs, transform_point
 
 
 class sketcher_polygon(sketcher_base):
@@ -70,6 +71,12 @@ class sketcher_polygon(sketcher_base):
 
     def _calc_polygon(self, center, edge_point):
         """Regular polygon noktalarını hesapla."""
+        canvas_crs = self.canvas.mapSettings().destinationCrs()
+        metric_crs = None
+        if canvas_crs.isGeographic():
+            metric_crs = local_metric_crs(center, canvas_crs)
+            center = transform_point(center, canvas_crs, metric_crs)
+            edge_point = transform_point(edge_point, canvas_crs, metric_crs)
         radius = math.sqrt(
             (edge_point.x() - center.x()) ** 2 +
             (edge_point.y() - center.y()) ** 2
@@ -83,7 +90,11 @@ class sketcher_polygon(sketcher_base):
             angle = start_angle + (2 * math.pi * i / self.sides)
             x = center.x() + radius * math.cos(angle)
             y = center.y() + radius * math.sin(angle)
-            pts.append(QgsPointXY(x, y))
+            point = QgsPointXY(x, y)
+            pts.append(
+                transform_point(point, metric_crs, canvas_crs)
+                if metric_crs else point
+            )
         return pts
 
     def _cancel(self):

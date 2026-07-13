@@ -200,6 +200,7 @@ class CADDockWidget(QDockWidget):
         self._last_activated_key = None
         self._activation_count = 0
         self._tool_usage_counts = {}
+        self._precision_input_handler = None
 
         self._setup_ui()
 
@@ -342,12 +343,15 @@ class CADDockWidget(QDockWidget):
         layout.addWidget(header)
 
         self.search_input = CommandLineEdit()
-        self.search_input.setPlaceholderText("Command / Komut: L, O, TR… (Enter)")
+        self.search_input.setPlaceholderText(
+            "Command or point: L | x,y | @dx,dy | @d<a"
+        )
         self.search_input.setClearButtonEnabled(True)
         self.search_input.setAccessibleName("Command line")
         self.search_input.setAccessibleDescription(
             "AutoCAD-style command line. Type a command or alias (L, O, TR, "
-            "F, CO, MI...) and press Enter to run it. Up/Down recalls history."
+            "F, CO, MI...) or enter x,y, @dx,dy, @distance<angle, or direct "
+            "distance for the active drawing tool. Up/Down recalls history."
         )
         self.search_input.setStyleSheet(
             "QLineEdit { border: 1px solid #d8e0ea; border-radius: 4px; padding: 4px 6px; "
@@ -903,6 +907,17 @@ class CADDockWidget(QDockWidget):
             self.tool_activated.emit("__repeat__")
             return
         self.search_input.add_history(raw)
+        if self._precision_input_handler is not None:
+            try:
+                if self._precision_input_handler(raw):
+                    self.search_input.clear()
+                    return
+            except Exception as error:
+                self.search_input.clear()
+                self.set_status(
+                    f"Precision input failed: {error} / Hassas giriş başarısız"
+                )
+                return
         key = self._resolve_command(raw)
         self.search_input.clear()
         if key:
@@ -914,6 +929,10 @@ class CADDockWidget(QDockWidget):
     def _activate_first_match(self):
         """Backward-compatible alias for the command-line Enter handler."""
         self._run_command()
+
+    def set_precision_input_handler(self, handler):
+        """Set the synchronous active-tool precision input dispatcher."""
+        self._precision_input_handler = handler if callable(handler) else None
 
     def uncheck_all(self):
         checked = self.button_group.checkedButton()

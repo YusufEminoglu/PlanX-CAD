@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 """planX CAD — Ölçekle (Scale) Aracı"""
 
+import math
+
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsGeometry, QgsPointXY
 from .tool_base import tool_base
 from ..core.sketcher_utils import scale_geometry, point_distance
+from ..core.precision_input import PrecisionInputError, looks_like_precision_input
 
 
 class tool_scale(tool_base):
@@ -42,19 +45,7 @@ class tool_scale(tool_base):
             elif self._step == 3:
                 target_distance = point_distance(self.center, point)
                 factor = target_distance / self.ref_distance
-
-                geom = self.selected_feature.geometry()
-                scaled = scale_geometry(geom, self.center, factor)
-
-                if scaled:
-                    self._apply_edit(self.selected_layer,
-                                     self.selected_feature, scaled)
-                else:
-                    self.tool_message.emit("⚠️ Ölçekleme yapılamadı")
-
-                self.center = None
-                self.ref_distance = None
-                self._reset()
+                self._apply_factor(factor)
 
     def on_move(self, point):
         if self._step == 3 and self.preview_rb and self.selected_feature:
@@ -66,3 +57,49 @@ class tool_scale(tool_base):
                 if preview:
                     self.preview_rb.reset(geom.type())
                     self.preview_rb.setToGeometry(preview, self.selected_layer)
+
+    def _apply_factor(self, factor):
+        geom = self.selected_feature.geometry()
+        scaled = scale_geometry(geom, self.center, factor)
+        if scaled:
+            applied = self._apply_edit(
+                self.selected_layer, self.selected_feature, scaled
+            )
+            if applied:
+                self.tool_message.emit(f"✅ Ölçekle — Faktör {factor:.6g}")
+        else:
+            self.tool_message.emit("⚠️ Ölçekleme yapılamadı")
+        self.center = None
+        self.ref_distance = None
+        self._reset()
+
+    def handle_precision_input(self, text):
+        if not looks_like_precision_input(text):
+            return False
+        if self._step not in (2, 3) or self.center is None:
+            self.tool_message.emit(
+                "⚠️ Ölçekle — Hassas değer girmeden önce bir obje seçin"
+            )
+            return True
+        token = (text or "").strip()
+        if "," not in token and "@" not in token and "<" not in token:
+            try:
+                factor = float(token)
+                if not math.isfinite(factor) or factor <= 0.0:
+                    raise ValueError
+            except ValueError:
+                self.tool_message.emit(
+                    "⚠️ Ölçekle — Sıfırdan büyük bir faktör girin"
+                )
+                return True
+            self._apply_factor(factor)
+            return True
+        try:
+            point = self.resolve_precision_target(
+                token, self.center, self.selected_layer
+            )
+        except PrecisionInputError as error:
+            self.tool_message.emit(f"⚠️ Ölçekle — {error}")
+            return True
+        self.on_click(point, Qt.MouseButton.LeftButton)
+        return True

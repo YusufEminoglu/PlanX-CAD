@@ -5,6 +5,7 @@ from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry, QgsPointXY
 from .tool_base import tool_base
 from ..core.sketcher_feedback import create_preview_rubberband
+from ..core.precision_input import PrecisionInputError, looks_like_precision_input
 
 
 class tool_move(tool_base):
@@ -46,3 +47,21 @@ class tool_move(tool_base):
 
             self.preview_rb.reset(self.selected_feature.geometry().type())
             self.preview_rb.setToGeometry(preview, self.selected_layer)
+
+    def handle_precision_input(self, text):
+        if not looks_like_precision_input(text):
+            return False
+        if self._step != 2 or self.base_point is None:
+            self.tool_message.emit(
+                "⚠️ Taşı — Hassas hedef girmeden önce bir obje seçin"
+            )
+            return True
+        try:
+            target = self.resolve_precision_target(
+                text, self.base_point, self.selected_layer
+            )
+        except PrecisionInputError as error:
+            self.tool_message.emit(f"⚠️ Taşı — {error}")
+            return True
+        self.on_click(target, Qt.MouseButton.LeftButton)
+        return True

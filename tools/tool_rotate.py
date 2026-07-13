@@ -9,6 +9,7 @@ from qgis.PyQt.QtWidgets import QApplication
 from qgis.core import QgsGeometry, QgsPointXY
 from .tool_base import tool_base
 from ..core.sketcher_utils import rotate_geometry, angle_between_points
+from ..core.precision_input import PrecisionInputError, looks_like_precision_input
 
 
 class tool_rotate(tool_base):
@@ -43,21 +44,7 @@ class tool_rotate(tool_base):
                 )
             elif self._step == 3:
                 rotation = self._calc_rotation(point)
-
-                geom = self.selected_feature.geometry()
-                rotated = rotate_geometry(geom, self.center, -rotation)
-
-                applied = self._apply_edit(
-                    self.selected_layer, self.selected_feature, rotated
-                )
-                if applied:
-                    angle_deg = abs(rotation)
-                    self.tool_message.emit(
-                        f"✅ Döndür — {angle_deg:.1f}° döndürüldü"
-                    )
-                self.center = None
-                self.ref_angle = None
-                self._reset()
+                self._apply_rotation(rotation)
 
     def on_move(self, point):
         if self._step == 3 and self.preview_rb and self.selected_feature:
@@ -88,3 +75,46 @@ class tool_rotate(tool_base):
             rotation = round(rotation / 90.0) * 90.0
 
         return rotation
+
+    def _apply_rotation(self, rotation):
+        geom = self.selected_feature.geometry()
+        rotated = rotate_geometry(geom, self.center, -rotation)
+        applied = self._apply_edit(
+            self.selected_layer, self.selected_feature, rotated
+        )
+        if applied:
+            self.tool_message.emit(
+                f"✅ Döndür — {rotation:.1f}° döndürüldü"
+            )
+        self.center = None
+        self.ref_angle = None
+        self._reset()
+
+    def handle_precision_input(self, text):
+        if not looks_like_precision_input(text):
+            return False
+        if self._step not in (2, 3) or self.center is None:
+            self.tool_message.emit(
+                "⚠️ Döndür — Hassas açı girmeden önce bir obje seçin"
+            )
+            return True
+        token = (text or "").strip()
+        if "," not in token and "@" not in token and "<" not in token:
+            try:
+                angle = float(token)
+                if not math.isfinite(angle):
+                    raise ValueError
+            except ValueError:
+                self.tool_message.emit("⚠️ Döndür — Geçerli bir derece girin")
+                return True
+            self._apply_rotation(angle)
+            return True
+        try:
+            point = self.resolve_precision_target(
+                token, self.center, self.selected_layer
+            )
+        except PrecisionInputError as error:
+            self.tool_message.emit(f"⚠️ Döndür — {error}")
+            return True
+        self.on_click(point, Qt.MouseButton.LeftButton)
+        return True

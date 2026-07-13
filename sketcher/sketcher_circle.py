@@ -5,6 +5,7 @@ import math
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry, QgsPointXY
 from .sketcher_base import sketcher_base
+from ..core.crs_utils import local_metric_crs, transform_geometry, transform_point
 
 
 class sketcher_circle(sketcher_base):
@@ -46,6 +47,23 @@ class sketcher_circle(sketcher_base):
     def build_geometry(self):
         if self.center and len(self.vertices) >= 2:
             radius_pt = self.vertices[1]
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if canvas_crs.isGeographic():
+                metric_crs = local_metric_crs(self.center, canvas_crs)
+                metric_center = transform_point(
+                    self.center, canvas_crs, metric_crs
+                )
+                metric_radius = transform_point(
+                    radius_pt, canvas_crs, metric_crs
+                )
+                radius = math.hypot(
+                    metric_radius.x() - metric_center.x(),
+                    metric_radius.y() - metric_center.y(),
+                )
+                circle = QgsGeometry.fromPointXY(metric_center).buffer(
+                    radius, self.SEGMENTS
+                )
+                return transform_geometry(circle, metric_crs, canvas_crs)
             radius = math.sqrt(
                 (radius_pt.x() - self.center.x()) ** 2 +
                 (radius_pt.y() - self.center.y()) ** 2
@@ -57,6 +75,12 @@ class sketcher_circle(sketcher_base):
 
     def _calc_circle(self, center, edge_point):
         """Daire noktalarını hesapla (önizleme için)."""
+        canvas_crs = self.canvas.mapSettings().destinationCrs()
+        metric_crs = None
+        if canvas_crs.isGeographic():
+            metric_crs = local_metric_crs(center, canvas_crs)
+            center = transform_point(center, canvas_crs, metric_crs)
+            edge_point = transform_point(edge_point, canvas_crs, metric_crs)
         radius = math.sqrt(
             (edge_point.x() - center.x()) ** 2 +
             (edge_point.y() - center.y()) ** 2
@@ -66,7 +90,11 @@ class sketcher_circle(sketcher_base):
             angle = 2 * math.pi * i / self.SEGMENTS
             x = center.x() + radius * math.cos(angle)
             y = center.y() + radius * math.sin(angle)
-            pts.append(QgsPointXY(x, y))
+            point = QgsPointXY(x, y)
+            pts.append(
+                transform_point(point, metric_crs, canvas_crs)
+                if metric_crs else point
+            )
         return pts
 
     def _cancel(self):

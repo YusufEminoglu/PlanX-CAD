@@ -18,6 +18,12 @@ from ..core.sketcher_feedback import (
     create_sketcher_rubberband, create_preview_rubberband,
     cleanup_sketcher_rubberband, COLOR_ACCENT
 )
+from ..core.precision_input import (
+    PrecisionInputError,
+    looks_like_precision_input,
+    parse_precision_input,
+    resolve_precision_point,
+)
 
 
 class tool_base(QgsMapTool):
@@ -32,6 +38,7 @@ class tool_base(QgsMapTool):
 
     tool_finished = pyqtSignal()
     tool_message = pyqtSignal(str)
+    precision_key_started = pyqtSignal(str)
 
     # Feature seçim toleransı (piksel)
     PICK_TOLERANCE = 10
@@ -46,6 +53,7 @@ class tool_base(QgsMapTool):
         self.preview_rb = None
         self._step = 0  # Araç adımı
         self.require_editable = True  # Varsayılan olarak düzenlenebilir katmanlarda ara
+        self._last_cursor_canvas_point = None
 
         # Görsel geri bildirimler (Snap Marker ve Obje Vurgusu)
         self.snap_marker = QgsVertexMarker(self.canvas)
@@ -99,6 +107,7 @@ class tool_base(QgsMapTool):
     def activate(self):
         super().activate()
         self._step = 0
+        self._last_cursor_canvas_point = None
         self.preview_rb = create_preview_rubberband(self.canvas)
 
         if getattr(self, 'snap_marker', None) is None:
@@ -141,6 +150,7 @@ class tool_base(QgsMapTool):
         self.selected_feature = None
         self.selected_point = None
         self._step = 0
+        self._last_cursor_canvas_point = None
 
     def to_layer_coordinates(self, point, layer=None):
         """Transform a QgsPointXY from Canvas CRS to Layer CRS."""
@@ -238,13 +248,35 @@ class tool_base(QgsMapTool):
             if self.snap_marker:
                 self.snap_marker.hide()
 
+        self._last_cursor_canvas_point = QgsPointXY(point)
         # Obje üzerine gelince vurgulama (Opsiyonel hover efekti eklenebilir)
         # Şimdilik sadece on_move tetikliyoruz.
         layer_point = self.to_layer_coordinates(point)
         self.on_move(layer_point)
 
+    def resolve_precision_target(self, text, base_point, layer=None):
+        """Resolve precision input from a layer base point back to that layer."""
+        if not looks_like_precision_input(text):
+            return None
+        layer = layer or self.selected_layer
+        if layer is None:
+            raise PrecisionInputError("Select a source feature first")
+        parsed = parse_precision_input(text)
+        base_canvas = self.to_canvas_coordinates(base_point, layer)
+        target_canvas = resolve_precision_point(
+            parsed,
+            base_canvas,
+            self._last_cursor_canvas_point,
+            self.canvas.mapSettings().destinationCrs(),
+        )
+        return self.to_layer_coordinates(target_canvas, layer)
+
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key.Key_Escape:
+        text = event.text()
+        if text and text[0] in "@+-.0123456789":
+            self.precision_key_started.emit(text)
+            event.accept()
+        elif event.key() == Qt.Key.Key_Escape:
             self._reset()
 
     # ── Yardımcı ─────────────────────────────────────────────────────────

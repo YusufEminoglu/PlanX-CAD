@@ -260,6 +260,7 @@ class PlanXCADPlugin:
                 dock.setObjectName("PlanXCADDock")
                 dock.visibilityChanged.connect(self._on_dock_visibility)
                 dock.tool_activated.connect(self._activate_tool)
+                dock.set_precision_input_handler(self._handle_precision_input)
                 dock.cancel_requested.connect(self._cancel_active_tool)
                 dock.edit_toggle_requested.connect(self._toggle_active_layer_editing)
                 dock.quick_start_requested.connect(self._show_quick_start)
@@ -514,6 +515,18 @@ class PlanXCADPlugin:
             self._toggle_dock()
         if self._dock and hasattr(self._dock, "focus_search"):
             self._dock.focus_search()
+
+    def _begin_precision_entry(self, seed):
+        """Move direct canvas typing into the CAD command line."""
+        if self._dock is None:
+            self._toggle_dock()
+        elif not self._dock.isVisible():
+            self._dock.show()
+            self._dock.raise_()
+        if self._dock and hasattr(self._dock, "search_input"):
+            self._dock.search_input.setText(seed)
+            self._dock.search_input.setFocus()
+            self._dock.search_input.setCursorPosition(len(seed))
 
     def _cancel_active_tool(self):
         canvas = self.iface.mapCanvas()
@@ -997,6 +1010,20 @@ class PlanXCADPlugin:
     def _relay_tool_message(self, message):
         self._set_status(message)
 
+    def _handle_precision_input(self, text):
+        """Route numeric command-line input only to the active map tool."""
+        tool = self._current_tool
+        handler = getattr(tool, "handle_precision_input", None)
+        if tool is None or not callable(handler):
+            return False
+        try:
+            return bool(handler(text))
+        except Exception as error:
+            self._set_status(
+                f"Precision input failed / Hassas giriş başarısız: {error}"
+            )
+            return True
+
     def _on_tool_finished(self):
         # Do not overwrite the tool's useful success/cancel message with a
         # generic "Ready" immediately after completion.
@@ -1194,6 +1221,8 @@ class PlanXCADPlugin:
                 t.sketcher_finished.connect(self._on_tool_finished)
             if hasattr(t, 'tool_finished'):
                 t.tool_finished.connect(self._on_tool_finished)
+            if hasattr(t, 'precision_key_started'):
+                t.precision_key_started.connect(self._begin_precision_entry)
 
             return t
 

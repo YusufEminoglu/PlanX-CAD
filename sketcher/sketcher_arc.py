@@ -5,6 +5,7 @@ import math
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry, QgsPointXY
 from .sketcher_base import sketcher_base
+from ..core.crs_utils import local_metric_crs, transform_point
 
 
 class sketcher_arc(sketcher_base):
@@ -53,6 +54,22 @@ class sketcher_arc(sketcher_base):
 
     def _calc_arc(self, p1, p2, p3):
         """3 noktadan yay hesapla (circumscribed circle yöntemi)."""
+        canvas_crs = self.canvas.mapSettings().destinationCrs()
+        metric_crs = None
+        if canvas_crs.isGeographic():
+            metric_crs = local_metric_crs(p1, canvas_crs)
+            p1 = transform_point(p1, canvas_crs, metric_crs)
+            p2 = transform_point(p2, canvas_crs, metric_crs)
+            p3 = transform_point(p3, canvas_crs, metric_crs)
+
+        def canvas_points(points):
+            if metric_crs is None:
+                return points
+            return [
+                transform_point(point, metric_crs, canvas_crs)
+                for point in points
+            ]
+
         ax, ay = p1.x(), p1.y()
         bx, by = p2.x(), p2.y()
         cx, cy = p3.x(), p3.y()
@@ -60,7 +77,7 @@ class sketcher_arc(sketcher_base):
         D = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by))
         if abs(D) < 1e-10:
             # Doğrusal — düz çizgi
-            return [p1, p2, p3]
+            return canvas_points([p1, p2, p3])
 
         ux = ((ax * ax + ay * ay) * (by - cy) +
               (bx * bx + by * by) * (cy - ay) +
@@ -110,7 +127,7 @@ class sketcher_arc(sketcher_base):
                 y = uy + radius * math.sin(t)
                 pts.append(QgsPointXY(x, y))
 
-        return pts
+        return canvas_points(pts)
 
     def _is_ccw(self, a1, a2, a3):
         """a1→a2→a3 sırasının CCW (counter-clockwise) olup olmadığını kontrol et."""

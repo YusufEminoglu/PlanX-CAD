@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -27,6 +27,19 @@
       <li>Use Polyline for long chains to keep a single continuous feature.</li>
     </ul>
     <p class="tr">Komutu acin, snap acik olsun; ilk noktayi dikkatli secin, ikinci noktada snap ile temiz kapanis alin.</p>
+  </div>
+
+  <div class="card">
+    <strong>Precision Point Input</strong>
+    <ul>
+      <li><span class="k">x,y</span>: absolute point in the map canvas CRS.</li>
+      <li><span class="k">@dx,dy</span>: relative Cartesian offset in metres.</li>
+      <li><span class="k">@distance&lt;angle</span>: relative polar point in metres and degrees.</li>
+      <li><span class="k">distance</span>: distance in metres along the current cursor bearing.</li>
+      <li>Type a number, minus sign, or <span class="k">@</span> directly on the canvas, or focus the command line with <span class="k">Ctrl+Shift+S</span>.</li>
+    </ul>
+    <p>Point input works with Line, Polyline, Rectangle, Circle, Polygon, Arc, Move, and Copy. Rotate accepts signed degrees; Scale accepts a positive factor. Metric input remains metre-accurate in geographic projects.</p>
+    <p class="tr">Mutlak koordinatlarda harita CRS'si; goreli, polar ve dogrudan mesafede metre kullanilir. Cizim sirasinda sayi, eksi veya @ tusuna dogrudan basabilirsiniz.</p>
   </div>
 
   <h2 id="editing">2. Editing Commands</h2>

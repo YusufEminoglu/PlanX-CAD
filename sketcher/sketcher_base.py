@@ -15,6 +15,12 @@ from ..core.sketcher_feedback import (
     cleanup_sketcher_rubberband, COLOR_PRIMARY, COLOR_ACCENT
 )
 from ..core.sketcher_layer_utils import add_geometry_to_current_layer
+from ..core.precision_input import (
+    PrecisionInputError,
+    looks_like_precision_input,
+    parse_precision_input,
+    resolve_precision_point,
+)
 
 
 class sketcher_base(QgsMapTool):
@@ -30,6 +36,7 @@ class sketcher_base(QgsMapTool):
 
     sketcher_finished = pyqtSignal()
     sketcher_message = pyqtSignal(str)
+    precision_key_started = pyqtSignal(str)
 
     def __init__(self, canvas, iface):
         super().__init__(canvas)
@@ -39,6 +46,7 @@ class sketcher_base(QgsMapTool):
         self.rb = None
         self.preview_rb = None
         self._is_active = False
+        self._last_cursor_point = None
 
     # ── Override edilecek metodlar ────────────────────────────────────────
 
@@ -69,9 +77,13 @@ class sketcher_base(QgsMapTool):
         super().activate()
         self._is_active = True
         self.vertices = []
+        self._last_cursor_point = None
         self.rb = create_sketcher_rubberband(self.canvas, self.geom_type())
         self.preview_rb = create_preview_rubberband(self.canvas, self.geom_type())
-        self.sketcher_message.emit(f"✏️ {self.tool_name()} — Tıklayarak çizime başlayın")
+        self.sketcher_message.emit(
+            f"✏️ {self.tool_name()} — Tıklayın veya hassas giriş kullanın: "
+            "x,y | @dx,dy | @mesafe<açı"
+        )
 
     def deactivate(self):
         """Araç deaktifleştiğinde."""
@@ -86,6 +98,7 @@ class sketcher_base(QgsMapTool):
         self.rb = None
         self.preview_rb = None
         self.vertices = []
+        self._last_cursor_point = None
 
     # ── Olay İşleyiciler ─────────────────────────────────────────────────
 
@@ -112,11 +125,16 @@ class sketcher_base(QgsMapTool):
         if snapped is not None:
             point = snapped
 
+        self._last_cursor_point = QgsPointXY(point)
         self.on_move(point)
 
     def keyPressEvent(self, event):
         """Tuş basma olayı."""
-        if event.key() == Qt.Key.Key_Escape:
+        text = event.text()
+        if text and text[0] in "@+-.0123456789":
+            self.precision_key_started.emit(text)
+            event.accept()
+        elif event.key() == Qt.Key.Key_Escape:
             self._cancel()
         elif event.key() == Qt.Key.Key_Backspace or event.key() == Qt.Key.Key_Z:
             self._undo_last_vertex()
@@ -144,6 +162,28 @@ class sketcher_base(QgsMapTool):
             f"✏️ {self.tool_name()} — {len(self.vertices)} nokta | "
             f"Enter: Bitir | Esc: İptal | Backspace: Geri"
         )
+
+    def handle_precision_input(self, text):
+        """Consume numeric command-line input as the next sketch vertex."""
+        if not self._is_active or not looks_like_precision_input(text):
+            return False
+        try:
+            parsed = parse_precision_input(text)
+            base_point = self.vertices[-1] if self.vertices else None
+            point = resolve_precision_point(
+                parsed,
+                base_point,
+                self._last_cursor_point,
+                self.canvas.mapSettings().destinationCrs(),
+            )
+        except PrecisionInputError as error:
+            self.sketcher_message.emit(
+                f"⚠️ Hassas giriş / Precision input — {error}"
+            )
+            return True
+
+        self.on_click(point, Qt.MouseButton.LeftButton)
+        return True
 
     def _undo_last_vertex(self):
         """Son köşeyi geri al."""

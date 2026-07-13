@@ -115,8 +115,26 @@ def run_all() -> bool:
 
         line = QgsVectorLayer("LineString?crs=EPSG:3857", "target", "memory")
         project.addMapLayer(line)
+        iface.mapCanvas().setDestinationCrs(line.crs())
         iface.set_active_layer(line)
         checks.append(("drawing auto-starts editing", plugin._validate_tool_activation_context("line") and line.isEditable()))
+
+        plugin._activate_tool("line")
+        plugin._dock.search_input.setText("100,200")
+        plugin._dock._run_command()
+        plugin._dock.search_input.setText("@10,0")
+        plugin._dock._run_command()
+        checks.append((
+            "dock routes precision input to active drawing tool",
+            line.featureCount() == 1,
+        ))
+        plugin._current_tool.precision_key_started.emit("@")
+        app.processEvents()
+        checks.append((
+            "direct canvas typing seeds the command line",
+            plugin._dock.search_input.text() == "@",
+        ))
+        plugin._dock.search_input.clear()
 
         polygon = QgsVectorLayer("Polygon?crs=EPSG:3857", "wrong_target", "memory")
         project.addMapLayer(polygon)

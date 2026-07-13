@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.25.1] - 2026-07-13
+
+- AutoCAD-style precision input and geographic drafting accuracy
+
+### Added
+- Added AutoCAD-style precision input to the dock command line and direct canvas typing: absolute `x,y`, relative Cartesian `@dx,dy`, relative polar `@distance<angle`, and distance-along-cursor entry.
+- Enabled precision point entry across Line, Polyline, Rectangle, Circle, Polygon and Arc, plus coordinate input for Move/Copy, signed degree input for Rotate and direct factor input for Scale.
+
+### Changed
+- Interpreted relative, polar and direct-distance values consistently in metres, including geographic project CRSs; absolute coordinates remain in the map canvas CRS.
+- Made Circle, Rectangle, Polygon and Arc construction metric-safe in geographic projects, including polar caps, and consolidated shared CRS transformations in `core/crs_utils.py`.
+
+### Quality
+- Added parser, state-safety, projected/geographic/polar geometry, transform-tool, dock-routing and direct-key runtime coverage for QGIS 3.44 and QGIS 4.2.
+
 ## [1.25.0] - 2026-07-13
 
 - True junction corner solver and curve/ZM-safe transforms

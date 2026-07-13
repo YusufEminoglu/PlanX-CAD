@@ -97,9 +97,15 @@ Command:  L ⏎          → Line starts
 Command:  ⏎            → repeats the last command (AutoCAD muscle memory)
 Command:  ↑ / ↓        → recall command history
 Command:  fil…         → autocomplete popup suggests Fillet
+Command:  500000,4250000 → absolute point in the map canvas CRS
+Command:  @10,0        → 10 metres east of the previous/base point
+Command:  @25<45       → 25 metres at 45 degrees
+Command:  12.5         → 12.5 metres along the current cursor bearing
 ```
 
 Resolution precedence: **alias → exact tool key → fuzzy name match**. Unknown commands echo a clear message instead of failing silently. There is also a global **command palette** (`Ctrl+Alt+P`) with category filtering, Turkish aliases, and usage-based ordering.
+
+While a drawing or transform tool is active, type a number, `-`, or `@` directly on the canvas to move focus to the command line without breaking the current operation. Precision point entry is available for Line, Polyline, Rectangle, Circle, Polygon, Arc, Move, and Copy. Rotate accepts a signed angle in degrees; Scale accepts a positive factor. Relative, polar, and direct-distance values are always metres, even when the project uses a geographic CRS; absolute `x,y` values use the canvas CRS.
 
 ---
 
