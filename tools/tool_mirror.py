@@ -38,9 +38,11 @@ class tool_mirror(tool_base):
                 mirrored = mirror_geometry(geom, self.line_start, point)
 
                 if mirrored:
-                    self._add_feature(self.selected_layer, mirrored,
-                                      self.selected_feature)
-                    self.tool_message.emit("✅ Aynala — Ayna oluşturuldu")
+                    added = self._add_feature(
+                        self.selected_layer, mirrored, self.selected_feature
+                    )
+                    if added is not None:
+                        self.tool_message.emit("✅ Aynala — Ayna oluşturuldu")
                 else:
                     self.tool_message.emit("⚠️ Aynalama yapılamadı")
 

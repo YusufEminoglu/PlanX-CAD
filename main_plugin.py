@@ -6,9 +6,10 @@ planX CAD Araç Seti — Ana Plugin Sınıfı
 
 import os
 
-from qgis.PyQt.QtCore import Qt, QTimer, QSettings
-from qgis.PyQt.QtGui import QIcon, QKeySequence
+from qgis.PyQt.QtCore import Qt, QTimer, QSettings, QUrl
+from qgis.PyQt.QtGui import QDesktopServices, QIcon, QKeySequence
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolBar, QMessageBox, QShortcut
+from qgis.core import QgsProject, QgsVectorLayer, QgsWkbTypes
 
 
 class PlanXCADPlugin:
@@ -24,6 +25,10 @@ class PlanXCADPlugin:
         self.toolbar = None
         self._dock = None
         self._current_tool = None
+        self._current_tool_key = None
+        self._watched_layer = None
+        self._unloading = False
+        self._quick_start_timer = None
 
         # Araç instance'ları (lazy loaded)
         self._tools = {}
@@ -32,6 +37,8 @@ class PlanXCADPlugin:
         self._last_tool_key = None
         # QShortcuts owned by the plugin (cleaned up in unload)
         self._shortcuts = []
+        self._canvas_tool_signal_connected = False
+        self._layer_signal_connected = False
 
     # ═══════════════════════════════════════════════════════════════════════
     # QGIS Plugin Interface
@@ -68,6 +75,13 @@ class PlanXCADPlugin:
             self._show_about,
             add_to_toolbar=False,
             status_tip="About planX CAD Toolset / planX CAD Araç Seti hakkında"
+        )
+        self._add_action(
+            main_icon,
+            "Plugin Page & Rate / Eklenti Sayfası ve Puanla",
+            self._open_plugin_page,
+            add_to_toolbar=False,
+            status_tip="Open the official QGIS plugin page / Resmi QGIS eklenti sayfasını aç",
         )
         self._add_action(
             ":/images/themes/default/mActionHelpContents.svg",
@@ -149,23 +163,44 @@ class PlanXCADPlugin:
 
         # ── Klavye kısayolları ─────────────────────────────────────────────
         self._setup_shortcuts()
+        try:
+            self.iface.mapCanvas().mapToolSet.connect(self._on_map_tool_set)
+            self._canvas_tool_signal_connected = True
+        except Exception:
+            self._canvas_tool_signal_connected = False
         self._maybe_show_quick_start_once()
 
     def unload(self):
         """Plugin kaldırıldığında temizlik yap."""
+        self._unloading = True
+        if self._quick_start_timer is not None:
+            self._quick_start_timer.stop()
+            self._quick_start_timer.deleteLater()
+            self._quick_start_timer = None
+        if self._canvas_tool_signal_connected:
+            try:
+                self.iface.mapCanvas().mapToolSet.disconnect(self._on_map_tool_set)
+            except Exception:
+                pass
+            self._canvas_tool_signal_connected = False
+
         # Aktif aracı deaktive et
         if self._current_tool:
             self.iface.mapCanvas().unsetMapTool(self._current_tool)
             self._current_tool = None
+            self._current_tool_key = None
 
         # Dock widget
         if self._dock:
             if hasattr(self._dock, 'unload'):
                 self._dock.unload()
-            try:
-                self.iface.currentLayerChanged.disconnect(self._on_current_layer_changed)
-            except Exception:
-                pass
+            if self._layer_signal_connected:
+                try:
+                    self.iface.currentLayerChanged.disconnect(self._on_current_layer_changed)
+                except Exception:
+                    pass
+                self._layer_signal_connected = False
+            self._bind_active_layer(None)
             self.iface.removeDockWidget(self._dock)
             self._dock.deleteLater()
             self._dock = None
@@ -184,15 +219,29 @@ class PlanXCADPlugin:
 
         # Actions
         for action in self.actions:
-            self.iface.removePluginMenu("&planX CAD Araç Seti", action)
+            if self.toolbar:
+                self.toolbar.removeAction(action)
+            if self.menu:
+                self.menu.removeAction(action)
+            action.setParent(None)
+            action.deleteLater()
+        self.actions.clear()
 
         # Toolbar
         if self.toolbar:
-            del self.toolbar
+            self.iface.mainWindow().removeToolBar(self.toolbar)
+            self.toolbar.setParent(None)
+            self.toolbar.deleteLater()
+            self.toolbar = None
 
         # Menu
         if self.menu:
+            self.iface.mainWindow().menuBar().removeAction(self.menu.menuAction())
+            self.menu.setParent(None)
             self.menu.deleteLater()
+            self.menu = None
+
+        self.panel_action = None
 
     # ═══════════════════════════════════════════════════════════════════════
     # Dock Widget
@@ -201,45 +250,65 @@ class PlanXCADPlugin:
     def _toggle_dock(self):
         """Dock widget'ı aç/kapat."""
         if self._dock is None:
+            dock = None
             try:
                 from .dialogs.cad_dock import CADDockWidget
 
-                self._dock = CADDockWidget(
+                dock = CADDockWidget(
                     self.iface, self.icon_dir, self.iface.mainWindow()
                 )
-                self._dock.setObjectName("PlanXCADDock")
-                self._dock.visibilityChanged.connect(self._on_dock_visibility)
-                self._dock.tool_activated.connect(self._activate_tool)
-                self._dock.cancel_requested.connect(self._cancel_active_tool)
-                self._dock.edit_toggle_requested.connect(self._toggle_active_layer_editing)
-                self._dock.quick_start_requested.connect(self._show_quick_start)
-                self._dock.docs_requested.connect(self._show_command_reference)
-                self._dock.shortcuts_requested.connect(self._show_shortcut_guide)
-                self._dock.diagnostics_requested.connect(self._show_diagnostics)
-                self._dock.workspace_reset_requested.connect(self._reset_workspace_state)
-                self._dock.tool_help_requested.connect(self._show_tool_help)
-                self._dock.usage_stats_requested.connect(self._show_usage_stats)
-                self._dock.health_check_requested.connect(self._show_health_check)
-                self._dock.shortcut_audit_requested.connect(self._show_shortcut_audit)
+                dock.setObjectName("PlanXCADDock")
+                dock.visibilityChanged.connect(self._on_dock_visibility)
+                dock.tool_activated.connect(self._activate_tool)
+                dock.cancel_requested.connect(self._cancel_active_tool)
+                dock.edit_toggle_requested.connect(self._toggle_active_layer_editing)
+                dock.quick_start_requested.connect(self._show_quick_start)
+                dock.docs_requested.connect(self._show_command_reference)
+                dock.shortcuts_requested.connect(self._show_shortcut_guide)
+                dock.diagnostics_requested.connect(self._show_diagnostics)
+                dock.workspace_reset_requested.connect(self._reset_workspace_state)
+                dock.tool_help_requested.connect(self._show_tool_help)
+                dock.usage_stats_requested.connect(self._show_usage_stats)
+                dock.health_check_requested.connect(self._show_health_check)
+                dock.shortcut_audit_requested.connect(self._show_shortcut_audit)
                 try:
                     self.iface.currentLayerChanged.connect(self._on_current_layer_changed)
+                    self._layer_signal_connected = True
                 except Exception:
-                    pass
+                    self._layer_signal_connected = False
 
                 self.iface.addDockWidget(
-                    Qt.DockWidgetArea.LeftDockWidgetArea, self._dock
+                    Qt.DockWidgetArea.LeftDockWidgetArea, dock
                 )
+                self._dock = dock
+                self._bind_active_layer(self.iface.activeLayer())
                 self._dock.show()
                 self._dock.raise_()
                 return
 
             except Exception as e:
+                if self._layer_signal_connected:
+                    try:
+                        self.iface.currentLayerChanged.disconnect(
+                            self._on_current_layer_changed
+                        )
+                    except Exception:
+                        pass
+                    self._layer_signal_connected = False
+                if dock is not None:
+                    try:
+                        dock.unload()
+                    except Exception:
+                        pass
+                    dock.deleteLater()
+                self._dock = None
                 QMessageBox.critical(
                     self.iface.mainWindow(),
                     "Error / Hata",
                     f"Failed to create panel / Panel oluşturulamadı:\n{str(e)}"
                 )
-                self.panel_action.setChecked(False)
+                if self.panel_action:
+                    self.panel_action.setChecked(False)
                 return
 
         # Toggle
@@ -250,7 +319,20 @@ class PlanXCADPlugin:
             self._dock.raise_()
 
     def _on_dock_visibility(self, visible):
-        self.panel_action.setChecked(visible)
+        if self.panel_action:
+            self.panel_action.setChecked(visible)
+
+    def _on_map_tool_set(self, new_tool, *_args):
+        """Keep the dock selection synchronized with QGIS' active map tool."""
+        if self._current_tool is None or new_tool is self._current_tool:
+            return
+        self._current_tool = None
+        self._current_tool_key = None
+        if self._dock:
+            self._dock.uncheck_all()
+            self._dock.set_status(
+                "CAD tool paused; QGIS map tool is active / CAD araci duraklatildi"
+            )
 
     # ═══════════════════════════════════════════════════════════════════════
     # Araç Yönetimi
@@ -258,15 +340,31 @@ class PlanXCADPlugin:
 
     # Dialog açan araçlar — her seferinde yeni instance gerekir
     _DIALOG_TOOLS = {"buffer", "fillet", "polygon", "road", "junction", "measure_area", "ada_kirma", "array", "divide", "multi_offset", "join", "hatch"}
-    _TOOLS_REQUIRING_LAYER = {
+    # Drawing tools write to the active layer. Feature-editing tools may pick
+    # from any editable vector layer in the project. Output tools (Buffer,
+    # Hatch, Dimension, Construction and Road) create their own layers and
+    # must not be blocked by an unrelated read-only active layer.
+    _ACTIVE_TARGET_TOOLS = {
         "line", "polyline", "rectangle", "polygon", "circle", "arc",
-        "offset", "trim", "extend", "fillet", "buffer", "vertex_edit", "hatch",
-        "construction_inf", "construction_ray", "construction_seg",
-        "move", "copy", "rotate", "scale", "mirror", "array",
-        "dimension", "divide", "multi_offset", "join",
-        "road", "junction", "ada_kirma",
     }
-    _TOOLS_REQUIRING_EDITABLE = set(_TOOLS_REQUIRING_LAYER)
+    _ACTIVE_TARGET_GEOMETRY = {
+        "line": QgsWkbTypes.LineGeometry,
+        "polyline": QgsWkbTypes.LineGeometry,
+        "arc": QgsWkbTypes.LineGeometry,
+        "rectangle": QgsWkbTypes.PolygonGeometry,
+        "polygon": QgsWkbTypes.PolygonGeometry,
+        "circle": QgsWkbTypes.PolygonGeometry,
+    }
+    _EDITABLE_PICK_TOOLS = {
+        "offset", "trim", "extend", "fillet", "vertex_edit",
+        "move", "copy", "rotate", "scale", "mirror", "array",
+        "divide", "multi_offset", "join",
+    }
+    _READ_ONLY_PICK_TOOLS = {"buffer", "hatch", "measure_select_line", "measure_select_area"}
+
+    # Backward-compatible names used by diagnostics/tests.
+    _TOOLS_REQUIRING_LAYER = set(_ACTIVE_TARGET_TOOLS)
+    _TOOLS_REQUIRING_EDITABLE = set(_ACTIVE_TARGET_TOOLS) | set(_EDITABLE_PICK_TOOLS)
 
     # ═══════════════════════════════════════════════════════════════════════
     # Klavye kısayolları + tool history
@@ -299,6 +397,22 @@ class PlanXCADPlugin:
         ("multi_offset",          "Ctrl+Shift+X"),
         ("join",                  "Ctrl+Shift+J"),
     )
+    _ALL_TOOL_KEYS = (
+        "line", "polyline", "rectangle", "polygon", "circle", "arc",
+        "offset", "trim", "extend", "fillet", "buffer", "array",
+        "vertex_edit", "divide", "multi_offset", "join", "hatch",
+        "construction_inf", "construction_ray", "construction_seg",
+        "move", "copy", "rotate", "scale", "mirror",
+        "measure", "measure_area", "dimension", "measure_select_line",
+        "measure_select_area", "road", "junction", "ada_kirma",
+    )
+
+    @classmethod
+    def _tool_palette_entries(cls):
+        shortcut_by_key = dict(cls._SHORTCUTS)
+        return tuple(
+            (key, shortcut_by_key.get(key, "—")) for key in cls._ALL_TOOL_KEYS
+        )
 
     def _setup_shortcuts(self):
         """QShortcut'lar QGIS main window'a bağlanır (Qt.ShortcutContext.ApplicationShortcut
@@ -392,8 +506,8 @@ class PlanXCADPlugin:
     def _repeat_last_tool(self):
         if self._last_tool_key:
             self._activate_tool(self._last_tool_key)
-        elif self._dock:
-            self._dock.set_status("⚠️ No previous tool to repeat / Tekrarlanacak eski bir araç yok")
+        else:
+            self._set_status("⚠️ No previous tool to repeat / Tekrarlanacak eski bir araç yok")
 
     def _focus_dock_search(self):
         if self._dock is None:
@@ -406,6 +520,7 @@ class PlanXCADPlugin:
         if self._current_tool:
             canvas.unsetMapTool(self._current_tool)
             self._current_tool = None
+            self._current_tool_key = None
         if self._dock:
             self._dock.uncheck_all()
             self._dock.set_status("Active tool cancelled / Aktif arac iptal edildi")
@@ -415,42 +530,86 @@ class PlanXCADPlugin:
     def _toggle_active_layer_editing(self):
         layer = self.iface.activeLayer()
         if layer is None:
-            if self._dock:
-                self._dock.set_status("No active layer / Aktif katman yok")
+            self._set_status("No active layer / Aktif katman yok")
             return
-        if not hasattr(layer, "isEditable"):
-            if self._dock:
-                self._dock.set_status("Layer does not support editing / Katman duzenleme desteklemiyor")
+        if not isinstance(layer, QgsVectorLayer):
+            self._set_status("Active layer is not vector / Aktif katman vektor degil")
             return
 
         try:
             if layer.isEditable():
-                layer.commitChanges()
-                msg = "Editing OFF / Duzenleme KAPALI"
+                # Delegate the edit-off transition to QGIS so the standard
+                # Save / Discard / Cancel prompt protects pending user edits.
+                toggle_action = getattr(self.iface, "actionToggleEditing", lambda: None)()
+                if toggle_action is None:
+                    msg = (
+                        "Use QGIS Toggle Editing to save or discard changes / "
+                        "Degisiklikler icin QGIS Duzenlemeyi Ac/Kapat'i kullanin"
+                    )
+                else:
+                    toggle_action.trigger()
+                    msg = (
+                        "Editing remains ON / Duzenleme ACIK"
+                        if layer.isEditable()
+                        else "Editing OFF / Duzenleme KAPALI"
+                    )
             else:
-                layer.startEditing()
-                msg = "Editing ON / Duzenleme ACIK"
-            if self._dock:
-                self._dock.set_status(msg)
-                if hasattr(self._dock, "refresh_layer_state"):
-                    self._dock.refresh_layer_state()
+                started = bool(layer.startEditing())
+                msg = (
+                    "Editing ON / Duzenleme ACIK"
+                    if started
+                    else "Could not start editing (layer may be read-only) / Duzenleme baslatilamadi"
+                )
+            self._set_status(msg)
+            if self._dock and hasattr(self._dock, "refresh_layer_state"):
+                self._dock.refresh_layer_state()
         except Exception as e:
-            if self._dock:
-                self._dock.set_status(f"Editing toggle failed / Duzenleme degistirilemedi: {e}")
+            self._set_status(f"Editing toggle failed / Duzenleme degistirilemedi: {e}")
 
     def _on_current_layer_changed(self, _layer):
+        self._bind_active_layer(_layer)
+        if self._dock and hasattr(self._dock, "refresh_layer_state"):
+            self._dock.refresh_layer_state()
+
+    def _bind_active_layer(self, layer):
+        """Refresh dock state when QGIS toggles editing on the same layer."""
+        if self._watched_layer is not None:
+            for signal_name in ("editingStarted", "editingStopped"):
+                try:
+                    getattr(self._watched_layer, signal_name).disconnect(
+                        self._on_layer_edit_state_changed
+                    )
+                except Exception:
+                    pass
+        self._watched_layer = layer if isinstance(layer, QgsVectorLayer) else None
+        if self._watched_layer is not None:
+            for signal_name in ("editingStarted", "editingStopped"):
+                try:
+                    getattr(self._watched_layer, signal_name).connect(
+                        self._on_layer_edit_state_changed
+                    )
+                except Exception:
+                    pass
+
+    def _on_layer_edit_state_changed(self):
         if self._dock and hasattr(self._dock, "refresh_layer_state"):
             self._dock.refresh_layer_state()
 
     def _run_dock_preflight(self):
+        if self._dock is None:
+            self._toggle_dock()
         if self._dock and hasattr(self._dock, "run_preflight"):
             self._dock.run_preflight()
 
     def _pin_last_tool(self):
+        if self._dock is None:
+            self._toggle_dock()
         if self._dock and hasattr(self._dock, "pin_last_tool"):
             self._dock.pin_last_tool()
 
     def _reset_workspace_state(self):
+        self._cancel_active_tool()
+        self._last_tool_key = None
         if self._dock and hasattr(self._dock, "clear_workspace_state"):
             self._dock.clear_workspace_state()
 
@@ -599,17 +758,21 @@ class PlanXCADPlugin:
             ("focus_search", "Ctrl+Shift+S"),
             ("open_shortcuts", "Ctrl+Shift+/"),
             ("open_docs", "Ctrl+Alt+H"),
+            ("open_smoke_test", "Ctrl+Alt+M"),
             ("command_palette", "Ctrl+Alt+P"),
             ("cancel_active_tool", "Ctrl+Alt+C"),
             ("toggle_layer_editing", "Ctrl+Alt+E"),
             ("run_preflight", "Ctrl+Alt+F"),
             ("quick_start", "Ctrl+Alt+Q"),
+            ("session_checklist", "Ctrl+Alt+G"),
             ("pin_last_tool", "Ctrl+Alt+Z"),
             ("open_diagnostics", "Ctrl+Alt+D"),
             ("reset_workspace_state", "Ctrl+Alt+R"),
             ("open_usage_stats", "Ctrl+Alt+T"),
             ("open_health_check", "Ctrl+Alt+W"),
             ("open_shortcut_audit", "Ctrl+Alt+Y"),
+            ("open_issue_template", "Ctrl+Alt+N"),
+            ("open_release_readiness", "Ctrl+Alt+V"),
         ]
         for name, seq in system_pairs:
             s = str(seq).lower()
@@ -758,17 +921,12 @@ class PlanXCADPlugin:
             self._repeat_last_tool()
             return
         if not self._validate_tool_activation_context(tool_key):
+            self._restore_dock_active_state()
             return
 
         canvas = self.iface.mapCanvas()
-
-        # Önceki aracı deaktive et
-        if self._current_tool:
-            canvas.unsetMapTool(self._current_tool)
-            self._current_tool = None
-
-        # Tool history — used by Ctrl+Shift+Space ("repeat last tool")
-        self._last_tool_key = tool_key
+        previous_tool = self._current_tool
+        previous_key = self._current_tool_key
 
         # Dialog tabanlı araçlar → her seferinde yeni instance
         if tool_key in self._DIALOG_TOOLS:
@@ -780,36 +938,128 @@ class PlanXCADPlugin:
             tool = self._tools.get(tool_key)
 
         if tool is None:
-            if self._dock:
-                self._dock.set_status(f"⚠️ Failed to load tool '{tool_key}' / '{tool_key}' aracı yüklenemedi")
+            self._set_status(
+                f"⚠️ Failed to load tool '{tool_key}' / '{tool_key}' aracı yüklenemedi"
+            )
+            self._restore_dock_active_state()
             return
 
-        self._current_tool = tool
-        canvas.setMapTool(tool)
+        try:
+            # Repeating the same instance must run its activation lifecycle
+            # again; switching to a different tool is handled by QGIS.
+            if tool is previous_tool:
+                canvas.unsetMapTool(tool)
+            self._current_tool = tool
+            self._current_tool_key = tool_key
+            canvas.setMapTool(tool)
+            if getattr(tool, "_activation_cancelled", False):
+                canvas.unsetMapTool(tool)
+                self._current_tool = None
+                self._current_tool_key = None
+                self._restore_dock_active_state()
+                self._set_status("Tool setup cancelled / Arac ayari iptal edildi")
+                return
+        except Exception as e:
+            self._current_tool = previous_tool
+            self._current_tool_key = previous_key
+            if previous_tool is not None:
+                try:
+                    canvas.setMapTool(previous_tool)
+                except Exception:
+                    self._current_tool = None
+                    self._current_tool_key = None
+            self._set_status(f"Tool activation failed / Arac baslatilamadi: {e}")
+            self._restore_dock_active_state()
+            return
+
+        # Tool history changes only after successful construction/activation.
+        self._last_tool_key = tool_key
         if self._dock and hasattr(self._dock, "register_tool_activation"):
             self._dock.register_tool_activation(tool_key)
+
+    def _restore_dock_active_state(self):
+        if not self._dock:
+            return
+        if self._current_tool_key and hasattr(self._dock, "set_active_tool"):
+            self._dock.set_active_tool(self._current_tool_key)
+        else:
+            self._dock.uncheck_all()
+
+    def _set_status(self, message):
+        if self._dock:
+            self._dock.set_status(message)
+            return
+        try:
+            self.iface.mainWindow().statusBar().showMessage(message, 6000)
+        except Exception:
+            pass
+
+    def _relay_tool_message(self, message):
+        self._set_status(message)
+
+    def _on_tool_finished(self):
+        # Do not overwrite the tool's useful success/cancel message with a
+        # generic "Ready" immediately after completion.
+        if self._dock and hasattr(self._dock, "refresh_layer_state"):
+            self._dock.refresh_layer_state()
 
     def _validate_tool_activation_context(self, tool_key):
         layer = self.iface.activeLayer()
 
-        if tool_key in self._TOOLS_REQUIRING_LAYER and layer is None:
-            if self._dock:
-                self._dock.set_status("Select a target layer first / Once hedef katman secin")
-            return False
-
-        if tool_key in self._TOOLS_REQUIRING_LAYER and layer is not None:
-            if not hasattr(layer, "geometryType"):
-                if self._dock:
-                    self._dock.set_status("Active layer is not vector / Aktif katman vektor degil")
+        if tool_key in self._ACTIVE_TARGET_TOOLS:
+            if not isinstance(layer, QgsVectorLayer):
+                self._set_status("Select a target vector layer first / Once hedef vektor katmani secin")
                 return False
 
-        if tool_key in self._TOOLS_REQUIRING_EDITABLE and layer is not None:
-            editable = bool(layer.isEditable()) if hasattr(layer, "isEditable") else False
-            if not editable:
-                if self._dock:
-                    self._dock.set_status(
-                        "Layer is read-only: use Edit ON/OFF / Katman salt-okunur: Edit ON/OFF kullanin"
+            expected = self._ACTIVE_TARGET_GEOMETRY.get(tool_key)
+            if expected is not None and layer.geometryType() != expected:
+                target_name = (
+                    "line"
+                    if expected == QgsWkbTypes.LineGeometry
+                    else "polygon"
+                )
+                self._set_status(
+                    f"{tool_key.replace('_', ' ').title()} needs a {target_name} layer / "
+                    f"Bu arac {target_name} katmani gerektirir"
+                )
+                return False
+
+            if not layer.isEditable():
+                if not layer.startEditing():
+                    self._set_status(
+                        "Target layer is read-only / Hedef katman salt-okunur"
                     )
+                    return False
+                self._set_status(
+                    "Editing started automatically / Duzenleme otomatik baslatildi"
+                )
+
+        elif tool_key in self._EDITABLE_PICK_TOOLS:
+            editable_layers = [
+                lyr for lyr in QgsProject.instance().mapLayers().values()
+                if isinstance(lyr, QgsVectorLayer) and lyr.isEditable()
+            ]
+            if not editable_layers and isinstance(layer, QgsVectorLayer):
+                if layer.startEditing():
+                    editable_layers.append(layer)
+                    self._set_status(
+                        "Editing started automatically / Duzenleme otomatik baslatildi"
+                    )
+            if not editable_layers:
+                self._set_status(
+                    "Start editing a vector layer first / Once bir vektor katmanini duzenlemeye acin"
+                )
+                return False
+
+        elif tool_key in self._READ_ONLY_PICK_TOOLS:
+            has_vector = isinstance(layer, QgsVectorLayer) or any(
+                isinstance(lyr, QgsVectorLayer)
+                for lyr in QgsProject.instance().mapLayers().values()
+            )
+            if not has_vector:
+                self._set_status(
+                    "Add a vector source layer first / Once bir vektor kaynak katmani ekleyin"
+                )
                 return False
 
         return True
@@ -933,21 +1183,17 @@ class PlanXCADPlugin:
             else:
                 return None
 
-            # Mesaj sinyalini dock widget'a bağla
-            if hasattr(t, 'sketcher_message') and self._dock:
-                t.sketcher_message.connect(self._dock.set_status)
-            if hasattr(t, 'tool_message') and self._dock:
-                t.tool_message.connect(self._dock.set_status)
+            # Relay through plugin-owned slots so tools created by shortcuts
+            # before the dock opens still report status after it is opened.
+            if hasattr(t, 'sketcher_message'):
+                t.sketcher_message.connect(self._relay_tool_message)
+            if hasattr(t, 'tool_message'):
+                t.tool_message.connect(self._relay_tool_message)
 
-            # Bitış sinyali
-            if hasattr(t, 'sketcher_finished') and self._dock:
-                t.sketcher_finished.connect(
-                    lambda: self._dock.set_status("Ready / Hazır")
-                )
-            if hasattr(t, 'tool_finished') and self._dock:
-                t.tool_finished.connect(
-                    lambda: self._dock.set_status("Ready / Hazır")
-                )
+            if hasattr(t, 'sketcher_finished'):
+                t.sketcher_finished.connect(self._on_tool_finished)
+            if hasattr(t, 'tool_finished'):
+                t.tool_finished.connect(self._on_tool_finished)
 
             return t
 
@@ -1005,7 +1251,7 @@ class PlanXCADPlugin:
 <h3>Features / Özellikler:</h3>
 <ul>
 <li><b>6 Drawing Tools / Çizim Aracı:</b> Line, Polyline, Rectangle, Polygon, Circle, Arc</li>
-<li><b>7 Editing Tools / Düzenleme Aracı:</b> Offset, Trim, Extend, Fillet, Buffer, Divide, Join</li>
+<li><b>14 Editing &amp; Construction Tools / Düzenleme Aracı:</b> Offset, Trim, Extend, Fillet, Buffer, Array, Vertex Edit, Divide, Multi-Offset, Join, Hatch, XLine, Ray, Segment</li>
 <li><b>5 Transform Tools / Dönüşüm Aracı:</b> Move, Copy, Rotate, Scale, Mirror</li>
 <li><b>5 Measurement Tools / Ölçüm Aracı:</b> Distance, Area, Dimension, Select Line, Select Area</li>
 <li><b>3 Urban Planning Tools / Şehir Planlama Aracı:</b> Road, Junction, Block Chamfer</li>
@@ -1016,10 +1262,18 @@ class PlanXCADPlugin:
 """
         )
 
+    @staticmethod
+    def _open_plugin_page():
+        QDesktopServices.openUrl(
+            QUrl("https://plugins.qgis.org/plugins/planX_CAD_arac_Seti/")
+        )
+
     def _show_shortcut_guide(self):
         try:
             from .dialogs.shortcut_help_dialog import ShortcutHelpDialog
-            dlg = ShortcutHelpDialog(self._SHORTCUTS, self.iface.mainWindow())
+            dlg = ShortcutHelpDialog(
+                self._tool_palette_entries(), self.iface.mainWindow()
+            )
             dlg.exec()
         except Exception as e:
             QMessageBox.warning(
@@ -1058,7 +1312,11 @@ class PlanXCADPlugin:
             usage_counts = {}
             if self._dock and hasattr(self._dock, "diagnostics_snapshot"):
                 usage_counts = self._dock.diagnostics_snapshot().get("tool_usage_counts", {})
-            dlg = CommandPaletteDialog(self._SHORTCUTS, usage_counts=usage_counts, parent=self.iface.mainWindow())
+            dlg = CommandPaletteDialog(
+                self._tool_palette_entries(),
+                usage_counts=usage_counts,
+                parent=self.iface.mainWindow(),
+            )
             dlg.tool_selected.connect(self._activate_tool)
             dlg.exec()
         except Exception as e:
@@ -1090,12 +1348,25 @@ class PlanXCADPlugin:
             from .dialogs.quick_start_dialog import QuickStartDialog
             dlg = QuickStartDialog(self.iface.mainWindow())
             dlg.exec()
+            QSettings("PlanX", "PlanXCAD").setValue(
+                "onboarding/quick_start_seen", True
+            )
+            return True
         except Exception as e:
             QMessageBox.warning(
                 self.iface.mainWindow(),
                 "Quick Start",
                 f"Quick Start could not be opened:\n{e}"
             )
+            return False
+
+    def _show_scheduled_quick_start(self):
+        timer = self._quick_start_timer
+        self._quick_start_timer = None
+        if timer is not None:
+            timer.deleteLater()
+        if not self._unloading:
+            self._show_quick_start()
 
     def _maybe_show_quick_start_once(self):
         try:
@@ -1103,7 +1374,11 @@ class PlanXCADPlugin:
             seen = s.value("onboarding/quick_start_seen", False, type=bool)
             if seen:
                 return
-            QTimer.singleShot(400, self._show_quick_start)
-            s.setValue("onboarding/quick_start_seen", True)
+            self._quick_start_timer = QTimer(self.iface.mainWindow())
+            self._quick_start_timer.setSingleShot(True)
+            self._quick_start_timer.timeout.connect(
+                self._show_scheduled_quick_start
+            )
+            self._quick_start_timer.start(400)
         except Exception:
             pass

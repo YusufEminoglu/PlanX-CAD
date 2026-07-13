@@ -30,7 +30,7 @@ from ..core.sketcher_feedback import (
     cleanup_sketcher_rubberband,
     COLOR_ACCENT,
 )
-from ..core.sketcher_layer_utils import get_or_create_layer
+from ..core.sketcher_layer_utils import get_or_create_layer, add_feature_to_layer
 
 
 def _format_distance(meters: float) -> str:
@@ -144,20 +144,21 @@ class tool_dimension(QgsMapTool):
             self.tool_message.emit("⚠️ Dimension — could not create layer")
             return
 
-        was_editing = layer.isEditable()
-        if not was_editing:
-            layer.startEditing()
-        feat = QgsFeature(layer.fields())
-        feat.setGeometry(QgsGeometry.fromPolylineXY([a, b]))
-        feat.setAttribute(layer.fields().indexOf("distance_m"), distance_m)
-        feat.setAttribute(layer.fields().indexOf("label"), label)
-        feat.setAttribute(layer.fields().indexOf("from_x"), a.x())
-        feat.setAttribute(layer.fields().indexOf("from_y"), a.y())
-        feat.setAttribute(layer.fields().indexOf("to_x"), b.x())
-        feat.setAttribute(layer.fields().indexOf("to_y"), b.y())
-        layer.addFeature(feat)
-        if not was_editing:
-            layer.commitChanges()
+        feat = add_feature_to_layer(
+            layer,
+            QgsGeometry.fromPolylineXY([a, b]),
+            {
+                "distance_m": distance_m,
+                "label": label,
+                "from_x": a.x(),
+                "from_y": a.y(),
+                "to_x": b.x(),
+                "to_y": b.y(),
+            },
+        )
+        if feat is None:
+            self.tool_message.emit("⚠️ Dimension — feature could not be saved")
+            return
         layer.triggerRepaint()
 
         # Auto-enable feature labels showing `label` once.

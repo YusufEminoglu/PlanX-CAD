@@ -7,7 +7,7 @@ Offset, trim, extend, fillet, buffer ve ölçüm işlemleri.
 import math
 from qgis.core import (
     QgsGeometry, QgsPointXY, QgsLineString, QgsPoint,
-    QgsWkbTypes, QgsDistanceArea, QgsProject, QgsFeature
+    QgsWkbTypes, QgsDistanceArea, QgsProject, QgsFeature, Qgis
 )
 
 
@@ -29,7 +29,9 @@ def offset_geometry(geom, distance, side="left"):
     if side == "right":
         d = -d
 
-    result = geom.offsetCurve(d, 8, QgsGeometry.JoinStyleRound, 2.0)
+    # The legacy QgsGeometry.JoinStyleRound SIP alias is not available in
+    # every QGIS 4/PyQt6 build. Qgis.JoinStyle is public in QGIS 3.28+ and 4.
+    result = geom.offsetCurve(d, 8, Qgis.JoinStyle.Round, 2.0)
     if result and not result.isEmpty():
         return result
     return None
@@ -65,7 +67,8 @@ def extend_geometry_to_boundary(target_geom, boundary_geom):
     Returns:
         QgsGeometry veya None
     """
-    if target_geom is None or boundary_geom is None:
+    if (target_geom is None or boundary_geom is None or
+            target_geom.isEmpty() or boundary_geom.isEmpty()):
         return None
 
     # Multi-part safe: take the first part if multi.
@@ -89,34 +92,52 @@ def extend_geometry_to_boundary(target_geom, boundary_geom):
     if length == 0:
         return None
 
-    # Çizgiyi uzat (10x mevcut uzunluk)
-    extend_factor = 10.0
-    ex = p2.x() + dx * extend_factor
-    ey = p2.y() + dy * extend_factor
-
-    extended_line = QgsGeometry.fromPolylineXY(
-        line + [QgsPointXY(ex, ey)]
+    # Build a ray long enough to cross the boundary's complete extent. The
+    # old fixed ``10 * final segment`` ray missed distant boundaries whenever
+    # the target had a short final segment.
+    bbox = boundary_geom.boundingBox()
+    # A valid vertical/horizontal line has a zero-width/height rectangle, for
+    # which QgsRectangle.isEmpty() is true. Only a null extent is invalid.
+    if bbox.isNull():
+        return None
+    corners = (
+        QgsPointXY(bbox.xMinimum(), bbox.yMinimum()),
+        QgsPointXY(bbox.xMinimum(), bbox.yMaximum()),
+        QgsPointXY(bbox.xMaximum(), bbox.yMinimum()),
+        QgsPointXY(bbox.xMaximum(), bbox.yMaximum()),
     )
+    ray_length = max(point_distance(p2, corner) for corner in corners)
+    if not math.isfinite(ray_length) or ray_length <= 0:
+        return None
+    ux, uy = dx / length, dy / length
+    ray_end = QgsPointXY(
+        p2.x() + ux * (ray_length * 1.01 + length),
+        p2.y() + uy * (ray_length * 1.01 + length),
+    )
+    ray = QgsGeometry.fromPolylineXY([QgsPointXY(p2), ray_end])
 
-    # Kesişim noktasını bul. Multi-intersection olursa segment ucuna en yakın olanı seç.
-    intersection = extended_line.intersection(boundary_geom)
+    intersection = ray.intersection(boundary_geom)
     if intersection is None or intersection.isEmpty():
         return None
 
+    # Point/MultiPoint, overlap lines, and geometry collections all expose a
+    # vertex iterator. Only keep intersections in front of the endpoint so an
+    # Extend operation can never accidentally shorten the target.
     candidates = []
-    if intersection.isMultipart():
-        try:
-            candidates = [QgsPointXY(p) for p in intersection.asMultiPoint()]
-        except Exception:
-            candidates = []
-    elif intersection.type() == QgsWkbTypes.PointGeometry:
-        candidates = [QgsPointXY(intersection.asPoint())]
+    try:
+        for vertex in intersection.vertices():
+            candidate = QgsPointXY(vertex)
+            along = ((candidate.x() - p2.x()) * ux +
+                     (candidate.y() - p2.y()) * uy)
+            if along > max(length * 1e-9, 1e-12):
+                candidates.append((along, candidate))
+    except (AttributeError, TypeError):
+        return None
 
     if not candidates:
         return None
 
-    end_geom = QgsGeometry.fromPointXY(p2)
-    best = min(candidates, key=lambda c: end_geom.distance(QgsGeometry.fromPointXY(c)))
+    _, best = min(candidates, key=lambda item: item[0])
     new_line = list(line) + [best]
     return QgsGeometry.fromPolylineXY(new_line)
 

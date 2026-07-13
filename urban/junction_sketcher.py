@@ -16,7 +16,7 @@ from qgis.PyQt.QtCore import Qt, pyqtSignal
 from qgis.PyQt.QtWidgets import QDialog
 from qgis.core import (
     QgsWkbTypes, QgsGeometry, QgsPointXY, QgsFeature,
-    QgsProject, QgsVectorLayer
+    QgsFeatureRequest,
 )
 from qgis.gui import QgsMapTool
 
@@ -25,7 +25,16 @@ from ..core.sketcher_feedback import (
 )
 from ..core.sketcher_layer_utils import get_or_create_layer, get_road_platform_layer
 from ..core.sketcher_utils import calc_tangent_fillet_arc
+from .crs_utils import local_metric_crs, transform_geometry, transform_point
 from .junction_dialog import JunctionDialog
+
+
+def _geometry_for_layer(layer, geometry):
+    """Return a geometry whose single/multi type matches ``layer``."""
+    geometry = QgsGeometry(geometry)
+    if QgsWkbTypes.isMultiType(layer.wkbType()) and not geometry.isMultipart():
+        geometry.convertToMultiType()
+    return geometry
 
 
 class JunctionSketcher(QgsMapTool):
@@ -51,14 +60,17 @@ class JunctionSketcher(QgsMapTool):
         self.params = None
         self.preview_rb = None
         self._step = 0
+        self._activation_cancelled = False
 
     def activate(self):
         super().activate()
+        self._activation_cancelled = False
         self._step = 0
 
         # Parametre dialog'u
         dlg = JunctionDialog(self.iface.mainWindow())
         if dlg.exec() != QDialog.DialogCode.Accepted:
+            self._activation_cancelled = True
             self.sketcher_message.emit("🔵 Kavşak — İptal edildi")
             self.sketcher_finished.emit()
             return
@@ -105,8 +117,16 @@ class JunctionSketcher(QgsMapTool):
             if match.isValid():
                 point = match.point()
 
-        # Daire önizleme
-        pts = self._make_circle(point, self.params["radius"], 48)
+        # Preview metre-based radii correctly even in geographic projects.
+        canvas_crs = self.canvas.mapSettings().destinationCrs()
+        metric_crs = local_metric_crs(point, canvas_crs)
+        metric_point = transform_point(point, canvas_crs, metric_crs)
+        pts = [
+            transform_point(pt, metric_crs, canvas_crs)
+            for pt in self._make_circle(
+                metric_point, self.params["radius"], 48
+            )
+        ]
         self.preview_rb.reset(QgsWkbTypes.PolygonGeometry)
         for pt in pts:
             self.preview_rb.addPoint(pt)
@@ -131,8 +151,12 @@ class JunctionSketcher(QgsMapTool):
         ada_tipi = p["ada_tipi"]
         ada_radius = p["ada_radius"]
 
+        canvas_crs = self.canvas.mapSettings().destinationCrs()
+        metric_crs = local_metric_crs(center, canvas_crs)
+        center = transform_point(center, canvas_crs, metric_crs)
         center_geom = QgsGeometry.fromPointXY(center)
         junction_buffer = center_geom.buffer(radius, 48)
+        outer_buffer = center_geom.buffer(radius + 1.0, 48)
 
         # ── Katmanları hazırla ───────────────────────────────────────────
         kavsak_line_layer = get_road_platform_layer()
@@ -148,37 +172,38 @@ class JunctionSketcher(QgsMapTool):
         trimmed_count = 0
         cut_endpoints = []  # Trimlenen çizgilerin kesilme noktalarını topla
 
-        for layer in QgsProject.instance().mapLayers().values():
-            if not isinstance(layer, QgsVectorLayer):
-                continue
-            if layer.geometryType() != QgsWkbTypes.LineGeometry:
-                continue
-            if layer.name() in ("kavsak",):
-                continue
+        # A junction is a destructive edit.  Restrict it to the plugin-owned
+        # road platform instead of silently trimming every line layer in the
+        # user's project.
+        for layer in (kavsak_line_layer,):
 
             features_hit = []
-            for feat in layer.getFeatures():
-                geom = feat.geometry()
+            layer_search_geometry = transform_geometry(
+                junction_buffer, metric_crs, layer.crs()
+            )
+            request = QgsFeatureRequest().setFilterRect(
+                layer_search_geometry.boundingBox()
+            )
+            for feat in layer.getFeatures(request):
+                geom = transform_geometry(feat.geometry(), layer.crs(), metric_crs)
                 if geom.isEmpty():
                     continue
                 if not geom.intersects(junction_buffer):
                     continue
                 features_hit.append(feat)
 
-            if not features_hit:
-                continue
-
             # Kullanıcı katmanı zaten edit moddaysa commit'i ona bırak.
             layer_was_editing = layer.isEditable()
-            if not layer_was_editing:
-                layer.startEditing()
+            if not layer_was_editing and not layer.startEditing():
+                self.sketcher_message.emit("⚠️ Kavşak — Yol katmanı düzenlenemedi")
+                return
+            layer.beginEditCommand("Kavşak alanındaki yolları trimle")
 
             for feat in features_hit:
-                geom = feat.geometry()
+                geom = transform_geometry(feat.geometry(), layer.crs(), metric_crs)
                 
                 # 1 Metrelik split özelliği eklendi:
                 # Dış yollar (R + 1m den başlayan) ve 1m'lik parçalar (R ile R+1 arası)
-                outer_buffer = center_geom.buffer(radius + 1.0, 48)
                 trimmed_roads = geom.difference(outer_buffer)
                 one_meter_segments = geom.intersection(outer_buffer).difference(junction_buffer)
 
@@ -216,20 +241,48 @@ class JunctionSketcher(QgsMapTool):
                             cut_endpoints.append((ep, bilesen, yol_id))
 
                     # Geometrileri parça parça ekle/güncelle
-                    layer.changeGeometry(feat.id(), parts[0])
+                    if not layer.changeGeometry(
+                        feat.id(),
+                        _geometry_for_layer(
+                            layer,
+                            transform_geometry(parts[0], metric_crs, layer.crs()),
+                        ),
+                    ):
+                        self._abort_edit_command(
+                            layer, layer_was_editing,
+                            "⚠️ Kavşak — Yol geometrisi güncellenemedi; işlem geri alındı",
+                        )
+                        return
                     for part in parts[1:]:
                         if part.isEmpty() or part.type() != QgsWkbTypes.LineGeometry:
                             continue
                         new_feat = QgsFeature(layer.fields())
-                        new_feat.setGeometry(part)
+                        new_feat.setGeometry(_geometry_for_layer(
+                            layer,
+                            transform_geometry(part, metric_crs, layer.crs()),
+                        ))
                         for i in range(layer.fields().count()):
                             new_feat.setAttribute(i, feat.attribute(i))
-                        layer.addFeature(new_feat)
+                        if not layer.addFeature(new_feat):
+                            self._abort_edit_command(
+                                layer, layer_was_editing,
+                                "⚠️ Kavşak — Yol parçası eklenemedi; işlem geri alındı",
+                            )
+                            return
                         
                     trimmed_count += 1
+                else:
+                    # Fully contained lines have no valid outside segment.
+                    if not layer.deleteFeature(feat.id()):
+                        self._abort_edit_command(
+                            layer, layer_was_editing,
+                            "⚠️ Kavşak — Yol parçası silinemedi; işlem geri alındı",
+                        )
+                        return
+                    trimmed_count += 1
 
-            if not layer_was_editing:
-                layer.commitChanges()
+            # Keep this edit command open through connection creation so a
+            # later provider failure can roll back the complete road change.
             layer.triggerRepaint()
 
         # Endpoint'leri bileşenlerine göre ayır (ep, yol_id) formatında
@@ -246,14 +299,22 @@ class JunctionSketcher(QgsMapTool):
             center, kaldirim_pts, chamfer_dist
         )
 
-        kavsak_line_layer.startEditing()
+        output_was_editing = layer_was_editing
         for cline in chamfer_lines:
             feat = QgsFeature(kavsak_line_layer.fields())
-            feat.setGeometry(cline)
+            feat.setGeometry(_geometry_for_layer(
+                kavsak_line_layer,
+                transform_geometry(cline, metric_crs, kavsak_line_layer.crs()),
+            ))
             feat.setAttribute("yol_id", kavsak_id)
             feat.setAttribute("yol_tipi", "kavsak")
             feat.setAttribute("bilesen", "dis_kirma")
-            kavsak_line_layer.addFeature(feat)
+            if not kavsak_line_layer.addFeature(feat):
+                self._abort_edit_command(
+                    kavsak_line_layer, output_was_editing,
+                    "⚠️ Kavşak — Kırma çizgisi eklenemedi; işlem geri alındı",
+                )
+                return
 
         # ── 3. İç kaldırım bağlantı yayları (fillet) ────────────────────
         # Eğre dış kırma yapılacaksa iç bağlantıya gerek yok (kullanıcı talebi)
@@ -264,30 +325,50 @@ class JunctionSketcher(QgsMapTool):
             )
             for farc in fillet_arcs:
                 feat = QgsFeature(kavsak_line_layer.fields())
-                feat.setGeometry(farc)
+                feat.setGeometry(_geometry_for_layer(
+                    kavsak_line_layer,
+                    transform_geometry(farc, metric_crs, kavsak_line_layer.crs()),
+                ))
                 feat.setAttribute("yol_id", kavsak_id)
                 feat.setAttribute("yol_tipi", "kavsak")
                 feat.setAttribute("bilesen", "ic_baglanti")
-                kavsak_line_layer.addFeature(feat)
+                if not kavsak_line_layer.addFeature(feat):
+                    self._abort_edit_command(
+                        kavsak_line_layer, output_was_editing,
+                        "⚠️ Kavşak — Fillet yayı eklenemedi; işlem geri alındı",
+                    )
+                    return
 
         # ── 3.5 Refüj Kapatma Yayları (Yuvarlak kavşaklar için) ─────────
         if ada_tipi != "yok" and refuj_pts:
             refuj_caps = self._create_refuj_caps(center, refuj_pts)
             for cap_line in refuj_caps:
                 feat = QgsFeature(kavsak_line_layer.fields())
-                feat.setGeometry(cap_line)
+                feat.setGeometry(_geometry_for_layer(
+                    kavsak_line_layer,
+                    transform_geometry(cap_line, metric_crs, kavsak_line_layer.crs()),
+                ))
                 feat.setAttribute("yol_id", kavsak_id)
                 feat.setAttribute("yol_tipi", "kavsak")
                 feat.setAttribute("bilesen", "refuj_baglanti")
                 feat.setAttribute("gorunur", 1)  # Kapatma için görünür
-                kavsak_line_layer.addFeature(feat)
-
-        kavsak_line_layer.commitChanges()
-        kavsak_line_layer.triggerRepaint()
+                if not kavsak_line_layer.addFeature(feat):
+                    self._abort_edit_command(
+                        kavsak_line_layer, output_was_editing,
+                        "⚠️ Kavşak — Refüj bağlantısı eklenemedi; işlem geri alındı",
+                    )
+                    return
 
         # ── 4. Kavşak adası ──────────────────────────────────────────────
         if ada_tipi != "yok":
-            kavsak_ada_layer.startEditing()
+            island_was_editing = kavsak_ada_layer.isEditable()
+            if not island_was_editing and not kavsak_ada_layer.startEditing():
+                self._abort_edit_command(
+                    kavsak_line_layer, output_was_editing,
+                    "⚠️ Kavşak — Ada katmanı düzenlenemedi; yol işlemi geri alındı",
+                )
+                return
+            kavsak_ada_layer.beginEditCommand("Kavşak adası oluştur")
 
             if ada_tipi == "yuvarlak":
                 ada_geom = center_geom.buffer(ada_radius, 48)
@@ -300,14 +381,41 @@ class JunctionSketcher(QgsMapTool):
 
             if ada_geom and not ada_geom.isEmpty():
                 feat = QgsFeature(kavsak_ada_layer.fields())
-                feat.setGeometry(ada_geom)
+                feat.setGeometry(
+                    transform_geometry(ada_geom, metric_crs, kavsak_ada_layer.crs())
+                )
                 feat.setAttribute("kavsak_id", kavsak_id)
                 feat.setAttribute("ada_tipi", ada_tipi)
                 feat.setAttribute("ada_radius", ada_radius)
-                kavsak_ada_layer.addFeature(feat)
+                if not kavsak_ada_layer.addFeature(feat):
+                    kavsak_ada_layer.destroyEditCommand()
+                    if not island_was_editing:
+                        kavsak_ada_layer.rollBack()
+                    self._abort_edit_command(
+                        kavsak_line_layer, output_was_editing,
+                        "⚠️ Kavşak — Ada eklenemedi; yol işlemi geri alındı",
+                    )
+                    return
 
-            kavsak_ada_layer.commitChanges()
+            kavsak_ada_layer.endEditCommand()
+            if not island_was_editing and not kavsak_ada_layer.commitChanges():
+                kavsak_ada_layer.rollBack()
+                self._abort_edit_command(
+                    kavsak_line_layer, output_was_editing,
+                    "⚠️ Kavşak — Ada kaydedilemedi; yol işlemi geri alındı",
+                )
+                return
             kavsak_ada_layer.triggerRepaint()
+
+        # Finalize road edits only after every requested output layer has
+        # accepted its changes. This keeps trim + connections rollback-able
+        # when island creation fails.
+        kavsak_line_layer.endEditCommand()
+        if not output_was_editing and not kavsak_line_layer.commitChanges():
+            kavsak_line_layer.rollBack()
+            self.sketcher_message.emit("⚠️ Kavşak — Yol ve bağlantılar kaydedilemedi")
+            return
+        kavsak_line_layer.triggerRepaint()
 
         # ── Sonuç ────────────────────────────────────────────────────────
         msg = (
@@ -326,6 +434,12 @@ class JunctionSketcher(QgsMapTool):
             self.canvas, QgsWkbTypes.PolygonGeometry
         )
         self.sketcher_finished.emit()
+
+    def _abort_edit_command(self, layer, was_editing, message):
+        layer.destroyEditCommand()
+        if not was_editing:
+            layer.rollBack()
+        self.sketcher_message.emit(message)
 
     # ════════════════════════════════════════════════════════════════════════
     # Geometri İşlemleri
@@ -598,8 +712,13 @@ class JunctionSketcher(QgsMapTool):
         idx = layer.fields().indexOf(field_name)
         if idx < 0:
             return 1
-        for feat in layer.getFeatures():
+        request = QgsFeatureRequest()
+        request.setSubsetOfAttributes([idx])
+        request.setFlags(QgsFeatureRequest.Flag.NoGeometry)
+        for feat in layer.getFeatures(request):
             val = feat.attribute(idx)
-            if val and int(val) > max_id:
-                max_id = int(val)
+            try:
+                max_id = max(max_id, int(val))
+            except (TypeError, ValueError):
+                continue
         return max_id + 1

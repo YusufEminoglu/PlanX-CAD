@@ -31,9 +31,11 @@ class tool_copy(tool_base):
             new_geom = QgsGeometry(self.selected_feature.geometry())
             new_geom.translate(dx, dy)
 
-            self._add_feature(self.selected_layer, new_geom,
-                              self.selected_feature)
-            self.tool_message.emit("✅ Kopyala — Obje kopyalandı")
+            added = self._add_feature(
+                self.selected_layer, new_geom, self.selected_feature
+            )
+            if added is not None:
+                self.tool_message.emit("✅ Kopyala — Obje kopyalandı")
             self.base_point = None
             self._reset()
 

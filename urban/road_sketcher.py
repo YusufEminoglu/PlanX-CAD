@@ -37,9 +37,11 @@ class RoadSketcher(QgsMapTool):
         self.preview_rb = None
         self.params = None
         self.generator = RoadGenerator(iface)
+        self._activation_cancelled = False
 
     def activate(self):
         super().activate()
+        self._activation_cancelled = False
         self.vertices = []
 
         # Parametre dialog'unu göster
@@ -58,6 +60,7 @@ class RoadSketcher(QgsMapTool):
                 f"Orta çizgiyi çizin | Sağ tık: Bitir"
             )
         else:
+            self._activation_cancelled = True
             self.sketcher_message.emit("🛣️ Yol Çiz — İptal edildi")
             self.sketcher_finished.emit()
 

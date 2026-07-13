@@ -37,6 +37,7 @@ from qgis.core import (
 
 from .tool_base import tool_base
 from ..core.sketcher_layer_utils import get_or_create_layer
+from ..urban.crs_utils import local_metric_crs, transform_geometry
 
 
 HATCH_PATTERNS = (
@@ -45,6 +46,7 @@ HATCH_PATTERNS = (
     ("Diagonal up", "diag_up"),
     ("Diagonal down", "diag_down"),
 )
+MAX_HATCH_CANDIDATES = 20_000
 
 
 def _bbox_corners(geom: QgsGeometry) -> tuple[float, float, float, float]:
@@ -70,6 +72,8 @@ def _generate_hatch_lines(
     dx, dy = math.cos(a), math.sin(a)
     px, py = -dy, dx
     n_steps = int(diag / spacing) + 2
+    if 2 * n_steps + 1 > MAX_HATCH_CANDIDATES:
+        return []
 
     lines: list[QgsGeometry] = []
     for k in range(-n_steps, n_steps + 1):
@@ -224,6 +228,18 @@ class tool_hatch(tool_base):
         spacing = p["spacing"]
         base_angle = p["angle"]
 
+        centroid = geom.centroid()
+        if centroid is None or centroid.isEmpty() or not layer.crs().isValid():
+            self.tool_message.emit("⚠️ Hatch — valid source CRS required")
+            self._reset()
+            return
+        metric_crs = local_metric_crs(QgsPointXY(centroid.asPoint()), layer.crs())
+        metric_geom = transform_geometry(geom, layer.crs(), metric_crs)
+        if metric_geom is None or metric_geom.isEmpty():
+            self.tool_message.emit("⚠️ Hatch — CRS transform failed")
+            self._reset()
+            return
+
         angles: list[float] = []
         if pattern == "parallel":
             angles = [base_angle]
@@ -236,10 +252,25 @@ class tool_hatch(tool_base):
 
         lines: list[QgsGeometry] = []
         for ang in angles:
-            lines.extend(_generate_hatch_lines(geom, spacing, ang))
+            generated = _generate_hatch_lines(metric_geom, spacing, ang)
+            if len(lines) + len(generated) > MAX_HATCH_CANDIDATES:
+                self.tool_message.emit(
+                    f"⚠️ Hatch — result exceeds {MAX_HATCH_CANDIDATES:,} lines; "
+                    "increase spacing"
+                )
+                self._reset()
+                return
+            lines.extend(generated)
+
+        lines = [
+            transform_geometry(line, metric_crs, layer.crs()) for line in lines
+        ]
+        lines = [line for line in lines if line is not None and not line.isEmpty()]
 
         if not lines:
-            self.tool_message.emit("⚠️ Hatch — no lines generated")
+            self.tool_message.emit(
+                "⚠️ Hatch — no lines generated; spacing may be too small for the safe limit"
+            )
             self._reset()
             return
 
@@ -261,8 +292,11 @@ class tool_hatch(tool_base):
             return
 
         was_editing = hatch_layer.isEditable()
-        if not was_editing:
-            hatch_layer.startEditing()
+        if not was_editing and not hatch_layer.startEditing():
+            self.tool_message.emit("⚠️ Hatch — target layer is not editable")
+            self._reset()
+            return
+        features = []
         for line_geom in lines:
             feat = QgsFeature(hatch_layer.fields())
             feat.setGeometry(line_geom)
@@ -271,9 +305,21 @@ class tool_hatch(tool_base):
             feat.setAttribute(hatch_layer.fields().indexOf("spacing_m"), spacing)
             feat.setAttribute(hatch_layer.fields().indexOf("angle_deg"), base_angle)
             feat.setAttribute(hatch_layer.fields().indexOf("color"), p["color"])
-            hatch_layer.addFeature(feat)
-        if not was_editing:
-            hatch_layer.commitChanges()
+            features.append(feat)
+        hatch_layer.beginEditCommand("PlanX CAD: hatch")
+        if not hatch_layer.addFeatures(features):
+            hatch_layer.destroyEditCommand()
+            if not was_editing:
+                hatch_layer.rollBack()
+            self.tool_message.emit("⚠️ Hatch — generated lines could not be added")
+            self._reset()
+            return
+        hatch_layer.endEditCommand()
+        if not was_editing and not hatch_layer.commitChanges():
+            hatch_layer.rollBack()
+            self.tool_message.emit("⚠️ Hatch — target layer could not be saved")
+            self._reset()
+            return
         hatch_layer.triggerRepaint()
 
         self.tool_message.emit(

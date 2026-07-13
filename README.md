@@ -13,7 +13,7 @@
 [![Part of PlanX](https://img.shields.io/badge/suite-PlanX-ff8a3d)](https://github.com/YusufEminoglu/PlanX)
 
 Type `L` ↵, draw a line. Type `F` ↵, fillet a corner.
-**25+ CAD tools, an AutoCAD-style command line, and road-platform design — without ever leaving QGIS.**
+**30+ CAD tools, an AutoCAD-style command line, and road-platform design — without ever leaving QGIS.**
 
 [Install](#-installation) · [Tools](#-tool-catalog) · [Command line](#-autocad-style-command-line) · [Urban tools](#-urban-planning-tools) · [Shortcuts](#-keyboard-shortcuts) · [Türkçe](#-türkçe-özet)
 
@@ -155,7 +155,9 @@ set QGIS_PLUGINPATH=<clone parent dir>   →  restart QGIS
 
 - **Screen-reader complete** — every interactive dock control exposes `accessibleName`/`accessibleDescription`; tool buttons are tab-focusable with a visible focus ring.
 - **Dual-runtime verified** — a static 11-check smoke gate (`py -3 tests/smoke_compat.py`, no QGIS needed) locks Qt5/Qt6 enum safety, metadata, pick-aperture behaviour, and import discipline on every release.
-- **Guardrails everywhere** — invalid tool starts (no layer / non-vector / read-only) are blocked with guided status messages; built-in diagnostics, health-check, and issue-template dialogs make bug reports one click.
+- **Real QGIS runtime gates** — lifecycle, geometry-regression, and urban-workbench suites run headlessly on both QGIS 3 LTR/Qt5 and QGIS 4/Qt6 before release.
+- **Metre-accurate everywhere** — distance-based CAD and road tools use a local metric work CRS, so a 5 m offset remains 5 m even when the source layer is EPSG:4326.
+- **Guardrails everywhere** — writable targets enter edit mode automatically; missing, incompatible, or truly read-only targets get guided status messages instead of silent failure.
 
 ---
 
@@ -163,7 +165,7 @@ set QGIS_PLUGINPATH=<clone parent dir>   →  restart QGIS
 
 **PlanX CAD Araç Seti**, QGIS içinde AutoCAD alışkanlıklarıyla çizim yapmanızı sağlayan hafif ve hızlı bir CAD eklentisidir:
 
-- **25+ CAD aracı:** Çizgi, sürekli çizgi, dikdörtgen, çokgen, daire, yay; ofset, buda (trim), uzat, pah/yuvarlatma (fillet), tampon, tarama (hatch), böl, birleştir, köşe düzenleme; taşı, kopyala, döndür, ölçekle, aynala, dizi.
+- **30+ CAD aracı:** Çizgi, sürekli çizgi, dikdörtgen, çokgen, daire, yay; ofset, buda (trim), uzat, pah/yuvarlatma (fillet), tampon, tarama (hatch), böl, birleştir, köşe düzenleme; taşı, kopyala, döndür, ölçekle, aynala, dizi.
 - **AutoCAD tarzı komut satırı:** `L` ↵ çizgi, `TR` ↵ buda… Boş Enter son komutu tekrarlar; ↑/↓ komut geçmişini gezer.
 - **Şehir plancısı araçları:** Etkileşimli **yol platformu** üretici, **kavşak** topolojisi düzeltici ve EasyFillet tabanlı **ada kırma**.
 - **Türkçe arayüz desteği:** Tüm araç açıklamaları ve durum mesajları İngilizce + Türkçe'dir; komut paletinde Türkçe takma adlar da çalışır.
@@ -190,7 +192,7 @@ This plugin is one of 15 open-source QGIS plugins for urban planning by the same
 
 - 🐛 **Bugs / requests** → [Issues](https://github.com/YusufEminoglu/PlanX-CAD/issues) — the in-plugin **Issue Template** dialog (`Ctrl+Alt+N`) pre-fills diagnostics for you.
 - 📜 **Changelog** → [CHANGELOG.md](CHANGELOG.md) follows *Keep a Changelog*.
-- ✅ Before a PR: run `py -3 tests/smoke_compat.py` (11 static checks, no QGIS required).
+- ✅ Before a PR: run `py -3 tests/smoke_compat.py` (11 static checks), then run all `tests/smoke_*` runtime suites with both `python-qgis-ltr.bat` and `python-qgis.bat`.
 
 ## 👤 Author
 

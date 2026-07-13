@@ -24,8 +24,13 @@ class HealthCheckDialog(QDialog):
         table.verticalHeader().setVisible(False)
         table.setAlternatingRowColors(True)
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
-        table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        table.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        table.setAccessibleName("PlanX CAD runtime health checks")
+        table.setAccessibleDescription(
+            "Read-only table of runtime checks, status values, and remediation hints."
+        )
         table.horizontalHeader().setStretchLastSection(True)
         table.setRowCount(len(checks))
 

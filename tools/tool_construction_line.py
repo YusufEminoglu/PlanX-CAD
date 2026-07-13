@@ -34,7 +34,7 @@ from ..core.sketcher_feedback import (
     cleanup_sketcher_rubberband,
     COLOR_ACCENT,
 )
-from ..core.sketcher_layer_utils import get_or_create_layer
+from ..core.sketcher_layer_utils import get_or_create_layer, add_feature_to_layer
 
 
 _INF_EXTEND_FACTOR = 10.0  # multiples of canvas extent for "infinite" lines
@@ -170,19 +170,16 @@ class tool_construction_line(QgsMapTool):
             self.tool_message.emit("⚠️ Construction — layer creation failed")
             return
 
-        was_editing = layer.isEditable()
-        if not was_editing:
-            layer.startEditing()
-        feat = QgsFeature(layer.fields())
-        feat.setGeometry(line)
-        feat.setAttribute(layer.fields().indexOf("mode"), self.mode)
-        feat.setAttribute(layer.fields().indexOf("from_x"), p1.x())
-        feat.setAttribute(layer.fields().indexOf("from_y"), p1.y())
-        feat.setAttribute(layer.fields().indexOf("to_x"), p2.x())
-        feat.setAttribute(layer.fields().indexOf("to_y"), p2.y())
-        layer.addFeature(feat)
-        if not was_editing:
-            layer.commitChanges()
+        feat = add_feature_to_layer(layer, line, {
+            "mode": self.mode,
+            "from_x": p1.x(),
+            "from_y": p1.y(),
+            "to_x": p2.x(),
+            "to_y": p2.y(),
+        })
+        if feat is None:
+            self.tool_message.emit("⚠️ Construction — feature could not be saved")
+            return
 
         # Apply the dashed cyan style once per layer lifetime.
         if layer.customProperty("planx_construction_style_applied") != "yes":

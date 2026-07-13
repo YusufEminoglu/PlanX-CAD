@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.24.0] - 2026-07-13
+
+- Metric-safe CAD, transactional edits, and workbench reliability
+
+### Fixed
+- Made cross-layer Trim, Extend and Fillet operations CRS-safe; measurement now uses the selected feature layer CRS.
+- Extended short lines reliably to distant boundaries and ignored intersections behind the endpoint.
+- Preserved all multipart components in Divide/Trim and prevented incompatible same-name output layers from being reused.
+- Checked edit, add, change, delete and commit results throughout the toolset; plugin-owned edits now roll back on failure and user-owned edit sessions remain open.
+- Made Buffer, Hatch, Offset, Multi-Offset, Fillet, Road and Junction distances metre-accurate in projected and geographic projects through a local metric work CRS.
+- Restricted junction trimming and block-remnant cleanup to PlanX/selected layers instead of modifying unrelated project layers.
+- Prevented cancelled setup dialogs from leaving an inert map tool active.
+- Removed ghost toolbar/menu objects and stale signal connections on plugin reload.
+- Grouped Fillet, Divide, Trim, Hatch and Junction road edits into rollback-capable undo commands so partial provider failures cannot leave half-written geometry.
+
+### Workbench
+- Drawing tools now start a writable target layer's edit session automatically and reject incompatible target geometry types with a clear status message.
+- Buffer, Hatch, Dimension, Construction and Road workflows are no longer blocked by an unrelated read-only active layer.
+- The dock now follows QGIS map-tool and edit-state changes, resets command/session state completely, and exposes explicit Edit ON/Edit OFF controls.
+- Command Palette and Shortcut Guide now list all 33 workbench tools, including commands without dedicated shortcuts.
+- Added keyboard-accessible diagnostics tables, read-only measurement aliases, and live CRS-label updates.
+
+### Performance and quality
+- Batched Array, Multi-Offset, Divide and Hatch writes into single undoable operations, with 10,000-item Array and 20,000-line Hatch safety limits.
+- Added dual-runtime lifecycle, geometry-regression and urban-workbench smoke suites for QGIS 3.44 LTR/Qt5 and QGIS 4.2/Qt6.
+
 ## [1.23.3] - 2026-06-18
 
 - docs: add CITATION.cff for Zenodo DOI integration
@@ -103,8 +129,6 @@ Stable release — full accessibility coverage, verified on QGIS 3 LTR and QGIS 
 
 - Beta completion release: readiness, diagnostics, smoke test, issue template, UX and shortcuts
 
-## [Unreleased]
-
 ### Added
 - Dock favorites flow (`Pin Last` + Favorites row) for persistent one-click tool access.
 - Dock state persistence across sessions (search text, recent tools, favorites, usage counter).
@@ -124,20 +148,12 @@ Stable release — full accessibility coverage, verified on QGIS 3 LTR and QGIS 
 
 ## [1.16.0] - 2026-05-23
 
-- Quick Start onboarding, usage metrics, Ctrl+Alt+Q
-
-## [1.16.0] - 2026-05-23
-
 Onboarding and operational visibility pass.
 
 ### Added
 - **Quick Start dialog** (menu, dock Start button, and `Ctrl+Alt+Q` shortcut).
 - **Live usage counter** in dock to track session tool-activation volume.
 - Shortcut references updated for quick-start access.
-
-## [1.15.0] - 2026-05-23
-
-- Edit ON/OFF controls, preflight shortcut, layer-state lifecycle refresh
 
 ## [1.15.0] - 2026-05-23
 
@@ -152,10 +168,6 @@ Session control and readiness pass for daily production use.
 
 ## [1.14.0] - 2026-05-23
 
-- Layer editing toggle, preflight checks, auto layer-state refresh
-
-## [1.14.0] - 2026-05-23
-
 Editing workflow and preflight safety pass.
 
 ### Added
@@ -166,20 +178,12 @@ Editing workflow and preflight safety pass.
 
 ## [1.13.0] - 2026-05-23
 
-- Cancel active tool, layer state indicator, dock sync
-
-## [1.13.0] - 2026-05-23
-
 Operational control and safety pass for production drafting sessions.
 
 ### Added
 - **Cancel Active Tool** action (dock button + `Ctrl+Alt+C`) for immediate safe exit from current tool.
 - **Layer edit-state indicator** in dock showing active layer name + editable/read-only status.
 - Dock status sync enhancements after cancel/activate to reduce ambiguous tool state.
-
-## [1.12.0] - 2026-05-23
-
-- Command palette, dock reset controls, shortcut sync
 
 ## [1.12.0] - 2026-05-23
 
@@ -194,10 +198,6 @@ Beta acceleration pass with command access and workflow reset controls.
 
 ## [1.11.0] - 2026-05-23
 
-- English-first docs, searchable shortcut center, live dock hints
-
-## [1.11.0] - 2026-05-23
-
 English-first documentation revision + beta usability upgrades.
 
 ### Added
@@ -205,10 +205,6 @@ English-first documentation revision + beta usability upgrades.
 - **Searchable shortcut center** (`dialogs/shortcut_help_dialog.py`) with command/category filters.
 - **Live workflow hint panel** in dock (`Tip / Ipucu`) that updates per active tool.
 - **Global docs shortcut**: `Ctrl+Alt+H` opens Command Reference.
-
-## [1.10.0] - 2026-05-23
-
-- HTML command reference, shortcuts page, Docs/Keys dock integration
 
 ## [1.10.0] - 2026-05-23
 

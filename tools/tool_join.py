@@ -217,20 +217,28 @@ class tool_join(tool_base):
             final_geom = joined_geoms[0]
         else:
             final_geom = QgsGeometry.collectGeometry(joined_geoms)
+        if QgsWkbTypes.isMultiType(layer.wkbType()) and not final_geom.isMultipart():
+            final_geom.convertToMultiType()
 
         # Start edit block
-        if not layer.isEditable():
-            layer.startEditing()
+        if not layer.isEditable() and not layer.startEditing():
+            self.tool_message.emit(
+                "⚠️ Layer could not enter edit mode / Katman düzenleme moduna açılamadı"
+            )
+            self._reset()
+            return
 
         layer.beginEditCommand("Join / Çizgileri Birleştir")
         try:
             # Update first feature in-place
             f1 = self.features_to_join[0]
-            layer.changeGeometry(f1.id(), final_geom)
+            if not layer.changeGeometry(f1.id(), final_geom):
+                raise RuntimeError("target layer rejected the joined geometry")
             
             # Delete other features
             other_ids = [f.id() for f in self.features_to_join[1:]]
-            layer.deleteFeatures(other_ids)
+            if other_ids and not layer.deleteFeatures(other_ids):
+                raise RuntimeError("source features could not be deleted")
             
             layer.endEditCommand()
             layer.triggerRepaint()

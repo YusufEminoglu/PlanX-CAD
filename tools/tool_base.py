@@ -9,7 +9,8 @@ from qgis.PyQt.QtCore import Qt, pyqtSignal
 from qgis.PyQt.QtGui import QColor, QCursor, QPixmap, QPainter, QPen, QBrush
 from qgis.core import (
     QgsWkbTypes, QgsPointXY, QgsGeometry, QgsFeature,
-    QgsProject, QgsVectorLayer, QgsRectangle, QgsCoordinateTransform
+    QgsProject, QgsVectorLayer, QgsRectangle, QgsCoordinateTransform,
+    QgsFeatureRequest
 )
 from qgis.gui import QgsMapTool, QgsRubberBand, QgsVertexMarker
 
@@ -167,6 +168,30 @@ class tool_base(QgsMapTool):
             return transform.transform(point)
         return point
 
+    def geometry_to_layer_crs(self, geometry, source_layer, target_layer):
+        """Return a detached geometry transformed between two layer CRSs.
+
+        Two-stage tools may pick their operands from different layers. QGIS
+        stores each feature in its layer CRS, so direct geometry operations on
+        those operands are invalid until both share a coordinate space.
+        """
+        if geometry is None or source_layer is None or target_layer is None:
+            return None
+        result = QgsGeometry(geometry)
+        source_crs = source_layer.crs()
+        target_crs = target_layer.crs()
+        if source_crs != target_crs:
+            if not source_crs.isValid() or not target_crs.isValid():
+                return None
+            try:
+                transform = QgsCoordinateTransform(
+                    source_crs, target_crs, QgsProject.instance()
+                )
+                result.transform(transform)
+            except Exception:
+                return None
+        return result
+
     # ── Olay İşleyiciler ─────────────────────────────────────────────────
 
     def canvasPressEvent(self, event):
@@ -257,8 +282,11 @@ class tool_base(QgsMapTool):
                     return result
 
         # Tüm vektör katmanlarında ara
+        active_id = layer.id() if isinstance(layer, QgsVectorLayer) else None
         for lyr in QgsProject.instance().mapLayers().values():
             if isinstance(lyr, QgsVectorLayer):
+                if active_id is not None and lyr.id() == active_id:
+                    continue
                 if self.require_editable and not lyr.isEditable():
                     continue
                 result = self._search_layer(lyr, search_rect, point, exclude)
@@ -286,7 +314,8 @@ class tool_base(QgsMapTool):
             query_rect = search_rect
             query_point = point
 
-        features = layer.getFeatures(query_rect)
+        request = QgsFeatureRequest().setFilterRect(query_rect)
+        features = layer.getFeatures(request)
         best_dist = float('inf')
         best_feat = None
 
@@ -323,32 +352,79 @@ class tool_base(QgsMapTool):
 
     def _apply_edit(self, layer, feature, new_geometry):
         """Feature geometrisini güncelle."""
-        if layer is None or feature is None:
+        if (layer is None or feature is None or new_geometry is None or
+                new_geometry.isEmpty() or
+                new_geometry.type() != layer.geometryType()):
+            self.tool_message.emit(
+                f"⚠️ {self.tool_name()} — Geometri katmanla uyumlu değil"
+            )
             return False
 
-        if not layer.isEditable():
-            layer.startEditing()
+        if not layer.isEditable() and not layer.startEditing():
+            self.tool_message.emit(
+                f"⚠️ {self.tool_name()} — Katman düzenleme moduna açılamadı"
+            )
+            return False
 
-        layer.changeGeometry(feature.id(), new_geometry)
+        layer.beginEditCommand(self.tool_name())
+        if not layer.changeGeometry(feature.id(), QgsGeometry(new_geometry)):
+            layer.destroyEditCommand()
+            self.tool_message.emit(
+                f"⚠️ {self.tool_name()} — Geometri güncellenemedi"
+            )
+            return False
+        layer.endEditCommand()
         layer.triggerRepaint()
         self.tool_message.emit(f"✅ {self.tool_name()} — Düzenleme uygulandı")
         return True
 
     def _add_feature(self, layer, geometry, source_feature=None):
         """Katmana yeni feature ekle."""
-        if not layer.isEditable():
-            layer.startEditing()
+        added = self._add_features(layer, [geometry], source_feature)
+        return added[0] if added else None
 
-        feat = QgsFeature(layer.fields())
-        feat.setGeometry(geometry)
+    def _add_features(self, layer, geometries, source_feature=None):
+        """Batch-add geometries as one undoable edit command.
 
-        if source_feature:
-            for i, field in enumerate(layer.fields()):
-                try:
-                    feat.setAttribute(i, source_feature.attribute(i))
-                except Exception:
-                    pass
+        Array, Divide and Multi-Offset previously created one edit command per
+        feature through repeated calls, which was slow and filled the undo
+        stack. This path validates once and uses QgsVectorLayer.addFeatures.
+        """
+        if layer is None or not isinstance(layer, QgsVectorLayer):
+            return []
+        valid_geometries = [
+            geometry for geometry in geometries
+            if (geometry is not None and not geometry.isEmpty() and
+                geometry.type() == layer.geometryType())
+        ]
+        if not valid_geometries:
+            return []
+        if not layer.isEditable() and not layer.startEditing():
+            self.tool_message.emit(
+                f"⚠️ {self.tool_name()} — Katman düzenleme moduna açılamadı"
+            )
+            return []
 
-        layer.addFeature(feat)
+        features = []
+        for geometry in valid_geometries:
+            feat = QgsFeature(layer.fields())
+            feat.setGeometry(QgsGeometry(geometry))
+
+            if source_feature:
+                for i, _field in enumerate(layer.fields()):
+                    try:
+                        feat.setAttribute(i, source_feature.attribute(i))
+                    except Exception:
+                        pass
+            features.append(feat)
+
+        layer.beginEditCommand(self.tool_name())
+        if not layer.addFeatures(features):
+            layer.destroyEditCommand()
+            self.tool_message.emit(
+                f"⚠️ {self.tool_name()} — Yeni objeler eklenemedi"
+            )
+            return []
+        layer.endEditCommand()
         layer.triggerRepaint()
-        return feat
+        return features

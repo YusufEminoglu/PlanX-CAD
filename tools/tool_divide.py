@@ -119,94 +119,112 @@ class tool_divide(tool_base):
         segments_count = params["segments"]
         method = params["method"]
 
-        # Calculate line details
-        if geom.isMultipart():
-            parts = geom.asMultiPolyline()
-            if not parts or not parts[0]:
-                self.tool_message.emit("⚠️ Divide — Line part not found / Çizgi parçası bulunamadı")
-                self._reset()
-                return
-            line_pts = parts[0]
-        else:
-            line_pts = geom.asPolyline()
-
-        if len(line_pts) < 2:
+        # Treat every multipart component independently. The previous code
+        # silently kept only part 0, so dividing a multipart feature deleted
+        # all of its remaining parts.
+        line_parts = geom.asMultiPolyline() if geom.isMultipart() else [geom.asPolyline()]
+        line_parts = [part for part in line_parts if len(part) >= 2]
+        if not line_parts:
             self.tool_message.emit("⚠️ Divide — Insufficient vertex count / Yetersiz vertex sayısı")
             self._reset()
             return
 
-        # Cumulative distances
-        cum_dists = [0.0]
-        for idx in range(1, len(line_pts)):
-            p1 = line_pts[idx - 1]
-            p2 = line_pts[idx]
-            d = math.hypot(p2.x() - p1.x(), p2.y() - p1.y())
-            cum_dists.append(cum_dists[-1] + d)
-
-        total_len = cum_dists[-1]
-        if total_len <= 1e-6:
+        if not any(self._part_metrics(part)[1] > 1e-6 for part in line_parts):
             self.tool_message.emit("⚠️ Divide — Line length is zero / Çizgi uzunluğu sıfır")
             self._reset()
             return
 
         if method == DivideDialog.METHOD_SPLIT:
-            self._split_line(layer, feature, geom, line_pts, cum_dists, total_len, segments_count)
+            self._split_line(layer, feature, line_parts, segments_count)
         else:
-            self._create_division_points(geom, total_len, segments_count)
+            self._create_division_points(line_parts, segments_count)
 
         self._reset()
 
-    def _split_line(self, layer, feature, geom, line_pts, cum_dists, total_len, N):
-        seg_len = total_len / N
+    @staticmethod
+    def _part_metrics(line_pts):
+        cum_dists = [0.0]
+        for idx in range(1, len(line_pts)):
+            p1 = line_pts[idx - 1]
+            p2 = line_pts[idx]
+            cum_dists.append(
+                cum_dists[-1] + math.hypot(
+                    p2.x() - p1.x(), p2.y() - p1.y()
+                )
+            )
+        return cum_dists, cum_dists[-1]
+
+    def _split_line(self, layer, feature, line_parts, N):
         segments_geoms = []
 
-        for j in range(N):
-            d_start = j * seg_len
-            d_end = (j + 1) * seg_len
-
-            # Interpolated points
-            pt_start_geom = geom.interpolate(d_start)
-            pt_end_geom = geom.interpolate(d_end)
-            if pt_start_geom.isEmpty() or pt_end_geom.isEmpty():
+        for line_pts in line_parts:
+            cum_dists, total_len = self._part_metrics(line_pts)
+            if total_len <= 1e-6:
                 continue
-            p_start = QgsPointXY(pt_start_geom.asPoint())
-            p_end = QgsPointXY(pt_end_geom.asPoint())
-
-            # Find intermediate points
-            seg_pts = [p_start]
-            for idx, d_val in enumerate(cum_dists):
-                if d_start + 1e-9 < d_val < d_end - 1e-9:
-                    seg_pts.append(line_pts[idx])
-            seg_pts.append(p_end)
-
-            segments_geoms.append(QgsGeometry.fromPolylineXY(seg_pts))
+            part_geom = QgsGeometry.fromPolylineXY(line_pts)
+            seg_len = total_len / N
+            for j in range(N):
+                d_start = j * seg_len
+                d_end = (j + 1) * seg_len
+                pt_start_geom = part_geom.interpolate(d_start)
+                pt_end_geom = part_geom.interpolate(d_end)
+                if pt_start_geom.isEmpty() or pt_end_geom.isEmpty():
+                    continue
+                p_start = QgsPointXY(pt_start_geom.asPoint())
+                p_end = QgsPointXY(pt_end_geom.asPoint())
+                seg_pts = [p_start]
+                for idx, d_val in enumerate(cum_dists):
+                    if d_start + 1e-9 < d_val < d_end - 1e-9:
+                        seg_pts.append(line_pts[idx])
+                seg_pts.append(p_end)
+                segment_geom = QgsGeometry.fromPolylineXY(seg_pts)
+                if QgsWkbTypes.isMultiType(layer.wkbType()):
+                    segment_geom.convertToMultiType()
+                segments_geoms.append(segment_geom)
 
         if not segments_geoms:
             self.tool_message.emit("⚠️ Divide — Division failed / Bölme işlemi başarısız")
             return
 
-        # Start edit block
-        if not layer.isEditable():
-            layer.startEditing()
+        new_features = []
+        for geometry in segments_geoms[1:]:
+            new_feature = QgsFeature(layer.fields())
+            new_feature.setGeometry(geometry)
+            for index in range(layer.fields().count()):
+                new_feature.setAttribute(index, feature.attribute(index))
+            new_features.append(new_feature)
 
-        # Update first segment in place
-        self._apply_edit(layer, feature, segments_geoms[0])
-
-        # Add other segments as new features inheriting attributes
-        for s_geom in segments_geoms[1:]:
-            self._add_feature(layer, s_geom, feature)
+        layer.beginEditCommand("PlanX CAD: divide")
+        success = layer.changeGeometry(feature.id(), segments_geoms[0])
+        if success and new_features:
+            success = layer.addFeatures(new_features)
+        if not success:
+            layer.destroyEditCommand()
+            self.tool_message.emit(
+                "⚠️ Divide — Write failed; all changes were rolled back / "
+                "Yazma hatası; tüm değişiklikler geri alındı"
+            )
+            return
+        layer.endEditCommand()
 
         layer.triggerRepaint()
-        self.tool_message.emit(f"✅ Divide — Line divided into {N} segments / Çizgi {N} eşit parçaya bölündü")
+        self.tool_message.emit(
+            f"✅ Divide — Line divided into {len(segments_geoms)} segments / "
+            f"Çizgi {len(segments_geoms)} eşit parçaya bölündü"
+        )
 
-    def _create_division_points(self, geom, total_len, N):
-        seg_len = total_len / N
+    def _create_division_points(self, line_parts, N):
         points = []
-        for i in range(1, N):
-            d_val = i * seg_len
-            pt_geom = geom.interpolate(d_val)
-            if not pt_geom.isEmpty():
-                points.append(pt_geom)
+        for line_pts in line_parts:
+            _cum_dists, total_len = self._part_metrics(line_pts)
+            if total_len <= 1e-6:
+                continue
+            part_geom = QgsGeometry.fromPolylineXY(line_pts)
+            seg_len = total_len / N
+            for i in range(1, N):
+                pt_geom = part_geom.interpolate(i * seg_len)
+                if not pt_geom.isEmpty():
+                    points.append(pt_geom)
 
         if not points:
             self.tool_message.emit("⚠️ Divide — Points not calculated / Noktalar hesaplanamadı")
@@ -231,28 +249,52 @@ class tool_divide(tool_base):
             return
 
         was_editing = target_layer.isEditable()
-        if not was_editing:
-            target_layer.startEditing()
+        if not was_editing and not target_layer.startEditing():
+            self.tool_message.emit(
+                "⚠️ Divide — Point layer is not editable / Nokta katmanı düzenlenemiyor"
+            )
+            return
 
         source_fid = self.selected_feature.id() if self.selected_feature else -1
         idx_fid = target_layer.fields().indexOf("source_fid")
         
         features = []
         for pt in points:
+            target_geom = self.geometry_to_layer_crs(
+                pt, self.selected_layer, target_layer
+            )
+            if target_geom is None:
+                continue
+            if QgsWkbTypes.isMultiType(target_layer.wkbType()):
+                target_geom.convertToMultiType()
             feat = QgsFeature(target_layer.fields())
-            feat.setGeometry(pt)
+            feat.setGeometry(target_geom)
             if idx_fid >= 0:
                 feat.setAttribute(idx_fid, source_fid)
             features.append(feat)
             
-        target_layer.addFeatures(features)
-        
+        target_layer.beginEditCommand("PlanX CAD: division points")
+        if not features or not target_layer.addFeatures(features):
+            target_layer.destroyEditCommand()
+            if not was_editing:
+                target_layer.rollBack()
+            self.tool_message.emit(
+                "⚠️ Divide — Points could not be added / Noktalar eklenemedi"
+            )
+            return
+        target_layer.endEditCommand()
+
         if not was_editing:
-            target_layer.commitChanges()
+            if not target_layer.commitChanges():
+                target_layer.rollBack()
+                self.tool_message.emit(
+                    "⚠️ Divide — Point layer could not be saved / Nokta katmanı kaydedilemedi"
+                )
+                return
         else:
             target_layer.triggerRepaint()
 
         self.tool_message.emit(
-            f"✅ Divide — {N-1} division points added to '{target_layer.name()}' / "
-            f"{N-1} adet bölüm noktası '{target_layer.name()}' katmanına eklendi"
+            f"✅ Divide — {len(features)} division points added to '{target_layer.name()}' / "
+            f"{len(features)} adet bölüm noktası '{target_layer.name()}' katmanına eklendi"
         )

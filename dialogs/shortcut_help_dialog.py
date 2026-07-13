@@ -47,8 +47,13 @@ class ShortcutHelpDialog(QDialog):
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
-        self.table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.table.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.table.setAccessibleName("PlanX CAD keyboard shortcuts")
+        self.table.setAccessibleDescription(
+            "Read-only, filterable table of CAD commands, shortcuts, and categories."
+        )
         self.table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.table)
 
@@ -61,9 +66,13 @@ class ShortcutHelpDialog(QDialog):
             "line": "Cizgi", "polyline": "Coklu Cizgi", "rectangle": "Dikdortgen", "polygon": "Cokgen",
             "circle": "Daire", "arc": "Yay", "offset": "Oteleme", "trim": "Budama", "extend": "Uzatma",
             "fillet": "Kose Yuvarlama", "buffer": "Tampon", "move": "Tasi", "array": "Coklu Kopya",
+            "copy": "Kopyala", "rotate": "Dondur", "scale": "Olcekle", "mirror": "Aynala",
             "vertex_edit": "Kose Duzenleme", "hatch": "Tarama", "construction_inf": "Sonsuz Referans",
             "construction_ray": "Isin Referans", "construction_seg": "Segment Referans", "dimension": "Olculendirme",
-            "measure": "Mesafe Olc", "divide": "Esit Parcaya Bol", "multi_offset": "Coklu Oteleme", "join": "Birlestir"
+            "measure": "Mesafe Olc", "measure_area": "Alan Olc",
+            "measure_select_line": "Secili Cizgiyi Olc", "measure_select_area": "Secili Alani Olc",
+            "divide": "Esit Parcaya Bol", "multi_offset": "Coklu Oteleme", "join": "Birlestir",
+            "road": "Yol Ciz", "junction": "Kavsak", "ada_kirma": "Ada Kirma",
         }
 
         categories = {
@@ -71,8 +80,11 @@ class ShortcutHelpDialog(QDialog):
             "offset": "Editing", "trim": "Editing", "extend": "Editing", "fillet": "Editing", "buffer": "Editing", "vertex_edit": "Editing",
             "hatch": "Editing", "construction_inf": "Editing", "construction_ray": "Editing", "construction_seg": "Editing",
             "divide": "Editing", "multi_offset": "Editing", "join": "Editing",
-            "move": "Transform", "array": "Transform",
-            "dimension": "Measure", "measure": "Measure",
+            "move": "Transform", "copy": "Transform", "rotate": "Transform", "scale": "Transform",
+            "mirror": "Transform", "array": "Transform",
+            "dimension": "Measure", "measure": "Measure", "measure_area": "Measure",
+            "measure_select_line": "Measure", "measure_select_area": "Measure",
+            "road": "Urban", "junction": "Urban", "ada_kirma": "Urban",
         }
 
         self._rows = []

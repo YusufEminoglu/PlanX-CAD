@@ -47,13 +47,14 @@ class tool_rotate(tool_base):
                 geom = self.selected_feature.geometry()
                 rotated = rotate_geometry(geom, self.center, -rotation)
 
-                self._apply_edit(self.selected_layer, self.selected_feature,
-                                 rotated)
-
-                angle_deg = abs(rotation)
-                self.tool_message.emit(
-                    f"✅ Döndür — {angle_deg:.1f}° döndürüldü"
+                applied = self._apply_edit(
+                    self.selected_layer, self.selected_feature, rotated
                 )
+                if applied:
+                    angle_deg = abs(rotation)
+                    self.tool_message.emit(
+                        f"✅ Döndür — {angle_deg:.1f}° döndürüldü"
+                    )
                 self.center = None
                 self.ref_angle = None
                 self._reset()

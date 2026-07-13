@@ -50,7 +50,9 @@ class tool_measure_select(tool_base):
             # QGIS transform context ile ellipsoid ölçümü de yapabiliriz.
             from qgis.core import QgsDistanceArea, QgsProject
             da = QgsDistanceArea()
-            da.setSourceCrs(QgsProject.instance().crs(), QgsProject.instance().transformContext())
+            # Feature geometry coordinates are stored in the feature layer
+            # CRS, not necessarily the project/canvas CRS.
+            da.setSourceCrs(layer.crs(), QgsProject.instance().transformContext())
             da.setEllipsoid(QgsProject.instance().ellipsoid())
             
             length = da.measureLength(geom)
@@ -71,7 +73,7 @@ class tool_measure_select(tool_base):
 
             from qgis.core import QgsDistanceArea, QgsProject
             da = QgsDistanceArea()
-            da.setSourceCrs(QgsProject.instance().crs(), QgsProject.instance().transformContext())
+            da.setSourceCrs(layer.crs(), QgsProject.instance().transformContext())
             da.setEllipsoid(QgsProject.instance().ellipsoid())
             
             area = da.measureArea(geom)

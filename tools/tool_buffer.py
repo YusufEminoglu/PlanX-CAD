@@ -4,14 +4,15 @@ Dialog ile join style seçimi + otomatik katman oluşturma.
 """
 
 from qgis.PyQt.QtCore import Qt
-from qgis.core import QgsWkbTypes, QgsGeometry, QgsFeature, Qgis
+from qgis.core import QgsWkbTypes, QgsGeometry, QgsFeature, QgsPointXY, Qgis
 from qgis.PyQt.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QDoubleSpinBox,
     QComboBox, QPushButton, QHBoxLayout, QLabel, QGroupBox
 )
 from qgis.PyQt.QtGui import QFont
 from .tool_base import tool_base
-from ..core.sketcher_layer_utils import get_or_create_layer
+from ..core.sketcher_layer_utils import get_or_create_layer, add_feature_to_layer
+from ..urban.crs_utils import local_metric_crs, transform_geometry
 
 
 class BufferDialog(QDialog):
@@ -94,15 +95,20 @@ class tool_buffer(tool_base):
 
     def __init__(self, canvas, iface):
         super().__init__(canvas, iface)
+        # The source only needs to be readable; output is written to the
+        # plugin-managed planx_buffer layer.
+        self.require_editable = False
         self.distance = 5.0
         self.join_style = 1
         self.segments = 16
+        self._activation_cancelled = False
 
     def tool_name(self):
         return "Buffer"
 
     def activate(self):
         super().activate()
+        self._activation_cancelled = False
         dlg = BufferDialog(self.iface.mainWindow(), self.distance)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             params = dlg.get_params()
@@ -116,10 +122,22 @@ class tool_buffer(tool_base):
                 f"— Tamponlanacak objeyi seçin"
             )
         else:
+            self._activation_cancelled = True
             self.tool_message.emit("◎ Buffer — İptal edildi")
 
     def on_entity_selected(self, layer, feature, point):
         geom = feature.geometry()
+        centroid = geom.centroid()
+        if centroid is None or centroid.isEmpty() or not layer.crs().isValid():
+            self.tool_message.emit("⚠️ Buffer — Geçerli bir kaynak CRS gerekli")
+            self._reset()
+            return
+        metric_crs = local_metric_crs(QgsPointXY(centroid.asPoint()), layer.crs())
+        metric_geom = transform_geometry(geom, layer.crs(), metric_crs)
+        if metric_geom is None or metric_geom.isEmpty():
+            self.tool_message.emit("⚠️ Buffer — CRS dönüşümü başarısız")
+            self._reset()
+            return
 
         # QGIS buffer: join_style (1=Round, 2=Bevel, 3=Miter)
         join_enum = Qgis.JoinStyle.Round
@@ -128,13 +146,14 @@ class tool_buffer(tool_base):
         elif self.join_style == 3:
             join_enum = Qgis.JoinStyle.Miter
 
-        buffered = geom.buffer(
+        buffered_metric = metric_geom.buffer(
             self.distance,
             self.segments,
             Qgis.EndCapStyle.Round,
             join_enum,
             2.0  # miter limit
         )
+        buffered = transform_geometry(buffered_metric, metric_crs, layer.crs())
 
         if buffered and not buffered.isEmpty():
             # Otomatik katman: planx_buffer
@@ -151,25 +170,15 @@ class tool_buffer(tool_base):
 
             if buffer_layer:
                 join_names = {1: "round", 2: "bevel", 3: "miter"}
-                # Build feature with attributes inline (avoid race with "last by getFeatures()").
-                was_editing = buffer_layer.isEditable()
-                if not was_editing:
-                    buffer_layer.startEditing()
-                feat = QgsFeature(buffer_layer.fields())
-                feat.setGeometry(buffered)
-                feat.setAttribute(
-                    buffer_layer.fields().indexOf("kaynak_katman"), layer.name()
-                )
-                feat.setAttribute(
-                    buffer_layer.fields().indexOf("buffer_mesafe"), self.distance
-                )
-                feat.setAttribute(
-                    buffer_layer.fields().indexOf("join_stili"),
-                    join_names.get(self.join_style, "round"),
-                )
-                buffer_layer.addFeature(feat)
-                if not was_editing:
-                    buffer_layer.commitChanges()
+                feat = add_feature_to_layer(buffer_layer, buffered, {
+                    "kaynak_katman": layer.name(),
+                    "buffer_mesafe": self.distance,
+                    "join_stili": join_names.get(self.join_style, "round"),
+                })
+                if feat is None:
+                    self.tool_message.emit("⚠️ Buffer — Obje katmana eklenemedi")
+                    self._reset()
+                    return
                 buffer_layer.triggerRepaint()
 
                 self.tool_message.emit(

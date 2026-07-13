@@ -5,7 +5,7 @@ difference() tabanlı güvenilir trim işlemi.
 """
 
 from qgis.PyQt.QtCore import Qt
-from qgis.core import QgsWkbTypes, QgsGeometry, QgsPointXY
+from qgis.core import QgsFeature, QgsWkbTypes, QgsGeometry, QgsPointXY
 from .tool_base import tool_base
 
 
@@ -43,7 +43,14 @@ class tool_trim(tool_base):
             )
             if result:
                 layer, feature = result
-                self._do_trim(layer, feature, point)
+                # ``point`` is in the first (cutting) layer CRS because
+                # tool_base selected that layer first. Convert it to the
+                # target feature CRS before distance-based side selection.
+                canvas_point = self.to_canvas_coordinates(
+                    point, self.cutting_layer
+                )
+                target_point = self.to_layer_coordinates(canvas_point, layer)
+                self._do_trim(layer, feature, target_point)
             else:
                 self.tool_message.emit("⚠️ Trim — Obje bulunamadı")
 
@@ -54,7 +61,12 @@ class tool_trim(tool_base):
     def _do_trim(self, layer, feature, click_point):
         """Gerçek trim işlemi — difference tabanlı."""
         target_geom = feature.geometry()
-        cutting_geom = self.cutting_feature.geometry()
+        cutting_geom = self.geometry_to_layer_crs(
+            self.cutting_feature.geometry(), self.cutting_layer, layer
+        )
+        if cutting_geom is None:
+            self.tool_message.emit("⚠️ Trim — CRS dönüşümü başarısız")
+            return
 
         # Kesişim kontrolü
         if not target_geom.intersects(cutting_geom):
@@ -98,8 +110,8 @@ class tool_trim(tool_base):
                 if parts:
                     kept = self._keep_farthest(parts, click_point)
                     if kept:
-                        self._apply_edit(layer, feature, kept)
-                        self.tool_message.emit("✅ Trim — Kırpma uygulandı")
+                        if self._apply_edit(layer, feature, kept):
+                            self.tool_message.emit("✅ Trim — Kırpma uygulandı")
                         return
             self.tool_message.emit("⚠️ Trim — Bölme yapılamadı")
             return
@@ -120,19 +132,47 @@ class tool_trim(tool_base):
 
         if remaining:
             if len(remaining) == 1:
-                keep_geom = remaining[0]
-            else:
-                # En büyük parçayı tut veya birleştir
-                keep_geom = remaining[0]
-                for r in remaining[1:]:
-                    combined = keep_geom.combine(r)
-                    if combined and not combined.isEmpty():
-                        keep_geom = combined
+                if self._apply_edit(layer, feature, remaining[0]):
+                    self.tool_message.emit("✅ Trim — Kırpma uygulandı")
+                return
 
-            self._apply_edit(layer, feature, keep_geom)
-            self.tool_message.emit("✅ Trim — Kırpma uygulandı")
+            if QgsWkbTypes.isMultiType(layer.wkbType()):
+                keep_geom = QgsGeometry.collectGeometry(remaining)
+                if self._apply_edit(layer, feature, keep_geom):
+                    self.tool_message.emit("✅ Trim — Kırpma uygulandı")
+            else:
+                # A single-part LineString layer cannot accept a disconnected
+                # MultiLineString. Keep one part on the original feature and
+                # add the other valid parts as features with copied attributes.
+                if self._replace_single_part_feature(layer, feature, remaining):
+                    self.tool_message.emit("✅ Trim — Kırpma uygulandı")
+                else:
+                    self.tool_message.emit(
+                        "⚠️ Trim — Yazma hatası; tüm değişiklikler geri alındı"
+                    )
         else:
             self.tool_message.emit("⚠️ Trim — Kalan parça bulunamadı")
+
+    @staticmethod
+    def _replace_single_part_feature(layer, feature, geometries):
+        new_features = []
+        for geometry in geometries[1:]:
+            new_feature = QgsFeature(layer.fields())
+            new_feature.setGeometry(geometry)
+            for index in range(layer.fields().count()):
+                new_feature.setAttribute(index, feature.attribute(index))
+            new_features.append(new_feature)
+
+        layer.beginEditCommand("PlanX CAD: trim")
+        success = layer.changeGeometry(feature.id(), geometries[0])
+        if success and new_features:
+            success = layer.addFeatures(new_features)
+        if not success:
+            layer.destroyEditCommand()
+            return False
+        layer.endEditCommand()
+        layer.triggerRepaint()
+        return True
 
     def _extract_points(self, geom):
         """Herhangi bir geometriden nokta listesi çıkar."""
@@ -185,19 +225,21 @@ class tool_trim(tool_base):
 
     def _split_line_at_points(self, line_geom, split_points):
         """Çizgiyi verilen noktalarda böl."""
-        # splitGeometry hem multipoint hem tek point destekler
-        geom = QgsGeometry(line_geom)
-        all_parts = []
-
+        # Apply each split to every current part. splitGeometry mutates only
+        # the geometry it is invoked on; the old implementation kept newly
+        # created parts aside, so a second intersection falling on one of
+        # those parts was silently ignored.
+        all_parts = [QgsGeometry(line_geom)]
         for sp in split_points:
-            # QGIS 3.x returns (OperationResult, new_geoms, topo_pts).
-            # Older builds returned 2-tuple — handle both via *rest.
-            result = geom.splitGeometry([sp], False)
-            new_geoms = result[1] if len(result) > 1 else []
-            if new_geoms:
-                all_parts.extend(new_geoms)
-
-        all_parts.insert(0, geom)  # İlk parça
+            next_parts = []
+            for part in all_parts:
+                candidate = QgsGeometry(part)
+                # QGIS 3/4 returns (OperationResult, new_geoms, topo_pts).
+                result = candidate.splitGeometry([sp], False)
+                new_geoms = result[1] if len(result) > 1 else []
+                next_parts.append(candidate if new_geoms else part)
+                next_parts.extend(new_geoms)
+            all_parts = next_parts
 
         # Boş parçaları filtrele
         return [p for p in all_parts if p and not p.isEmpty()]

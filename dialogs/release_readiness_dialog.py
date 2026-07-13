@@ -29,8 +29,13 @@ class ReleaseReadinessDialog(QDialog):
         table.verticalHeader().setVisible(False)
         table.setAlternatingRowColors(True)
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
-        table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        table.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        table.setAccessibleName("PlanX CAD release readiness checks")
+        table.setAccessibleDescription(
+            "Read-only table of release checks, status values, and required actions."
+        )
         table.horizontalHeader().setStretchLastSection(True)
         table.setRowCount(len(self._rows))
         for i, row in enumerate(self._rows):

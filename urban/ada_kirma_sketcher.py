@@ -8,21 +8,26 @@ planX CAD — Ada Kırma (Köşe Chamfer/Fillet) Aracı
  - Arta kalan kısa parçalar temizlensin
 """
 
-import math
 from qgis.PyQt.QtCore import Qt, pyqtSignal
 from qgis.PyQt.QtWidgets import QDialog
 from qgis.core import (
     QgsWkbTypes, QgsGeometry, QgsPointXY, QgsFeature,
-    QgsProject, QgsVectorLayer, QgsRectangle
+    QgsFeatureRequest, QgsProject, QgsVectorLayer
 )
 from qgis.gui import QgsMapTool
 
 from ..core.sketcher_feedback import (
     create_preview_rubberband, cleanup_sketcher_rubberband,
-    create_sketcher_rubberband, COLOR_ACCENT
 )
-from ..core.sketcher_utils import calc_tangent_fillet_arc
+from .crs_utils import local_metric_crs, transform_geometry, transform_point
 from .ada_kirma_dialog import AdaKirmaDialog
+
+
+def _geometry_for_layer(layer, geometry):
+    geometry = QgsGeometry(geometry)
+    if QgsWkbTypes.isMultiType(layer.wkbType()) and not geometry.isMultipart():
+        geometry.convertToMultiType()
+    return geometry
 
 
 class AdaKirmaSketcher(QgsMapTool):
@@ -44,15 +49,18 @@ class AdaKirmaSketcher(QgsMapTool):
         self.preview_rb = None
         self._step = 0
         self._corner_count = 0
+        self._activation_cancelled = False
 
     def activate(self):
         super().activate()
+        self._activation_cancelled = False
         self._step = 0
         self._corner_count = 0
 
         # Dialog
         dlg = AdaKirmaDialog(self.iface.mainWindow())
         if dlg.exec() != QDialog.DialogCode.Accepted:
+            self._activation_cancelled = True
             self.sketcher_message.emit("🔶 Ada Kırma — İptal edildi")
             self.sketcher_finished.emit()
             return
@@ -119,8 +127,14 @@ class AdaKirmaSketcher(QgsMapTool):
         tip = p["tip"]
         artik_esik = p["artik_esik"]
 
+        canvas_crs = self.canvas.mapSettings().destinationCrs()
+        metric_crs = local_metric_crs(click_point, canvas_crs)
+        metric_click = transform_point(click_point, canvas_crs, metric_crs)
+
         # 1. Tıklanan noktanın etrafındaki çizgileri bul
-        candidates = self._find_lines_near_point(click_point, tolerans * 3)
+        candidates = self._find_lines_near_point(
+            metric_click, tolerans * 3, metric_crs
+        )
 
         if len(candidates) < 2:
             self.sketcher_message.emit(
@@ -130,7 +144,9 @@ class AdaKirmaSketcher(QgsMapTool):
             return
 
         # 2. En yakın iki çizgiyi ve kesişim noktasını bul
-        pair = self._find_intersecting_pair(candidates, click_point, tolerans)
+        pair = self._find_intersecting_pair(
+            candidates, metric_click, tolerans
+        )
 
         if pair is None:
             self.sketcher_message.emit(
@@ -138,26 +154,9 @@ class AdaKirmaSketcher(QgsMapTool):
             )
             return
 
-        layer1, feat1, layer2, feat2, int_point = pair
+        layer1, feat1, geom1, layer2, feat2, geom2, int_point = pair
 
         # 3. Kırma mesafesi veya yay teğeti hesapla
-        geom1 = feat1.geometry()
-        geom2 = feat2.geometry()
-
-        # Doğrultuları bulmak için çok küçük bir mesafe kullanıyoruz
-        tmp_trim1 = self._trim_line_from_point(geom1, int_point, 0.1)
-        tmp_trim2 = self._trim_line_from_point(geom2, int_point, 0.1)
-        
-        if tmp_trim1 is None or tmp_trim2 is None:
-            self.sketcher_message.emit("⚠️ Ada Kırma — Çizgi doğrultusu hesaplanamadı")
-            return
-            
-        _, pt1_near = tmp_trim1
-        _, pt2_near = tmp_trim2
-        
-        dir1 = math.atan2(pt1_near.y() - int_point.y(), pt1_near.x() - int_point.x())
-        dir2 = math.atan2(pt2_near.y() - int_point.y(), pt2_near.x() - int_point.x())
-
         if tip == "duz":
             trim_dist = mesafe
             trim1 = self._trim_line_from_point(geom1, int_point, trim_dist)
@@ -172,38 +171,46 @@ class AdaKirmaSketcher(QgsMapTool):
             connection = QgsGeometry.fromPolylineXY([cut_pt1, cut_pt2])
         else:
             # Eğri (Fillet) -> mesafe = Radius
-            from ..core.sketcher_utils import create_fillet_and_trims, trim_line_to_point
+            from ..core.sketcher_utils import create_fillet_and_trims
             
             fillet_result = create_fillet_and_trims(geom1, geom2, mesafe)
             if not fillet_result:
                 self.sketcher_message.emit("⚠️ Ada Kırma — Yay hesaplanamadı")
                 return
                 
-            trimmed_geom1 = trim_line_to_point(geom1, fillet_result['tp1'])
-            trimmed_geom2 = trim_line_to_point(geom2, fillet_result['tp2'])
+            fillet_intersection = QgsPointXY(fillet_result['inter_pt'])
+            trim1 = self._trim_line_from_point(
+                geom1,
+                fillet_intersection,
+                fillet_intersection.distance(fillet_result['tp1']),
+            )
+            trim2 = self._trim_line_from_point(
+                geom2,
+                fillet_intersection,
+                fillet_intersection.distance(fillet_result['tp2']),
+            )
+            if trim1 is None or trim2 is None:
+                self.sketcher_message.emit("⚠️ Ada Kırma — Teğet noktaları uygulanamadı")
+                return
+            trimmed_geom1, _ = trim1
+            trimmed_geom2, _ = trim2
             connection = fillet_result['arc']
 
-        # 5. Geometrileri güncelle
-        self._safe_edit(layer1, feat1, trimmed_geom1)
-        self._safe_edit(layer2, feat2, trimmed_geom2)
-
-        # 6. Bağlantıyı kaynak katmana ekle (kullanıcının açık edit session'ını koru)
-        target_layer = layer1
-        if connection and not connection.isEmpty():
-            was_editing = target_layer.isEditable()
-            if not was_editing:
-                target_layer.startEditing()
-            new_feat = QgsFeature(target_layer.fields())
-            new_feat.setGeometry(connection)
-            target_layer.addFeature(new_feat)
-            if not was_editing:
-                target_layer.commitChanges()
-            target_layer.triggerRepaint()
+        # Apply both trims and the connecting segment as grouped edit commands.
+        # Existing user edit sessions remain open and are never committed here.
+        if not self._apply_corner_edits(
+            layer1, feat1, trimmed_geom1,
+            layer2, feat2, trimmed_geom2,
+            connection, metric_crs,
+        ):
+            self.sketcher_message.emit("⚠️ Ada Kırma — Değişiklikler kaydedilemedi")
+            return
 
         # 7. Artık kısa parçaları temizle
         if artik_esik > 0:
             cleaned = self._clean_remnants(
-                click_point, tolerans * 5, artik_esik
+                metric_click, tolerans * 5, artik_esik,
+                (layer1, layer2), metric_crs, connection,
             )
         else:
             cleaned = 0
@@ -224,18 +231,15 @@ class AdaKirmaSketcher(QgsMapTool):
     # Çizgi Arama
     # ════════════════════════════════════════════════════════════════════════
 
-    def _find_lines_near_point(self, point, search_radius):
+    def _find_lines_near_point(self, point, search_radius, metric_crs):
         """Noktanın etrafındaki çizgileri bul.
 
         Returns:
-            list[(QgsVectorLayer, QgsFeature, distance)]
+            list[(QgsVectorLayer, QgsFeature, distance, metric_geometry)]
         """
         results = []
-        search_rect = QgsRectangle(
-            point.x() - search_radius, point.y() - search_radius,
-            point.x() + search_radius, point.y() + search_radius
-        )
         pt_geom = QgsGeometry.fromPointXY(point)
+        search_area = pt_geom.buffer(search_radius, 8)
 
         for layer in QgsProject.instance().mapLayers().values():
             if not isinstance(layer, QgsVectorLayer):
@@ -243,13 +247,19 @@ class AdaKirmaSketcher(QgsMapTool):
             if layer.geometryType() != QgsWkbTypes.LineGeometry:
                 continue
 
-            for feat in layer.getFeatures(search_rect):
-                geom = feat.geometry()
+            layer_search_area = transform_geometry(
+                search_area, metric_crs, layer.crs()
+            )
+            request = QgsFeatureRequest().setFilterRect(
+                layer_search_area.boundingBox()
+            )
+            for feat in layer.getFeatures(request):
+                geom = transform_geometry(feat.geometry(), layer.crs(), metric_crs)
                 if geom.isEmpty():
                     continue
                 dist = geom.distance(pt_geom)
                 if dist <= search_radius:
-                    results.append((layer, feat, dist))
+                    results.append((layer, feat, dist, geom))
 
         # Mesafeye göre sırala
         results.sort(key=lambda x: x[2])
@@ -266,11 +276,8 @@ class AdaKirmaSketcher(QgsMapTool):
 
         for i in range(len(candidates)):
             for j in range(i + 1, len(candidates)):
-                l1, f1, _ = candidates[i]
-                l2, f2, _ = candidates[j]
-
-                g1 = f1.geometry()
-                g2 = f2.geometry()
+                l1, f1, _, g1 = candidates[i]
+                l2, f2, _, g2 = candidates[j]
 
                 # Kesişim kontrolü
                 if not g1.intersects(g2):
@@ -290,7 +297,7 @@ class AdaKirmaSketcher(QgsMapTool):
                     dist = click_point.distance(int_pt)
                     if dist < best_dist:
                         best_dist = dist
-                        best = (l1, f1, l2, f2, int_pt)
+                        best = (l1, f1, g1, l2, f2, g2, int_pt)
 
         return best
 
@@ -332,38 +339,73 @@ class AdaKirmaSketcher(QgsMapTool):
         Returns:
             (trimmed_geom, cut_point) veya None
         """
-        # Çizgi noktalarını al
-        if geom.isMultipart():
-            lines = geom.asMultiPolyline()
-            pts = []
-            for line in lines:
-                pts.extend([QgsPointXY(p) for p in line])
-        else:
-            pts = [QgsPointXY(p) for p in geom.asPolyline()]
-
-        if len(pts) < 2:
+        if geom is None or geom.isEmpty() or distance < 0:
             return None
 
-        # Kesişim noktasına en yakın ucu bul
-        d_start = int_point.distance(pts[0])
-        d_end = int_point.distance(pts[-1])
-
-        if d_start <= d_end:
-            # Başlangıç kesişime yakın → baştan kes
-            cut_pt = self._point_along_line(pts, distance, from_start=True)
-            if cut_pt is None:
-                return None
-            # Başlangıçtan cut_pt'ye kadar olan kısmı kaldır
-            new_pts = self._trim_from_start(pts, cut_pt)
+        # Segmentize curved inputs for deterministic vertex-based trimming.
+        # ``QgsGeometry.segmentize`` is not available in QGIS 3.28; the
+        # in-place conversion below is supported by both QGIS 3 and 4.
+        linear = QgsGeometry(geom)
+        if linear.requiresConversionToStraightSegments():
+            linear.convertToStraightSegment()
+        if linear.isMultipart():
+            parts = [list(map(QgsPointXY, line)) for line in linear.asMultiPolyline()]
         else:
-            # Son kesişime yakın → sondan kes
-            cut_pt = self._point_along_line(pts, distance, from_start=False)
-            if cut_pt is None:
-                return None
-            new_pts = self._trim_from_end(pts, cut_pt)
+            parts = [[QgsPointXY(point) for point in linear.asPolyline()]]
+        valid_indexes = [index for index, part in enumerate(parts) if len(part) >= 2]
+        if not valid_indexes:
+            return None
 
-        if new_pts and len(new_pts) >= 2:
-            return (QgsGeometry.fromPolylineXY(new_pts), cut_pt)
+        # Never concatenate multipart lines: trim only the part whose endpoint
+        # is nearest the selected corner and preserve every other part.
+        part_index = min(
+            valid_indexes,
+            key=lambda index: min(
+                int_point.distance(parts[index][0]),
+                int_point.distance(parts[index][-1]),
+            ),
+        )
+        points = parts[part_index]
+        from_start = (
+            int_point.distance(points[0]) <= int_point.distance(points[-1])
+        )
+        trimmed = self._trim_points(points, distance, from_start)
+        if trimmed is None:
+            return None
+        new_points, cut_point = trimmed
+        parts[part_index] = new_points
+
+        if linear.isMultipart():
+            result = QgsGeometry.fromMultiPolylineXY(parts)
+        else:
+            result = QgsGeometry.fromPolylineXY(new_points)
+        return result, cut_point
+
+    @staticmethod
+    def _trim_points(points, distance, from_start):
+        """Trim an exact along-line distance and return points plus cut point."""
+        ordered = points if from_start else list(reversed(points))
+        remaining = distance
+        for index in range(len(ordered) - 1):
+            start = ordered[index]
+            end = ordered[index + 1]
+            segment_length = start.distance(end)
+            if segment_length <= 1e-12:
+                continue
+            if remaining <= segment_length:
+                ratio = max(0.0, min(1.0, remaining / segment_length))
+                cut = QgsPointXY(
+                    start.x() + ratio * (end.x() - start.x()),
+                    start.y() + ratio * (end.y() - start.y()),
+                )
+                kept = [cut] + ordered[index + 1:]
+                if not from_start:
+                    kept.reverse()
+                # Avoid zero-length two-point results at an exact endpoint.
+                if len(kept) < 2 or kept[0].distance(kept[-1]) <= 1e-12:
+                    return None
+                return kept, cut
+            remaining -= segment_length
         return None
 
     def _point_along_line(self, pts, distance, from_start=True):
@@ -426,66 +468,124 @@ class AdaKirmaSketcher(QgsMapTool):
         return result
 
 
-    def _safe_edit(self, layer, feature, new_geom):
-        """Katmanı düzenleyerek geometriyi güncelle.
+    def _apply_corner_edits(self, layer1, feature1, geometry1,
+                            layer2, feature2, geometry2,
+                            connection, metric_crs):
+        """Apply a corner operation while preserving existing edit sessions."""
+        layers = list(dict.fromkeys((layer1, layer2)))
+        started = {}
 
-        Kullanıcının başlattığı edit session'ı varsa commit'i ona bırakırız;
-        biz başlattıysak burada bitiririz.
-        """
-        was_editing = layer.isEditable()
-        if not was_editing:
-            layer.startEditing()
-        layer.changeGeometry(feature.id(), new_geom)
-        if not was_editing:
-            layer.commitChanges()
-        layer.triggerRepaint()
+        for layer in layers:
+            started[layer] = not layer.isEditable()
+            if started[layer] and not layer.startEditing():
+                for opened_layer, was_started in started.items():
+                    if was_started and opened_layer.isEditable():
+                        opened_layer.rollBack()
+                return False
+
+        for layer in layers:
+            layer.beginEditCommand("Ada köşesi kır")
+
+        try:
+            native_geometry1 = _geometry_for_layer(
+                layer1,
+                transform_geometry(geometry1, metric_crs, layer1.crs()),
+            )
+            native_geometry2 = _geometry_for_layer(
+                layer2,
+                transform_geometry(geometry2, metric_crs, layer2.crs()),
+            )
+            if not layer1.changeGeometry(feature1.id(), native_geometry1):
+                raise RuntimeError("First line could not be trimmed")
+            if not layer2.changeGeometry(feature2.id(), native_geometry2):
+                raise RuntimeError("Second line could not be trimmed")
+
+            if connection is not None and not connection.isEmpty():
+                new_feature = QgsFeature(layer1.fields())
+                # A connector is part of the first source line and should keep
+                # its classification/style attributes.
+                new_feature.setAttributes(feature1.attributes())
+                new_feature.setGeometry(_geometry_for_layer(
+                    layer1,
+                    transform_geometry(connection, metric_crs, layer1.crs()),
+                ))
+                if not layer1.addFeature(new_feature):
+                    raise RuntimeError("Corner connector could not be added")
+
+            for layer in layers:
+                layer.endEditCommand()
+        except Exception:
+            for layer in reversed(layers):
+                layer.destroyEditCommand()
+            for layer in layers:
+                if started[layer]:
+                    layer.rollBack()
+            return False
+
+        for layer in layers:
+            if started[layer] and not layer.commitChanges():
+                layer.rollBack()
+                return False
+            layer.triggerRepaint()
+        return True
 
     # ════════════════════════════════════════════════════════════════════════
     # Artık Temizleme
     # ════════════════════════════════════════════════════════════════════════
 
-    def _clean_remnants(self, center_point, search_radius, min_length):
+    def _clean_remnants(self, center_point, search_radius, min_length,
+                        source_layers, metric_crs, protected_geometry=None):
         """Kısa artık çizgi parçalarını temizle.
 
         Returns:
             int — silinen parça sayısı
         """
         cleaned = 0
-        search_rect = QgsRectangle(
-            center_point.x() - search_radius,
-            center_point.y() - search_radius,
-            center_point.x() + search_radius,
-            center_point.y() + search_radius
-        )
+        point_geometry = QgsGeometry.fromPointXY(center_point)
+        search_area = point_geometry.buffer(search_radius, 8)
 
-        for layer in QgsProject.instance().mapLayers().values():
-            if not isinstance(layer, QgsVectorLayer):
-                continue
-            if layer.geometryType() != QgsWkbTypes.LineGeometry:
-                continue
+        # Cleanup is intentionally limited to the two source layers selected
+        # for this corner.  Never delete unrelated short lines project-wide.
+        for layer in dict.fromkeys(source_layers):
+            layer_search_area = transform_geometry(
+                search_area, metric_crs, layer.crs()
+            )
+            request = QgsFeatureRequest().setFilterRect(
+                layer_search_area.boundingBox()
+            )
 
             to_delete = []
-            for feat in layer.getFeatures(search_rect):
-                geom = feat.geometry()
+            for feat in layer.getFeatures(request):
+                geom = transform_geometry(feat.geometry(), layer.crs(), metric_crs)
                 if geom.isEmpty():
+                    continue
+
+                same_as_protected = False
+                if protected_geometry is not None:
+                    if hasattr(geom, "isExactlyEqual"):
+                        same_as_protected = geom.isExactlyEqual(protected_geometry)
+                    else:
+                        same_as_protected = geom.equals(protected_geometry)
+                if same_as_protected:
                     continue
 
                 length = geom.length()
                 if length < min_length:
                     # Merkeze yakın mı kontrol et
-                    pt_geom = QgsGeometry.fromPointXY(center_point)
-                    if geom.distance(pt_geom) <= search_radius:
+                    if geom.distance(point_geometry) <= search_radius:
                         to_delete.append(feat.id())
 
             if to_delete:
                 was_editing = layer.isEditable()
-                if not was_editing:
-                    layer.startEditing()
+                if not was_editing and not layer.startEditing():
+                    continue
+                layer.beginEditCommand("Kısa çizgi artıklarını temizle")
                 for fid in to_delete:
-                    layer.deleteFeature(fid)
-                    cleaned += 1
-                if not was_editing:
-                    layer.commitChanges()
+                    if layer.deleteFeature(fid):
+                        cleaned += 1
+                layer.endEditCommand()
+                if not was_editing and not layer.commitChanges():
+                    layer.rollBack()
                 layer.triggerRepaint()
 
         return cleaned

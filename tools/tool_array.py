@@ -31,6 +31,9 @@ from .tool_base import tool_base
 from ..core.sketcher_utils import rotate_geometry
 
 
+MAX_ARRAY_COPIES = 10_000
+
+
 class ArrayDialog(QDialog):
     """Dialog asking the user for rectangular or polar array parameters."""
 
@@ -196,15 +199,25 @@ class tool_array(tool_base):
 
         rows, cols = self.params["rows"], self.params["cols"]
         dx, dy = self.params["dx"], self.params["dy"]
-        n_added = 0
+        requested = rows * cols - 1
+        if requested > MAX_ARRAY_COPIES:
+            self.tool_message.emit(
+                f"⚠️ Array — {requested:,} copies exceed the safe limit "
+                f"({MAX_ARRAY_COPIES:,}); reduce rows or columns"
+            )
+            return
+        geometries = []
         for r in range(rows):
             for c in range(cols):
                 if r == 0 and c == 0:
                     continue  # source kept in place
                 offset = QgsGeometry(geom)
                 offset.translate(c * dx, r * dy)
-                self._add_feature(layer, offset, feature)
-                n_added += 1
+                geometries.append(offset)
+        added = self._add_features(layer, geometries, feature)
+        if geometries and not added:
+            return
+        n_added = len(added)
         self.tool_message.emit(f"✅ Array (rect) — {n_added} copies added ({rows}×{cols})")
 
     # ───────────────────────── Polar ─────────────────────────
@@ -222,15 +235,18 @@ class tool_array(tool_base):
         steps = count if not full_circle else count
         step_angle = sweep / count if full_circle else sweep / max(count - 1, 1)
 
-        n_added = 0
+        geometries = []
         for i in range(steps):
             angle = step_angle * (i + 1 if full_circle else i)
             if not full_circle and i == 0:
                 continue  # source stays at 0°
             rotated = rotate_geometry(geom, center, angle)
             if rotated is not None and not rotated.isEmpty():
-                self._add_feature(layer, rotated, feature)
-                n_added += 1
+                geometries.append(rotated)
+        added = self._add_features(layer, geometries, feature)
+        if geometries and not added:
+            return
+        n_added = len(added)
         self.tool_message.emit(f"✅ Array (polar) — {n_added} copies around center ({sweep:.0f}°)")
 
     def _render_polar_preview(self, center: QgsPointXY) -> None:

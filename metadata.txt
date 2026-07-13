@@ -2,19 +2,19 @@
 name=PlanX CAD Toolset
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
-description=Lightweight and fast CAD toolset for urban planning processes in QGIS. Features include drawing, editing, transforming, measuring, and road platform design.
-version=1.23.3
+description=AutoCAD-style drafting inside QGIS: 30+ tools for precise drawing, editing, snapping, dimensions, hatching, transforms, and urban road design.
+version=1.24.0
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
-about=PlanX CAD Toolset is a lightweight, fast, and modular QGIS plugin explicitly designed for urban planning processes. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning. It brings 18+ CAD-like features direct to QGIS including Line, Polyline, Rectangle, Polygon, Circle, Arc, Offset, Trim, Extend, Fillet, and more. It includes a modern dockable panel UI, native snapping support, and an interactive road platform creation tool.
+about=PlanX CAD Toolset brings a keyboard-first, AutoCAD-style drafting workflow to QGIS 3.28 LTR through QGIS 4. Its 30+ tools cover line and polygon drawing, offset, trim, extend, tangent fillet, transform, array, vertex editing, hatch, construction geometry, measurement, dimensions, and urban road-platform design. The dock includes command aliases, history, favorites, live coordinates, layer-readiness guidance, and native QGIS snapping. It has no external dependencies and is developed with feedback from urban-planning education at Dokuz Eylul University.
 
 tracker=https://github.com/YusufEminoglu/PlanX-CAD/issues
 repository=https://github.com/YusufEminoglu/PlanX-CAD
 
 hasProcessingProvider=no
 
-tags=cad, sketcher, drawing, editing, urban planning, road, city planning
+tags=cad, drafting, digitizing, autocad, drawing, editing, snapping, dimensioning, offset, fillet, polyline, polygon, road design, urban planning
 icon=icons/icon.png
 
 homepage=https://github.com/YusufEminoglu/PlanX-CAD

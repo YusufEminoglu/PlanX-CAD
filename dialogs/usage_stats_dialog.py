@@ -28,8 +28,13 @@ class UsageStatsDialog(QDialog):
         table.verticalHeader().setVisible(False)
         table.setAlternatingRowColors(True)
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
-        table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        table.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        table.setAccessibleName("PlanX CAD session usage statistics")
+        table.setAccessibleDescription(
+            "Read-only table of tool activation counts and session shares."
+        )
         table.horizontalHeader().setStretchLastSection(True)
 
         total = max(1, int(total_activations))

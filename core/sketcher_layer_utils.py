@@ -27,14 +27,28 @@ def get_or_create_layer(layer_name, geom_type="MultiLineString", crs=None,
     """
     project = QgsProject.instance()
 
-    # Mevcut katmanı ara
-    existing = project.mapLayersByName(layer_name)
-    if existing:
-        return existing[0]
-
-    # Yeni katman oluştur
     if crs is None:
         crs = project.crs()
+
+    # Do not blindly reuse the first same-name layer. A user layer (or a layer
+    # left by an older plugin version) can have an incompatible CRS, WKB type,
+    # or schema, causing every subsequent addFeature() to fail silently.
+    requested_wkb = QgsWkbTypes.parseType(geom_type)
+    required_names = {name for name, _field_type in (fields or [])}
+    for candidate in project.mapLayersByName(layer_name):
+        if not isinstance(candidate, QgsVectorLayer):
+            continue
+        same_wkb = (
+            QgsWkbTypes.flatType(candidate.wkbType()) ==
+            QgsWkbTypes.flatType(requested_wkb)
+        )
+        same_crs = (not crs.isValid() or candidate.crs() == crs)
+        candidate_names = {field.name() for field in candidate.fields()}
+        if same_wkb and same_crs and required_names.issubset(candidate_names):
+            return candidate
+
+    # No compatible layer exists; QGIS safely supports duplicate display
+    # names, and callers retain the correct layer object directly.
 
     crs_str = crs.authid()
     uri = f"{geom_type}?crs={crs_str}"
@@ -74,15 +88,16 @@ def add_feature_to_layer(layer, geometry, attributes=None):
     Returns:
         QgsFeature veya None
     """
-    if layer is None or geometry is None:
+    if (layer is None or geometry is None or geometry.isEmpty() or
+            not isinstance(layer, QgsVectorLayer) or not layer.isValid()):
         return None
 
     was_editing = layer.isEditable()
-    if not was_editing:
-        layer.startEditing()
+    if not was_editing and not layer.startEditing():
+        return None
 
     feat = QgsFeature(layer.fields())
-    feat.setGeometry(geometry)
+    feat.setGeometry(QgsGeometry(geometry))
 
     if attributes:
         for field_name, value in attributes.items():
@@ -90,11 +105,21 @@ def add_feature_to_layer(layer, geometry, attributes=None):
             if idx >= 0:
                 feat.setAttribute(idx, value)
 
-    layer.addFeature(feat)
+    layer.beginEditCommand("PlanX CAD: add feature")
+    if not layer.addFeature(feat):
+        layer.destroyEditCommand()
+        if not was_editing:
+            layer.rollBack()
+        return None
+    layer.endEditCommand()
     # Only commit if we started the edit session; otherwise leave the user's
     # in-progress edits intact.
-    if not was_editing:
-        layer.commitChanges()
+    if not was_editing and not layer.commitChanges():
+        # This helper owns the edit session in this branch, so rollback cannot
+        # discard any pre-existing user edits and prevents a failed write from
+        # lingering in the layer buffer.
+        layer.rollBack()
+        return None
     return feat
 
 
@@ -115,19 +140,51 @@ def add_geometry_to_current_layer(iface, geometry):
     if not isinstance(layer, QgsVectorLayer):
         return False
 
+    started_editing = False
     if not layer.isEditable():
-        layer.startEditing()
+        if not layer.startEditing():
+            return False
+        started_editing = True
+
+    if geometry is None or geometry.isEmpty():
+        if started_editing:
+            layer.rollBack()
+        return False
+
+    # Work on a detached copy: transforming the caller's preview geometry in
+    # place corrupts subsequent reuse when canvas and layer CRSs differ.
+    target_geometry = QgsGeometry(geometry)
 
     canvas = iface.mapCanvas()
     canvas_crs = canvas.mapSettings().destinationCrs()
     layer_crs = layer.crs()
-    if canvas_crs.isValid() and layer_crs.isValid() and canvas_crs != layer_crs:
+    if canvas_crs != layer_crs:
+        if not canvas_crs.isValid() or not layer_crs.isValid():
+            if started_editing:
+                layer.rollBack()
+            return False
         transform = QgsCoordinateTransform(canvas_crs, layer_crs, QgsProject.instance())
-        geometry.transform(transform)
+        try:
+            target_geometry.transform(transform)
+        except Exception:
+            if started_editing:
+                layer.rollBack()
+            return False
+
+    if target_geometry.type() != layer.geometryType():
+        if started_editing:
+            layer.rollBack()
+        return False
 
     feat = QgsFeature(layer.fields())
-    feat.setGeometry(geometry)
-    layer.addFeature(feat)
+    feat.setGeometry(target_geometry)
+    layer.beginEditCommand("PlanX CAD: draw geometry")
+    if not layer.addFeature(feat):
+        layer.destroyEditCommand()
+        if started_editing:
+            layer.rollBack()
+        return False
+    layer.endEditCommand()
     layer.triggerRepaint()
     return True
 

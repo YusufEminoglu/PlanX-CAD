@@ -17,14 +17,24 @@ class LiveCoordWidget(QWidget):
         super().__init__(parent)
         self.iface = iface
         self.canvas = iface.mapCanvas()
+        self._signal_connections = []
         self._build_ui()
-        try:
-            self.canvas.xyCoordinates.connect(self._on_xy)
-            self.canvas.scaleChanged.connect(self._on_scale)
-        except Exception:
-            # Signal API differs across QGIS minor versions — fail safe.
-            pass
+        self._connect_canvas_signal("xyCoordinates", self._on_xy)
+        self._connect_canvas_signal("scaleChanged", self._on_scale)
+        self._connect_canvas_signal("destinationCrsChanged", self._on_crs_changed)
         self._on_scale(self.canvas.scale())
+
+    def _connect_canvas_signal(self, name, slot) -> None:
+        """Connect an optional canvas signal and remember it for safe cleanup."""
+        signal = getattr(self.canvas, name, None)
+        if signal is None:
+            return
+        try:
+            signal.connect(slot)
+            self._signal_connections.append((signal, slot))
+        except Exception:
+            # Signal availability differs across supported QGIS versions.
+            pass
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
@@ -74,9 +84,13 @@ class LiveCoordWidget(QWidget):
         except Exception:
             pass
 
+    def _on_crs_changed(self, *_args) -> None:
+        self._on_scale(self.canvas.scale())
+
     def unload(self) -> None:
-        try:
-            self.canvas.xyCoordinates.disconnect(self._on_xy)
-            self.canvas.scaleChanged.disconnect(self._on_scale)
-        except Exception:
-            pass
+        for signal, slot in self._signal_connections:
+            try:
+                signal.disconnect(slot)
+            except Exception:
+                pass
+        self._signal_connections.clear()

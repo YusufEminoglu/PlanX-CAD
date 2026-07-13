@@ -91,6 +91,11 @@ class CommandLineEdit(QLineEdit):
     def history(self) -> list[str]:
         return list(self._history)
 
+    def clear_history(self) -> None:
+        """Clear recalled commands and return navigation to the live input."""
+        self._history.clear()
+        self._hist_index = 0
+
     def keyPressEvent(self, event):
         key = event.key()
         if key == Qt.Key.Key_Up and self._history:
@@ -233,6 +238,8 @@ class CADDockWidget(QDockWidget):
         "seg": "construction_seg",
         "di": "measure", "dist": "measure", "measure": "measure",
         "aa": "measure_area", "area": "measure_area",
+        "msl": "measure_select_line", "measureline": "measure_select_line",
+        "msa": "measure_select_area", "measurearea": "measure_select_area",
         "dim": "dimension", "dimension": "dimension",
         "road": "road", "junction": "junction", "ada": "ada_kirma",
     }
@@ -572,11 +579,11 @@ class CADDockWidget(QDockWidget):
             return b
 
         # Row 0 — layer & tool workflow controls
-        edit_btn = _mk_qa(
+        self.edit_btn = _mk_qa(
             "Edit", "Toggle layer editing [Ctrl+Alt+E] / Katman duzenlemeyi ac-kapat",
             "#eff6ff", "#1d4ed8", "#bfdbfe", "#dbeafe")
-        edit_btn.clicked.connect(lambda: self.edit_toggle_requested.emit())
-        qa_grid.addWidget(edit_btn, 0, 0)
+        self.edit_btn.clicked.connect(lambda: self.edit_toggle_requested.emit())
+        qa_grid.addWidget(self.edit_btn, 0, 0)
 
         cancel_btn = _mk_qa(
             "Cancel", "Cancel active tool [Ctrl+Alt+C] / Aktif araci iptal et",
@@ -785,13 +792,7 @@ class CADDockWidget(QDockWidget):
         if key not in self.buttons:
             return
 
-        btn = self.buttons.get(key)
-        if btn:
-            self.button_group.setExclusive(False)
-            for b in self.buttons.values():
-                b.setChecked(False)
-            btn.setChecked(True)
-            self.button_group.setExclusive(True)
+        self.set_active_tool(key)
 
         if key in self._recent_tools:
             self._recent_tools.remove(key)
@@ -804,6 +805,16 @@ class CADDockWidget(QDockWidget):
         self._activation_count += 1
         self._tool_usage_counts[key] = int(self._tool_usage_counts.get(key, 0)) + 1
         self.usage_label.setText(self._format_usage(self._activation_count))
+
+    def set_active_tool(self, key):
+        """Synchronize the checked tool without recording an activation."""
+        btn = self.buttons.get(key)
+        self.button_group.setExclusive(False)
+        for button in self.buttons.values():
+            button.setChecked(False)
+        if btn is not None:
+            btn.setChecked(True)
+        self.button_group.setExclusive(True)
 
     def _update_hint(self, key):
         hint = self._TOOL_HINTS.get(
@@ -943,12 +954,41 @@ class CADDockWidget(QDockWidget):
         layer = self.iface.activeLayer()
         if layer is None:
             self.layer_state_label.setText("Layer: none selected / Katman: secili degil")
+            self.edit_btn.setText("Edit")
+            self.edit_btn.setEnabled(False)
+            self.edit_btn.setToolTip("Select a vector layer to edit / Duzenlemek icin vektor katman secin")
+            self.edit_btn.setAccessibleName("Edit unavailable")
+            self.edit_btn.setAccessibleDescription(self.edit_btn.toolTip())
             return
+
         name = getattr(layer, "name", lambda: "unknown")()
+        is_vector = hasattr(layer, "geometryType") and hasattr(layer, "isEditable")
+        if not is_vector:
+            self.layer_state_label.setText(
+                f"Layer: {name} (not vector) / Katman: {name} (vektor degil)"
+            )
+            self.edit_btn.setText("Edit")
+            self.edit_btn.setEnabled(False)
+            self.edit_btn.setToolTip("Active layer is not vector / Aktif katman vektor degil")
+            self.edit_btn.setAccessibleName("Edit unavailable")
+            self.edit_btn.setAccessibleDescription(self.edit_btn.toolTip())
+            return
+
         editable = getattr(layer, "isEditable", lambda: False)()
         state = "editable" if editable else "read-only"
         state_tr = "duzenlenebilir" if editable else "salt-okunur"
         self.layer_state_label.setText(f"Layer: {name} ({state}) / Katman: {name} ({state_tr})")
+        if editable:
+            label = "Edit OFF"
+            tip = "Stop editing [Ctrl+Alt+E] / Katman duzenlemeyi kapat"
+        else:
+            label = "Edit ON"
+            tip = "Start editing [Ctrl+Alt+E] / Katman duzenlemeyi ac"
+        self.edit_btn.setText(label)
+        self.edit_btn.setEnabled(True)
+        self.edit_btn.setToolTip(tip)
+        self.edit_btn.setAccessibleName(label)
+        self.edit_btn.setAccessibleDescription(tip)
 
     def run_preflight(self):
         layer = self.iface.activeLayer()
@@ -967,25 +1007,25 @@ class CADDockWidget(QDockWidget):
 
     def _save_state(self):
         s = QSettings("PlanX", "PlanXCAD")
-        s.setValue("dock/search_text", self.search_input.text())
         s.setValue("dock/recent_tools", self._recent_tools)
         s.setValue("dock/favorites", self._favorites)
-        s.setValue("dock/activation_count", self._activation_count)
-        s.setValue("dock/tool_usage_counts", self._tool_usage_counts)
+        # Command text and usage counters describe the current session.  Remove
+        # legacy persisted values so an unfinished command cannot hide tools on
+        # the next launch and the session counter always starts at zero.
+        s.remove("dock/search_text")
+        s.remove("dock/activation_count")
+        s.remove("dock/tool_usage_counts")
 
     def _load_state(self):
         s = QSettings("PlanX", "PlanXCAD")
-        text = s.value("dock/search_text", "", type=str)
         recent = s.value("dock/recent_tools", [], type=list)
         favs = s.value("dock/favorites", [], type=list)
-        count = s.value("dock/activation_count", 0, type=int)
-        usage_counts = s.value("dock/tool_usage_counts", {}, type=dict)
 
-        self.search_input.setText(text or "")
+        self.search_input.clear()
         self._recent_tools = [k for k in (recent or []) if k in self.buttons][:3]
         self._favorites = [k for k in (favs or []) if k in self.buttons][:3]
-        self._activation_count = max(0, int(count or 0))
-        self._tool_usage_counts = {str(k): int(v) for k, v in (usage_counts or {}).items() if str(k) in self.buttons}
+        self._activation_count = 0
+        self._tool_usage_counts = {}
         self._refresh_recent_buttons()
         self._refresh_favorite_buttons()
         self.usage_label.setText(self._format_usage(self._activation_count))
@@ -1004,10 +1044,13 @@ class CADDockWidget(QDockWidget):
 
     def clear_workspace_state(self):
         self.search_input.clear()
+        self.search_input.clear_history()
         self._recent_tools = []
         self._favorites = []
+        self._last_activated_key = None
         self._activation_count = 0
         self._tool_usage_counts = {}
+        self.uncheck_all()
         self._refresh_recent_buttons()
         self._refresh_favorite_buttons()
         self.usage_label.setText(self._format_usage(0))

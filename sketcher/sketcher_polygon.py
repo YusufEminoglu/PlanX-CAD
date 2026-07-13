@@ -18,6 +18,7 @@ class sketcher_polygon(sketcher_base):
         super().__init__(canvas, iface)
         self.sides = 6
         self.center = None
+        self._activation_cancelled = False
 
     def tool_name(self):
         return "Çokgen"
@@ -27,12 +28,17 @@ class sketcher_polygon(sketcher_base):
 
     def activate(self):
         super().activate()
+        self._activation_cancelled = False
         # Kenar sayısı sor
         n, ok = QInputDialog.getInt(
             self.iface.mainWindow(), "Çokgen", "Kenar sayısı:", self.sides, 3, 100
         )
         if ok:
             self.sides = n
+        else:
+            self._activation_cancelled = True
+            self.sketcher_message.emit("✏️ Çokgen — İptal edildi")
+            return
         self.sketcher_message.emit(
             f"✏️ Çokgen ({self.sides} kenar) — Merkez noktasını tıklayın"
         )

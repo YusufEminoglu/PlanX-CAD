@@ -40,13 +40,22 @@ class tool_extend(tool_base):
             if result:
                 layer, feature = result
                 target_geom = feature.geometry()
-                boundary_geom = self.boundary_feature.geometry()
+                boundary_geom = self.geometry_to_layer_crs(
+                    self.boundary_feature.geometry(),
+                    self.boundary_layer,
+                    layer,
+                )
 
-                new_geom = extend_geometry_to_boundary(target_geom, boundary_geom)
+                new_geom = (
+                    extend_geometry_to_boundary(target_geom, boundary_geom)
+                    if boundary_geom is not None else None
+                )
                 if new_geom:
                     self._apply_edit(layer, feature, new_geom)
                 else:
-                    self.tool_message.emit("⚠️ Extend — Uzatma yapılamadı")
+                    self.tool_message.emit(
+                        "⚠️ Extend — Uzatma yapılamadı veya CRS dönüşümü başarısız"
+                    )
 
             self._reset()
             self.boundary_layer = None

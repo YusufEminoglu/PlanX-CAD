@@ -17,6 +17,7 @@ from qgis.core import (
 )
 from .tool_base import tool_base
 from ..core.sketcher_utils import offset_geometry
+from ..urban.crs_utils import local_metric_crs, transform_geometry, transform_point
 
 
 class MultiOffsetDialog(QDialog):
@@ -157,44 +158,57 @@ class tool_multi_offset(tool_base):
             )
 
     def _apply_offsets(self, layer, feature, geom, side):
+        metric_crs, metric_geom = self._metric_geometry(geom, layer)
+        if metric_geom is None:
+            self.tool_message.emit("⚠️ Multi-Offset — Valid source CRS required")
+            return
         offset_geoms = []
         if side in ("left", "both"):
             for dist in self.parsed_distances:
-                offset_g = offset_geometry(geom, dist, "left")
+                offset_g = offset_geometry(metric_geom, dist, "left")
                 if offset_g and not offset_g.isEmpty():
                     offset_geoms.append(offset_g)
         if side in ("right", "both"):
             for dist in self.parsed_distances:
-                offset_g = offset_geometry(geom, dist, "right")
+                offset_g = offset_geometry(metric_geom, dist, "right")
                 if offset_g and not offset_g.isEmpty():
                     offset_geoms.append(offset_g)
+
+        offset_geoms = [
+            transform_geometry(offset_g, metric_crs, layer.crs())
+            for offset_g in offset_geoms
+        ]
+        offset_geoms = [
+            offset_g for offset_g in offset_geoms
+            if offset_g is not None and not offset_g.isEmpty()
+        ]
 
         if not offset_geoms:
             self.tool_message.emit("⚠️ Multi-Offset — Failed to generate offset geometry / Öteleme geometrisi üretilemedi")
             return
 
-        # Start edit block
-        if not layer.isEditable():
-            layer.startEditing()
-
-        for g in offset_geoms:
-            self._add_feature(layer, g, feature)
-
-        layer.triggerRepaint()
+        added = self._add_features(layer, offset_geoms, feature)
+        if not added:
+            return
         self.tool_message.emit(
-            f"✅ Multi-Offset — Added {len(offset_geoms)} parallel lines / "
-            f"Çoklu Öteleme — {len(offset_geoms)} adet paralel çizgi eklendi"
+            f"✅ Multi-Offset — Added {len(added)} parallel lines / "
+            f"Çoklu Öteleme — {len(added)} adet paralel çizgi eklendi"
         )
 
     def _get_closer_side(self, geom, point) -> str:
         if not self.parsed_distances:
             return "left"
+        metric_crs, metric_geom = self._metric_geometry(geom, self.selected_layer)
+        if metric_geom is None:
+            return "left"
+        metric_point = transform_point(point, self.selected_layer.crs(), metric_crs)
         test_dist = self.parsed_distances[0]
-        left_geom = offset_geometry(geom, test_dist, "left")
-        right_geom = offset_geometry(geom, test_dist, "right")
+        left_geom = offset_geometry(metric_geom, test_dist, "left")
+        right_geom = offset_geometry(metric_geom, test_dist, "right")
 
-        d_left = left_geom.distance(QgsGeometry.fromPointXY(point)) if left_geom else float('inf')
-        d_right = right_geom.distance(QgsGeometry.fromPointXY(point)) if right_geom else float('inf')
+        click_geom = QgsGeometry.fromPointXY(metric_point)
+        d_left = left_geom.distance(click_geom) if left_geom else float('inf')
+        d_right = right_geom.distance(click_geom) if right_geom else float('inf')
 
         return "left" if d_left < d_right else "right"
 
@@ -202,12 +216,21 @@ class tool_multi_offset(tool_base):
         if self._step == 2 and self.preview_rb and self.selected_feature:
             geom = self.selected_feature.geometry()
             closer_side = self._get_closer_side(geom, point)
+            metric_crs, metric_geom = self._metric_geometry(
+                geom, self.selected_layer
+            )
+            if metric_geom is None:
+                return
 
             offset_geoms = []
             for dist in self.parsed_distances:
-                offset_g = offset_geometry(geom, dist, closer_side)
+                offset_g = offset_geometry(metric_geom, dist, closer_side)
                 if offset_g and not offset_g.isEmpty():
-                    offset_geoms.append(offset_g)
+                    display_geom = transform_geometry(
+                        offset_g, metric_crs, self.selected_layer.crs()
+                    )
+                    if display_geom is not None and not display_geom.isEmpty():
+                        offset_geoms.append(display_geom)
 
             self.preview_rb.reset(QgsWkbTypes.LineGeometry)
             if offset_geoms:
@@ -220,3 +243,13 @@ class tool_multi_offset(tool_base):
             closer_side = self._get_closer_side(geom, point)
             self._apply_offsets(self.selected_layer, self.selected_feature, geom, closer_side)
             self._reset()
+
+    @staticmethod
+    def _metric_geometry(geometry, layer):
+        if layer is None or not layer.crs().isValid():
+            return None, None
+        centroid = geometry.centroid()
+        if centroid is None or centroid.isEmpty():
+            return None, None
+        metric_crs = local_metric_crs(QgsPointXY(centroid.asPoint()), layer.crs())
+        return metric_crs, transform_geometry(geometry, layer.crs(), metric_crs)

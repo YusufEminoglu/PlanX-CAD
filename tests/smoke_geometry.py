@@ -4,7 +4,7 @@ NOT a unit test framework — these are checks you run **inside QGIS Python
 console** to verify the 1.2.0 fixes work as intended on real QGIS objects.
 
 Usage (QGIS Python Console):
-    >>> exec(open(r"C:\\Users\\YE\\PyCharmMiscProject\\qgis_plugins\\planX_CAD_arac_Seti\\tests\\smoke_geometry.py").read())
+    python-qgis.bat -m planX_CAD_arac_Seti.tests.smoke_geometry
 
 Each test prints PASS / FAIL with a short reason. Run after installing the
 plugin and refreshing.
