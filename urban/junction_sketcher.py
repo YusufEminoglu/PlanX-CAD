@@ -2,8 +2,7 @@
 """
 planX CAD — Kavşak Oluşturma Aracı (Gelişmiş)
 NetCAD tarzı kavşak çözümü:
- - Dış kaldırımlar: düz çizgi ile kırma (chamfer)
- - İç kaldırımlar: radius ile yay (fillet) bağlantısı
+ - Kaldırım köşeleri: seçilebilir düz kırma (chamfer) veya teğet fillet
  - Kavşak adası: yuvarlak veya su damlası
 
 Oluşturulan katmanlar:
@@ -24,9 +23,13 @@ from ..core.sketcher_feedback import (
     create_preview_rubberband, cleanup_sketcher_rubberband, COLOR_ACCENT
 )
 from ..core.sketcher_layer_utils import get_or_create_layer, get_road_platform_layer
-from ..core.sketcher_utils import calc_tangent_fillet_arc
 from .crs_utils import local_metric_crs, transform_geometry, transform_point
 from .junction_dialog import JunctionDialog
+from .junction_geometry import (
+    CurbHalfEdge,
+    cluster_approaches,
+    solve_sector_corners,
+)
 
 
 def _geometry_for_layer(layer, geometry):
@@ -45,9 +48,8 @@ class JunctionSketcher(QgsMapTool):
     2. Kavşak merkezi tıklanır
     3. Otomatik olarak:
        a) Etki yarıçapı içindeki çizgiler trimlenir
-       b) Dış kaldırım köşeleri düz çizgi ile kırılır (chamfer)
-       c) İç kaldırım köşeleri radius ile bağlanır (fillet)
-       d) Kavşak adası oluşturulur (yuvarlak/su damlası)
+       b) Kaldırım köşeleri seçilen chamfer/fillet yöntemiyle çözülür
+       c) Kavşak adası oluşturulur (yuvarlak/su damlası)
     """
 
     sketcher_finished = pyqtSignal()
@@ -61,6 +63,7 @@ class JunctionSketcher(QgsMapTool):
         self.preview_rb = None
         self._step = 0
         self._activation_cancelled = False
+        self._junction_edit_state = None
 
     def activate(self):
         super().activate()
@@ -80,10 +83,14 @@ class JunctionSketcher(QgsMapTool):
             self.canvas, QgsWkbTypes.PolygonGeometry
         )
         self._step = 1
+        mode_label = (
+            f"Kırma={self.params['chamfer_dist']}m"
+            if self.params.get("corner_mode", "chamfer") == "chamfer"
+            else f"Fillet R={self.params['fillet_radius']}m"
+        )
         self.sketcher_message.emit(
             f"🔵 Kavşak (R={self.params['radius']}m, "
-            f"Kırma={self.params['chamfer_dist']}m, "
-            f"Fillet R={self.params['fillet_radius']}m) — "
+            f"{mode_label}) — "
             f"Kavşak merkezini tıklayın"
         )
 
@@ -143,6 +150,21 @@ class JunctionSketcher(QgsMapTool):
     # ════════════════════════════════════════════════════════════════════════
 
     def _create_junction(self, center):
+        """Run a junction operation with exception-safe edit cleanup."""
+        self._junction_edit_state = {"road": None, "island": None}
+        try:
+            return self._create_junction_impl(center)
+        except Exception as error:
+            self._rollback_open_junction_edits()
+            message = (
+                "⚠️ Kavşak — Beklenmeyen geometri/provider hatası; "
+                f"işlem geri alındı ({type(error).__name__})"
+            )
+            self.sketcher_message.emit(message)
+            self.iface.messageBar().pushWarning("planX CAD", message)
+            return None
+
+    def _create_junction_impl(self, center):
         """Ana kavşak oluşturma işlemi."""
         p = self.params
         radius = p["radius"]
@@ -160,188 +182,176 @@ class JunctionSketcher(QgsMapTool):
 
         # ── Katmanları hazırla ───────────────────────────────────────────
         kavsak_line_layer = get_road_platform_layer()
-        kavsak_ada_layer = self._get_kavsak_ada_layer()
+        kavsak_ada_layer = None
 
-        if not kavsak_line_layer or not kavsak_ada_layer:
-            self.sketcher_message.emit("⚠️ Kavşak — Katmanlar oluşturulamadı")
+        if not kavsak_line_layer:
+            self.sketcher_message.emit("⚠️ Kavşak — Yol katmanı oluşturulamadı")
             return
 
         kavsak_id = self._next_id(kavsak_line_layer, "yol_id")
 
-        # ── 1. Tüm çizgi katmanlarını trimle ────────────────────────────
-        trimmed_count = 0
-        cut_endpoints = []  # Trimlenen çizgilerin kesilme noktalarını topla
-
-        # A junction is a destructive edit.  Restrict it to the plugin-owned
-        # road platform instead of silently trimming every line layer in the
-        # user's project.
-        for layer in (kavsak_line_layer,):
-
-            features_hit = []
-            layer_search_geometry = transform_geometry(
-                junction_buffer, metric_crs, layer.crs()
-            )
-            request = QgsFeatureRequest().setFilterRect(
-                layer_search_geometry.boundingBox()
-            )
-            for feat in layer.getFeatures(request):
-                geom = transform_geometry(feat.geometry(), layer.crs(), metric_crs)
-                if geom.isEmpty():
-                    continue
-                if not geom.intersects(junction_buffer):
-                    continue
+        # ── 1. Yolları analiz et ve tek atomik edit komutunu başlat ─────
+        layer = kavsak_line_layer
+        features_hit = []
+        layer_search_geometry = transform_geometry(
+            junction_buffer, metric_crs, layer.crs()
+        )
+        request = QgsFeatureRequest().setFilterRect(
+            layer_search_geometry.boundingBox()
+        )
+        for feat in layer.getFeatures(request):
+            geom = transform_geometry(feat.geometry(), layer.crs(), metric_crs)
+            if geom and not geom.isEmpty() and geom.intersects(junction_buffer):
                 features_hit.append(feat)
 
-            # Kullanıcı katmanı zaten edit moddaysa commit'i ona bırak.
-            layer_was_editing = layer.isEditable()
-            if not layer_was_editing and not layer.startEditing():
-                self.sketcher_message.emit("⚠️ Kavşak — Yol katmanı düzenlenemedi")
-                return
-            layer.beginEditCommand("Kavşak alanındaki yolları trimle")
+        feature_records = []
+        curb_records = []
+        curb_edges = []
+        refuj_edges = []
 
-            for feat in features_hit:
-                geom = transform_geometry(feat.geometry(), layer.crs(), metric_crs)
-                
-                # 1 Metrelik split özelliği eklendi:
-                # Dış yollar (R + 1m den başlayan) ve 1m'lik parçalar (R ile R+1 arası)
-                trimmed_roads = geom.difference(outer_buffer)
-                one_meter_segments = geom.intersection(outer_buffer).difference(junction_buffer)
+        for feat in features_hit:
+            geom = transform_geometry(feat.geometry(), layer.crs(), metric_crs)
+            component = self._feature_attribute(layer, feat, "bilesen")
+            road_id = self._feature_attribute(layer, feat, "yol_id")
+            feature_records.append((feat, geom, component, road_id))
 
-                parts = []
-                if trimmed_roads and not trimmed_roads.isEmpty():
-                    if trimmed_roads.isMultipart():
-                        parts.extend(trimmed_roads.asGeometryCollection())
-                    else:
-                        parts.append(trimmed_roads)
-                        
-                if one_meter_segments and not one_meter_segments.isEmpty():
-                    if one_meter_segments.isMultipart():
-                        parts.extend(one_meter_segments.asGeometryCollection())
-                    else:
-                        parts.append(one_meter_segments)
+            if component == "kaldirim":
+                edges = self._extract_half_edges(
+                    geom, junction_buffer, center, feat.id(), road_id,
+                    component="kaldirim",
+                )
+                curb_edges.extend(edges)
+                curb_records.append((feat, geom, edges))
+                continue
 
-                if parts:
-                    # Kesilme noktalarını union üzerinden bul
-                    all_trimmed = geom.difference(junction_buffer)
-                    if all_trimmed and not all_trimmed.isEmpty():
-                        endpoints = self._find_cut_endpoints(
-                            geom, all_trimmed, junction_buffer
-                        )
-                        bilesen = None
-                        idx_bil = layer.fields().indexOf("bilesen")
-                        if idx_bil >= 0:
-                            bilesen = feat.attribute(idx_bil)
-                            
-                        yol_id = None
-                        idx_yol = layer.fields().indexOf("yol_id")
-                        if idx_yol >= 0:
-                            yol_id = feat.attribute(idx_yol)
-                            
-                        for ep in endpoints:
-                            cut_endpoints.append((ep, bilesen, yol_id))
+            if component == "refuj":
+                refuj_edges.extend(self._extract_half_edges(
+                    geom, junction_buffer, center, feat.id(), road_id,
+                    component="refuj",
+                ))
 
-                    # Geometrileri parça parça ekle/güncelle
-                    if not layer.changeGeometry(
-                        feat.id(),
-                        _geometry_for_layer(
-                            layer,
-                            transform_geometry(parts[0], metric_crs, layer.crs()),
-                        ),
-                    ):
-                        self._abort_edit_command(
-                            layer, layer_was_editing,
-                            "⚠️ Kavşak — Yol geometrisi güncellenemedi; işlem geri alındı",
-                        )
-                        return
-                    for part in parts[1:]:
-                        if part.isEmpty() or part.type() != QgsWkbTypes.LineGeometry:
-                            continue
-                        new_feat = QgsFeature(layer.fields())
-                        new_feat.setGeometry(_geometry_for_layer(
-                            layer,
-                            transform_geometry(part, metric_crs, layer.crs()),
-                        ))
-                        for i in range(layer.fields().count()):
-                            new_feat.setAttribute(i, feat.attribute(i))
-                        if not layer.addFeature(new_feat):
-                            self._abort_edit_command(
-                                layer, layer_was_editing,
-                                "⚠️ Kavşak — Yol parçası eklenemedi; işlem geri alındı",
-                            )
-                            return
-                        
-                    trimmed_count += 1
-                else:
-                    # Fully contained lines have no valid outside segment.
-                    if not layer.deleteFeature(feat.id()):
-                        self._abort_edit_command(
-                            layer, layer_was_editing,
-                            "⚠️ Kavşak — Yol parçası silinemedi; işlem geri alındı",
-                        )
-                        return
-                    trimmed_count += 1
-
-            # Keep this edit command open through connection creation so a
-            # later provider failure can roll back the complete road change.
-            layer.triggerRepaint()
-
-        # Endpoint'leri bileşenlerine göre ayır (ep, yol_id) formatında
-        kaldirim_pts = []
-        refuj_pts = []
-        for point, bilesen, yol_id in cut_endpoints:
-            if not bilesen or bilesen == "kaldirim":
-                kaldirim_pts.append((point, yol_id))
-            elif bilesen == "refuj":
-                refuj_pts.append((point, yol_id))
-
-        # ── 2. Dış kaldırım kırma çizgileri (chamfer) ───────────────────
-        chamfer_lines = self._create_chamfer_lines(
-            center, kaldirim_pts, chamfer_dist
+        # Solve and validate every requested corner before opening an edit
+        # command. A single road or an unsafe acute layout must be a no-op.
+        corner_mode = p.get("corner_mode", "chamfer")
+        corner_value = chamfer_dist if corner_mode == "chamfer" else fillet_radius
+        proposed_solutions = solve_sector_corners(
+            curb_edges, center, corner_mode, corner_value, segments=24
         )
+        corner_solutions = []
+        edge_cut_points = {}
+        for solution in proposed_solutions:
+            if not (
+                self._cut_point_available(solution.first, solution.cut_first)
+                and self._cut_point_available(solution.second, solution.cut_second)
+            ):
+                continue
+            corner_solutions.append(solution)
+            edge_cut_points[id(solution.first)] = solution.cut_first
+            edge_cut_points[id(solution.second)] = solution.cut_second
 
+        if not corner_solutions:
+            message = (
+                "⚠️ Kavşak — En az iki tam yol kolu ve güvenli bir köşe "
+                "çözümü bulunamadı; hiçbir geometri değiştirilmedi"
+            )
+            self.sketcher_message.emit(message)
+            self.iface.messageBar().pushWarning("planX CAD", message)
+            return
+
+        if ada_tipi != "yok":
+            kavsak_ada_layer = self._get_kavsak_ada_layer()
+            if not kavsak_ada_layer:
+                message = "⚠️ Kavşak — Ada katmanı oluşturulamadı"
+                self.sketcher_message.emit(message)
+                self.iface.messageBar().pushWarning("planX CAD", message)
+                return
+
+        if ada_tipi != "yok" and (
+            layer.isEditable() or kavsak_ada_layer.isEditable()
+        ):
+            message = (
+                "⚠️ Kavşak — Ada ile yol değişikliklerini birlikte kaydetmek "
+                "için açık yol/ada düzenlemelerini önce kaydedin veya geri alın; "
+                "hiçbir geometri değiştirilmedi"
+            )
+            self.sketcher_message.emit(message)
+            self.iface.messageBar().pushWarning("planX CAD", message)
+            return
+
+        layer_was_editing = layer.isEditable()
+        if not layer_was_editing and not layer.startEditing():
+            self.sketcher_message.emit("⚠️ Kavşak — Yol katmanı düzenlenemedi")
+            return
+        layer.beginEditCommand("Kavşak köşe çözümü")
         output_was_editing = layer_was_editing
-        for cline in chamfer_lines:
+        self._junction_edit_state["road"] = {
+            "layer": layer,
+            "was_editing": layer_was_editing,
+            "command_open": True,
+        }
+        trimmed_count = 0
+
+        # ── 2. Doğrulanmış çözümü tek edit komutunda uygula ─────────────
+        for feat, geom, component, _road_id in feature_records:
+            if component == "kaldirim":
+                continue
+            parts = self._annular_trim_parts(
+                geom, junction_buffer, outer_buffer
+            )
+            if not self._replace_feature_with_metric_parts(
+                layer, feat, parts, metric_crs
+            ):
+                self._abort_edit_command(
+                    layer, layer_was_editing,
+                    "⚠️ Kavşak — Yol geometrisi güncellenemedi; işlem geri alındı",
+                )
+                return
+            trimmed_count += 1
+
+        # Kaldırımlar dairesel tampon yerine gerçek çözüm teğet noktalarında
+        # kesilir. Çözülemeyen kollar güvenli biçimde etki sınırında kalır.
+        for feat, geom, edges in curb_records:
+            parts = self._trim_curb_parts(
+                geom, edges, edge_cut_points, junction_buffer
+            )
+            if not self._replace_feature_with_metric_parts(
+                layer, feat, parts, metric_crs
+            ):
+                self._abort_edit_command(
+                    layer, layer_was_editing,
+                    "⚠️ Kavşak — Kaldırım kesimi uygulanamadı; işlem geri alındı",
+                )
+                return
+            trimmed_count += 1
+
+        connection_component = (
+            "dis_kirma" if corner_mode == "chamfer" else "ic_baglanti"
+        )
+        for solution in corner_solutions:
             feat = QgsFeature(kavsak_line_layer.fields())
             feat.setGeometry(_geometry_for_layer(
                 kavsak_line_layer,
-                transform_geometry(cline, metric_crs, kavsak_line_layer.crs()),
+                transform_geometry(
+                    solution.connection, metric_crs, kavsak_line_layer.crs()
+                ),
             ))
             feat.setAttribute("yol_id", kavsak_id)
             feat.setAttribute("yol_tipi", "kavsak")
-            feat.setAttribute("bilesen", "dis_kirma")
+            feat.setAttribute("bilesen", connection_component)
             if not kavsak_line_layer.addFeature(feat):
                 self._abort_edit_command(
                     kavsak_line_layer, output_was_editing,
-                    "⚠️ Kavşak — Kırma çizgisi eklenemedi; işlem geri alındı",
+                    "⚠️ Kavşak — Köşe bağlantısı eklenemedi; işlem geri alındı",
                 )
                 return
 
-        # ── 3. İç kaldırım bağlantı yayları (fillet) ────────────────────
-        # Eğre dış kırma yapılacaksa iç bağlantıya gerek yok (kullanıcı talebi)
-        fillet_arcs = []
-        if chamfer_dist <= 0:
-            fillet_arcs = self._create_fillet_arcs(
-                center, kaldirim_pts, fillet_radius
-            )
-            for farc in fillet_arcs:
-                feat = QgsFeature(kavsak_line_layer.fields())
-                feat.setGeometry(_geometry_for_layer(
-                    kavsak_line_layer,
-                    transform_geometry(farc, metric_crs, kavsak_line_layer.crs()),
-                ))
-                feat.setAttribute("yol_id", kavsak_id)
-                feat.setAttribute("yol_tipi", "kavsak")
-                feat.setAttribute("bilesen", "ic_baglanti")
-                if not kavsak_line_layer.addFeature(feat):
-                    self._abort_edit_command(
-                        kavsak_line_layer, output_was_editing,
-                        "⚠️ Kavşak — Fillet yayı eklenemedi; işlem geri alındı",
-                    )
-                    return
+        # Keep this edit command open through island creation so any later
+        # provider failure rolls back trims and connections together.
+        layer.triggerRepaint()
 
         # ── 3.5 Refüj Kapatma Yayları (Yuvarlak kavşaklar için) ─────────
-        if ada_tipi != "yok" and refuj_pts:
-            refuj_caps = self._create_refuj_caps(center, refuj_pts)
+        if ada_tipi != "yok" and refuj_edges:
+            refuj_caps = self._create_refuj_caps(center, refuj_edges)
             for cap_line in refuj_caps:
                 feat = QgsFeature(kavsak_line_layer.fields())
                 feat.setGeometry(_geometry_for_layer(
@@ -362,6 +372,9 @@ class JunctionSketcher(QgsMapTool):
         # ── 4. Kavşak adası ──────────────────────────────────────────────
         if ada_tipi != "yok":
             island_was_editing = kavsak_ada_layer.isEditable()
+            existing_island_ids = {
+                feature.id() for feature in kavsak_ada_layer.getFeatures()
+            }
             if not island_was_editing and not kavsak_ada_layer.startEditing():
                 self._abort_edit_command(
                     kavsak_line_layer, output_was_editing,
@@ -369,12 +382,25 @@ class JunctionSketcher(QgsMapTool):
                 )
                 return
             kavsak_ada_layer.beginEditCommand("Kavşak adası oluştur")
+            self._junction_edit_state["island"] = {
+                "layer": kavsak_ada_layer,
+                "was_editing": island_was_editing,
+                "command_open": True,
+                "committed": False,
+                "junction_id": kavsak_id,
+                "existing_feature_ids": existing_island_ids,
+                "created_feature_ids": set(),
+            }
 
             if ada_tipi == "yuvarlak":
                 ada_geom = center_geom.buffer(ada_radius, 48)
             elif ada_tipi == "su_damlasi":
+                approaches = cluster_approaches(curb_edges)
+                direction = (
+                    approaches[0].outward if approaches else (0.0, -1.0)
+                )
                 ada_geom = self._create_teardrop(
-                    center, ada_radius, p["teardrop_uzunluk"]
+                    center, ada_radius, p["teardrop_uzunluk"], direction
                 )
             else:
                 ada_geom = None
@@ -398,6 +424,7 @@ class JunctionSketcher(QgsMapTool):
                     return
 
             kavsak_ada_layer.endEditCommand()
+            self._junction_edit_state["island"]["command_open"] = False
             if not island_was_editing and not kavsak_ada_layer.commitChanges():
                 kavsak_ada_layer.rollBack()
                 self._abort_edit_command(
@@ -405,23 +432,43 @@ class JunctionSketcher(QgsMapTool):
                     "⚠️ Kavşak — Ada kaydedilemedi; yol işlemi geri alındı",
                 )
                 return
+            self._junction_edit_state["island"]["committed"] = True
+            self._junction_edit_state["island"]["created_feature_ids"] = {
+                feature.id() for feature in kavsak_ada_layer.getFeatures()
+            } - existing_island_ids
             kavsak_ada_layer.triggerRepaint()
 
         # Finalize road edits only after every requested output layer has
         # accepted its changes. This keeps trim + connections rollback-able
         # when island creation fails.
         kavsak_line_layer.endEditCommand()
+        self._junction_edit_state["road"]["command_open"] = False
         if not output_was_editing and not kavsak_line_layer.commitChanges():
             kavsak_line_layer.rollBack()
-            self.sketcher_message.emit("⚠️ Kavşak — Yol ve bağlantılar kaydedilemedi")
+            compensated = self._compensate_committed_island()
+            message = "⚠️ Kavşak — Yol ve bağlantılar kaydedilemedi"
+            if not compensated:
+                message += (
+                    f"; kavsak_ada içindeki yeni ada (ID {kavsak_id}) "
+                    "otomatik temizlenemedi, manuel kontrol edin"
+                )
+                self.iface.messageBar().pushWarning("planX CAD", message)
+            self.sketcher_message.emit(message)
+            self._junction_edit_state["road"] = None
             return
+        self._junction_edit_state["road"] = None
+        self._junction_edit_state["island"] = None
         kavsak_line_layer.triggerRepaint()
 
         # ── Sonuç ────────────────────────────────────────────────────────
+        corner_label = "kırma" if corner_mode == "chamfer" else "fillet"
         msg = (
             f"✅ Kavşak — {trimmed_count} çizgi trimlendi | "
-            f"{len(chamfer_lines)} kırma + {len(fillet_arcs)} bağlantı"
+            f"{len(corner_solutions)} {corner_label} bağlantısı"
         )
+        skipped_corners = len(proposed_solutions) - len(corner_solutions)
+        if skipped_corners:
+            msg += f" | {skipped_corners} yetersiz kol atlandı"
         if ada_tipi != "yok":
             msg += f" | Ada: {ada_tipi}"
         self.sketcher_message.emit(msg)
@@ -434,251 +481,329 @@ class JunctionSketcher(QgsMapTool):
             self.canvas, QgsWkbTypes.PolygonGeometry
         )
         self.sketcher_finished.emit()
+        self._junction_edit_state = None
 
     def _abort_edit_command(self, layer, was_editing, message):
         layer.destroyEditCommand()
         if not was_editing:
             layer.rollBack()
+        if self._junction_edit_state:
+            for key in ("road", "island"):
+                state = self._junction_edit_state.get(key)
+                if state and state["layer"] is layer:
+                    self._junction_edit_state[key] = None
         self.sketcher_message.emit(message)
+
+    def _rollback_open_junction_edits(self):
+        """Close only commands/sessions owned by the interrupted operation."""
+        if not self._junction_edit_state:
+            return
+        for key in ("island", "road"):
+            state = self._junction_edit_state.get(key)
+            if not state:
+                continue
+            layer = state["layer"]
+            try:
+                if state["command_open"]:
+                    layer.destroyEditCommand()
+                if state.get("committed"):
+                    if not self._compensate_committed_island():
+                        self.iface.messageBar().pushWarning(
+                            "planX CAD",
+                            "Kavşak yol işlemi geri alındı fakat yeni ada "
+                            "otomatik temizlenemedi; kavsak_ada katmanını "
+                            "manuel kontrol edin",
+                        )
+                elif not state["was_editing"] and layer.isEditable():
+                    layer.rollBack()
+            except Exception:
+                pass
+            self._junction_edit_state[key] = None
+
+    def _compensate_committed_island(self):
+        """Delete this operation's island if the road side cannot be saved."""
+        if not self._junction_edit_state:
+            return False
+        state = self._junction_edit_state.get("island")
+        if not state or not state.get("committed"):
+            return True
+        layer = state["layer"]
+        feature_ids = set(state.get("created_feature_ids", ()))
+        # If the provider did not expose the inserted identity after commit,
+        # fail safe and report compensation failure. Never delete by a shared
+        # kavsak_id because an older/manual island may legitimately use it.
+        if not feature_ids or not layer.startEditing():
+            return False
+        layer.beginEditCommand("Başarısız kavşak adasını geri al")
+        deleted = all(layer.deleteFeature(feature_id) for feature_id in feature_ids)
+        if not deleted:
+            layer.destroyEditCommand()
+            layer.rollBack()
+            return False
+        layer.endEditCommand()
+        if not layer.commitChanges():
+            layer.rollBack()
+            return False
+        state["committed"] = False
+        return True
 
     # ════════════════════════════════════════════════════════════════════════
     # Geometri İşlemleri
     # ════════════════════════════════════════════════════════════════════════
 
-    def _find_cut_endpoints(self, original_geom, trimmed_geom, buffer_geom):
-        """Trimlenen çizginin kesilme noktalarını bul.
+    @staticmethod
+    def _feature_attribute(layer, feature, field_name):
+        index = layer.fields().indexOf(field_name)
+        return feature.attribute(index) if index >= 0 else None
 
-        Returns:
-            list[QgsPointXY] — kavşak alanı sınırındaki kesilme noktaları
-        """
-        endpoints = []
+    @staticmethod
+    def _line_parts(geometry):
+        """Return detached single-line parts from any line collection."""
+        if geometry is None or geometry.isEmpty():
+            return []
+        collection = geometry.asGeometryCollection()
+        candidates = collection if collection else [QgsGeometry(geometry)]
+        return [
+            QgsGeometry(part) for part in candidates
+            if part and not part.isEmpty()
+            and part.type() == QgsWkbTypes.LineGeometry
+        ]
 
-        # Trimlenmiş geometrinin uç noktalarını al
-        parts = [trimmed_geom]
-        if trimmed_geom.isMultipart():
-            parts = trimmed_geom.asGeometryCollection()
+    def _annular_trim_parts(self, geometry, inner_buffer, outer_buffer):
+        """Keep the outside road plus the legacy one-metre boundary band."""
+        parts = self._line_parts(geometry.difference(outer_buffer))
+        band = geometry.intersection(outer_buffer).difference(inner_buffer)
+        parts.extend(self._line_parts(band))
+        return parts
 
-        for part in parts:
-            if part.isEmpty():
+    def _replace_feature_with_metric_parts(
+        self, layer, feature, metric_parts, metric_crs
+    ):
+        """Replace one feature with zero or more metric line parts."""
+        parts = [
+            part for part in metric_parts
+            if part and not part.isEmpty()
+            and part.type() == QgsWkbTypes.LineGeometry
+        ]
+        if not parts:
+            return layer.deleteFeature(feature.id())
+
+        first = transform_geometry(parts[0], metric_crs, layer.crs())
+        if first is None or first.isEmpty():
+            return False
+        if not layer.changeGeometry(
+            feature.id(), _geometry_for_layer(layer, first)
+        ):
+            return False
+
+        for part in parts[1:]:
+            output = transform_geometry(part, metric_crs, layer.crs())
+            if output is None or output.isEmpty():
+                return False
+            new_feature = QgsFeature(layer.fields())
+            new_feature.setGeometry(_geometry_for_layer(layer, output))
+            for index in range(layer.fields().count()):
+                new_feature.setAttribute(index, feature.attribute(index))
+            if not layer.addFeature(new_feature):
+                return False
+        return True
+
+    def _extract_half_edges(
+        self, geometry, junction_buffer, center, source_id, road_id,
+        component="kaldirim",
+    ):
+        """Build one outward half-edge for each curb/buffer crossing."""
+        buffer_boundary = junction_buffer.convertToType(
+            QgsWkbTypes.LineGeometry
+        )
+        edges = []
+        effective_road_id = (
+            road_id if road_id is not None else f"feature:{source_id}"
+        )
+
+        for part_index, source_part in enumerate(self._line_parts(geometry)):
+            part_length = source_part.length()
+            if part_length <= 1e-8:
+                continue
+            outside = source_part.difference(junction_buffer)
+            for outside_part in self._line_parts(outside):
+                if outside_part.isMultipart():
+                    lines = outside_part.asMultiPolyline()
+                    points = lines[0] if lines else []
+                else:
+                    points = outside_part.asPolyline()
+                if len(points) < 2:
+                    continue
+                start = QgsPointXY(points[0])
+                end = QgsPointXY(points[-1])
+                start_distance = QgsGeometry.fromPointXY(start).distance(
+                    buffer_boundary
+                )
+                end_distance = QgsGeometry.fromPointXY(end).distance(
+                    buffer_boundary
+                )
+                if min(start_distance, end_distance) > 0.1:
+                    continue
+
+                if start_distance <= end_distance:
+                    boundary_point = start
+                    neighbour = QgsPointXY(points[1])
+                else:
+                    boundary_point = end
+                    neighbour = QgsPointXY(points[-2])
+                outward = (
+                    neighbour.x() - boundary_point.x(),
+                    neighbour.y() - boundary_point.y(),
+                )
+                if math.hypot(*outward) <= 1e-9:
+                    continue
+
+                boundary_measure = source_part.lineLocatePoint(
+                    QgsGeometry.fromPointXY(boundary_point)
+                )
+                if boundary_measure < 0:
+                    continue
+                delta = min(0.1, max(part_length * 1e-5, 1e-4))
+                if boundary_measure + delta <= part_length:
+                    sample = source_part.interpolate(
+                        boundary_measure + delta
+                    ).asPoint()
+                    increasing_vector = (
+                        sample.x() - boundary_point.x(),
+                        sample.y() - boundary_point.y(),
+                    )
+                elif boundary_measure - delta >= 0:
+                    sample = source_part.interpolate(
+                        boundary_measure - delta
+                    ).asPoint()
+                    increasing_vector = (
+                        boundary_point.x() - sample.x(),
+                        boundary_point.y() - sample.y(),
+                    )
+                else:
+                    continue
+                increasing_outward = (
+                    increasing_vector[0] * outward[0]
+                    + increasing_vector[1] * outward[1]
+                ) > 0
+
+                edges.append(CurbHalfEdge(
+                    road_id=effective_road_id,
+                    component=component,
+                    source_id=source_id,
+                    source_part=part_index,
+                    cut_point=boundary_point,
+                    outward=outward,
+                    source_ref={
+                        "part_geometry": QgsGeometry(source_part),
+                        "boundary_measure": boundary_measure,
+                        "increasing_outward": increasing_outward,
+                    },
+                ))
+        return edges
+
+    @staticmethod
+    def _cut_point_available(edge, cut_point, tolerance=0.05):
+        """Return whether a solved cut lies on the referenced source part."""
+        if edge.source_ref is None:
+            return False
+        source_part = edge.source_ref.get("part_geometry")
+        if source_part is None or source_part.isEmpty():
+            return False
+        if not (math.isfinite(cut_point.x()) and math.isfinite(cut_point.y())):
+            return False
+        point_geometry = QgsGeometry.fromPointXY(cut_point)
+        return (
+            source_part.distance(point_geometry) <= tolerance
+            and source_part.lineLocatePoint(point_geometry) >= 0
+        )
+
+    @staticmethod
+    def _merge_intervals(intervals, tolerance=1e-8):
+        merged = []
+        for start, end in sorted(intervals):
+            if end - start <= tolerance:
+                continue
+            if merged and start <= merged[-1][1] + tolerance:
+                merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+            else:
+                merged.append((start, end))
+        return merged
+
+    def _trim_curb_parts(
+        self, geometry, edges, edge_cut_points, junction_buffer
+    ):
+        """Trim each curb part at solved cut points, preserving outward sides."""
+        edges_by_part = {}
+        for edge in edges:
+            edges_by_part.setdefault(edge.source_part, []).append(edge)
+
+        output_parts = []
+        for part_index, source_part in enumerate(self._line_parts(geometry)):
+            part_edges = edges_by_part.get(part_index, [])
+            if not part_edges:
+                output_parts.extend(self._line_parts(
+                    source_part.difference(junction_buffer)
+                ))
                 continue
 
-            if part.type() == QgsWkbTypes.LineGeometry:
-                if part.isMultipart():
-                    for line in part.asMultiPolyline():
-                        if line:
-                            endpoints.append(QgsPointXY(line[0]))
-                            endpoints.append(QgsPointXY(line[-1]))
+            length = source_part.length()
+            intervals = []
+            for edge in part_edges:
+                cut_point = edge_cut_points.get(id(edge), edge.cut_point)
+                point_geometry = QgsGeometry.fromPointXY(cut_point)
+                measure = source_part.lineLocatePoint(point_geometry)
+                if measure < 0:
+                    measure = edge.source_ref["boundary_measure"]
+                measure = max(0.0, min(length, measure))
+                if edge.source_ref["increasing_outward"]:
+                    intervals.append((measure, length))
                 else:
-                    line = part.asPolyline()
-                    if line:
-                        endpoints.append(QgsPointXY(line[0]))
-                        endpoints.append(QgsPointXY(line[-1]))
+                    intervals.append((0.0, measure))
 
-        # Sadece kavşak sınırına yakın olanları filtrele
-        buffer_boundary = buffer_geom.convertToType(QgsWkbTypes.LineGeometry)
-        filtered = []
-        for pt in endpoints:
-            pt_geom = QgsGeometry.fromPointXY(pt)
-            if buffer_boundary:
-                dist = pt_geom.distance(buffer_boundary)
-            else:
-                dist = pt_geom.distance(buffer_geom)
-            if dist < 1.0:  # 1m tolerans
-                filtered.append(pt)
+            for start, end in self._merge_intervals(intervals):
+                curve = source_part.constGet().curveSubstring(start, end)
+                if curve is not None:
+                    part = QgsGeometry(curve)
+                    if not part.isEmpty() and part.length() > 1e-8:
+                        output_parts.append(part)
+        return output_parts
 
-        return filtered
-
-    def _create_chamfer_lines(self, center, endpoints, chamfer_dist):
-        """Dış kaldırım kırma çizgileri oluştur.
-
-        Karşılıklı uç noktaları düz çizgi ile bağla (chamfer).
-        Merkezden daha uzak olan nokta çiftleri dış kaldırıma ait.
-        """
-        if len(endpoints) < 2:
-            return []
-
-        chamfer_lines = []
-        
-        groups_dict = {}
-        for pt, y_id in endpoints:
-            angle = math.atan2(pt.y() - center.y(), pt.x() - center.x())
-            dist = center.distance(pt)
-            item = (angle, dist, pt, y_id)
-            # None yol_id'leri ayrı gruplamak için angle bazlı geçici ID
-            safe_id = y_id if y_id is not None else f"unknown_{round(angle, 1)}"
-            if safe_id not in groups_dict:
-                groups_dict[safe_id] = []
-            groups_dict[safe_id].append(item)
-
-        groups = self._order_groups_circularly(groups_dict)
-
-        # Her kolun ucundaki en dıştaki noktaları bul
-        outer_points = []
-        for group in groups:
-            if len(group) >= 2:
-                # En uzak noktaları al (dış kaldırım)
-                group.sort(key=lambda x: x[1], reverse=True)
-                outer_points.append(group[0][2])
-                if len(group) >= 2:
-                    outer_points.append(group[1][2])
-
-        # Komşu kol dışları arasına chamfer çizgileri
-        if len(groups) >= 2:
-            for i in range(len(groups)):
-                g1 = groups[i]
-                g2 = groups[(i + 1) % len(groups)]
-
-                # Her grup çiftinden en yakın dış noktaları bul
-                best_pair = self._find_closest_pair_between_groups(g1, g2)
-                if best_pair:
-                    p1, p2 = best_pair
-                    line_geom = QgsGeometry.fromPolylineXY([p1, p2])
-                    chamfer_lines.append(line_geom)
-
-        return chamfer_lines
-
-    def _create_fillet_arcs(self, center, endpoints, fillet_radius):
-        """İç kaldırım bağlantı yayları oluştur.
-
-        Merkezden daha yakın olan nokta çiftleri iç kaldırıma ait.
-        Bunları ark ile bağla.
-        """
-        if len(endpoints) < 2 or fillet_radius <= 0:
-            return []
-
-        fillet_arcs = []
-        
-        groups_dict = {}
-        for pt, y_id in endpoints:
-            angle = math.atan2(pt.y() - center.y(), pt.x() - center.x())
-            dist = center.distance(pt)
-            item = (angle, dist, pt, y_id)
-            safe_id = y_id if y_id is not None else f"unknown_{round(angle, 1)}"
-            if safe_id not in groups_dict:
-                groups_dict[safe_id] = []
-            groups_dict[safe_id].append(item)
-
-        groups = self._order_groups_circularly(groups_dict)
-
-        # Komşu kol içleri arasına fillet yay
-        if len(groups) >= 2:
-            for i in range(len(groups)):
-                g1 = groups[i]
-                g2 = groups[(i + 1) % len(groups)]
-
-                # Her grup çiftinden en yakın iç noktaları bul
-                pair = self._find_closest_pair_between_groups(
-                    g1, g2, prefer_inner=True
-                )
-                if pair:
-                    p1, p2 = pair
-                    arc_pts = self._calc_fillet_arc(center, p1, p2, fillet_radius)
-                    if arc_pts and len(arc_pts) >= 2:
-                        arc_geom = QgsGeometry.fromPolylineXY(arc_pts)
-                        fillet_arcs.append(arc_geom)
-
-        return fillet_arcs
-
-    def _create_refuj_caps(self, center, endpoints):
-        """Kavşağa giren refüj çizgilerini kapatır."""
+    def _create_refuj_caps(self, center, half_edges):
+        """Close each directional median arm locally, never across the junction."""
         caps = []
-        if len(endpoints) < 2:
-            return caps
-
-        groups_dict = {}
-        for pt, y_id in endpoints:
-            angle = math.atan2(pt.y() - center.y(), pt.x() - center.x())
-            dist = center.distance(pt)
-            item = (angle, dist, pt, y_id)
-            safe_id = y_id if y_id is not None else f"unknown_{round(angle, 1)}"
-            if safe_id not in groups_dict:
-                groups_dict[safe_id] = []
-            groups_dict[safe_id].append(item)
-
-        groups = self._order_groups_circularly(groups_dict)
-
-        for group in groups:
-            if len(group) >= 2:
-                # Bir koldan gelen en az 2 refüj ucu varsa onları düz çizgiyle birleştir.
-                p1 = group[0][2]
-                p2 = group[-1][2]
-                caps.append(QgsGeometry.fromPolylineXY([p1, p2]))
-
+        for approach in cluster_approaches(half_edges):
+            first = approach.left_curb(center).cut_point
+            second = approach.right_curb(center).cut_point
+            if first.distance(second) > 1e-8:
+                caps.append(QgsGeometry.fromPolylineXY([first, second]))
         return caps
 
-    def _order_groups_circularly(self, groups_dict):
-        """Aynı yol kollarına ait olan noktaları açısal sıraya dizer."""
-        groups_list = []
-        for y_id, pts in groups_dict.items():
-            if not pts: continue
-            sum_x = sum(math.cos(p[0]) for p in pts)
-            sum_y = sum(math.sin(p[0]) for p in pts)
-            avg_a = math.atan2(sum_y, sum_x)
-            # Sort individual points inside group by distance from center implicitly, or just by inner/outer
-            # We sort them by distance so inner/outer logic works
-            pts.sort(key=lambda x: x[1]) 
-            groups_list.append((avg_a, pts))
-            
-        groups_list.sort(key=lambda x: x[0])
-        return [g[1] for g in groups_list]
+    def _create_teardrop(self, center, radius, length, direction=(0.0, -1.0)):
+        """Create a symmetric bulb-and-nose island aligned to a road arm."""
+        direction_length = math.hypot(direction[0], direction[1])
+        if radius <= 0 or length <= 0 or direction_length <= 1e-9:
+            return QgsGeometry()
+        ux = direction[0] / direction_length
+        uy = direction[1] / direction_length
+        vx, vy = -uy, ux
 
-    def _find_closest_pair_between_groups(self, g1, g2, prefer_inner=False):
-        """İki grup arasındaki en yakın (veya en uzak) nokta çiftini bul."""
-        best_dist = float('inf')
-        best_pair = None
+        def map_local(x, y):
+            return QgsPointXY(
+                center.x() + ux * x + vx * y,
+                center.y() + uy * x + vy * y,
+            )
 
-        for _, d1, p1, _ in g1:
-            for _, d2, p2, _ in g2:
-                d = p1.distance(p2)
-                if d < best_dist:
-                    best_dist = d
-                    best_pair = (p1, p2)
-
-        return best_pair
-
-    def _calc_fillet_arc(self, center, p1, p2, radius, segments=16):
-        """İki nokta arasında doğru teğet arkı (calc_tangent_fillet_arc ile)."""
-        # P1 ve P2 kavşak sınırında.
-        # Bu noktaların merkezden geliş açısını bulalım ve calc_tangent_fillet_arc kullanalım.
-        dir1 = math.atan2(p1.y() - center.y(), p1.x() - center.x())
-        dir2 = math.atan2(p2.y() - center.y(), p2.x() - center.x())
-        
-        # calc_tangent_fillet_arc aslında merkezden uzaklaşan (p1, p2) için.
-        # Bizde p1 ve p2 kavşak noktasında bitiyor. Ama sorun değil, fillet arc'yi çizip döndürür.
-        # Sanal bir kesişim noktası gerekiyor fillet için!
-        # Dış çizgilerin uzantılarının kesişimi neresi?
-        # Bu biraz karmaşık olabilir, calc_tangent_fillet_arc direkt olarak intersection point istiyor.
-        # Kesişim noktasını bulalım.
-        
-        # P1'den dir1 yönünde ve P2'den dir2 yönünde giden çizgilerin kesişimi (merkeze doğru)
-        # Aslında en basit yöntem, _create_fillet_arcs içinde calc_tangent_fillet_arc kullanmaktır.
-        
-        # Basitleştirilmiş: Teğet arc çizebilmek için center'ı kullanabiliriz, ama merkezde değil.
-        # calc_tangent_fillet_arc(int_pt, angle1, angle2, radius)
-        
-        # Yolları merkeze doğrultuyoruz
-        arc_pts, _ = calc_tangent_fillet_arc(center, dir1, dir2, radius, segments)
-        return arc_pts
-
-    def _create_teardrop(self, center, radius, length):
-        """Su damlası şeklinde ada oluştur."""
         pts = []
-        # Damlacık: yarım daire + sivri uç
         segments = 32
-
-        # Üst yarım daire
+        # Rounded rear half: top shoulder -> rear -> bottom shoulder.
         for i in range(segments + 1):
             angle = math.pi / 2 + math.pi * i / segments
-            x = center.x() + radius * math.cos(angle)
-            y = center.y() + radius * math.sin(angle)
-            pts.append(QgsPointXY(x, y))
-
-        # Sivri uç (aşağıda)
-        pts.append(QgsPointXY(center.x(), center.y() - length))
-
-        # Kapatma
+            pts.append(map_local(
+                radius * math.cos(angle), radius * math.sin(angle)
+            ))
+        pts.append(map_local(length, 0.0))
         pts.append(pts[0])
-
         return QgsGeometry.fromPolygonXY([pts])
 
     # ════════════════════════════════════════════════════════════════════════

@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.25.0] - 2026-07-13
+
+- True junction corner solver and curve/ZM-safe transforms
+
+### Added
+- Added an explicit Chamfer/Fillet junction-corner mode with live parameter controls and schematic feedback.
+- Added a deterministic half-edge junction solver for X, T and skew intersections using true curb support-line intersections.
+
+### Fixed
+- Made the Junction chamfer distance effective and made the previously unreachable fillet workflow available.
+- Kept opposite approaches of the same through-road separate and matched connection endpoints exactly to transactionally trimmed curb endpoints.
+- Prevented single-road, incomplete-arm, reflex-sector and unsafe acute-angle junction attempts from changing geometry.
+- Closed median/refuge ends per directional road arm instead of drawing caps across the junction.
+- Added exception-safe road rollback and compensating island cleanup when a road commit fails; island creation now refuses mixed user-owned edit sessions.
+- Rebuilt teardrop islands as valid, approach-aligned bulb-and-nose polygons whose length parameter changes the actual shape and area.
+- Preserved CircularString, CompoundCurve, CurvePolygon and Z/M values through Scale and Mirror affine transforms.
+
+### Quality
+- Added dual-runtime pure junction, geographic X-junction integration, gap-free endpoint, refuge/island, injected-failure rollback and curved Z/M regression coverage for QGIS 3.44 and QGIS 4.2.
+
 ## [1.24.0] - 2026-07-13
 
 - Metric-safe CAD, transactional edits, and workbench reliability

@@ -81,6 +81,80 @@ def test_offset_uses_cross_version_join_enum():
     )
 
 
+def test_affine_transforms_preserve_curves_and_zm():
+    from planX_CAD_arac_Seti.core.sketcher_utils import (
+        mirror_geometry,
+        scale_geometry,
+    )
+
+    wkts = (
+        "CompoundCurve ZM ("
+        "CircularString ZM (0 0 1 10, 5 5 2 20, 10 0 3 30),"
+        "(10 0 3 30, 15 0 4 40))",
+        "CurvePolygon ZM ("
+        "CircularString ZM (0 0 1 10, 5 5 2 20, 10 0 3 30, "
+        "5 -5 4 40, 0 0 1 10))",
+    )
+    failures = []
+    center = QgsPointXY(2.0, -3.0)
+
+    for wkt in wkts:
+        source = QgsGeometry.fromWkt(wkt)
+        source_vertices = list(source.vertices())
+        expected_zm = [(point.z(), point.m()) for point in source_vertices]
+        transformed = (
+            (
+                "scale",
+                scale_geometry(source, center, 2.0),
+                lambda point: (
+                    center.x() + (point.x() - center.x()) * 2.0,
+                    center.y() + (point.y() - center.y()) * 2.0,
+                ),
+            ),
+            (
+                "mirror",
+                mirror_geometry(
+                    source, QgsPointXY(0, 0), QgsPointXY(0, 10)
+                ),
+                lambda point: (-point.x(), point.y()),
+            ),
+        )
+        for name, result, expected_xy in transformed:
+            if result is None:
+                failures.append(f"{name} returned None for {source.wkbType()}")
+                continue
+            result_vertices = list(result.vertices())
+            actual_zm = [(point.z(), point.m()) for point in result_vertices]
+            actual_xy = [(point.x(), point.y()) for point in result_vertices]
+            wanted_xy = [expected_xy(point) for point in source_vertices]
+            xy_matches = len(actual_xy) == len(wanted_xy) and all(
+                abs(actual[0] - wanted[0]) < 1e-9
+                and abs(actual[1] - wanted[1]) < 1e-9
+                for actual, wanted in zip(actual_xy, wanted_xy)
+            )
+            if not (
+                result.wkbType() == source.wkbType()
+                and result.constGet().hasCurvedSegments()
+                and actual_zm == expected_zm
+                and xy_matches
+            ):
+                failures.append(
+                    f"{name} changed type/curve/ZM/XY for {source.wkbType()}"
+                )
+
+    invalid_axis = mirror_geometry(
+        QgsGeometry.fromWkt(wkts[0]), QgsPointXY(1, 1), QgsPointXY(1, 1)
+    )
+    if invalid_axis is not None:
+        failures.append("zero-length mirror axis was accepted")
+
+    return _ok(
+        "scale/mirror preserve curved WKB and Z/M",
+        not failures,
+        "; ".join(failures),
+    )
+
+
 def test_same_name_incompatible_layer_is_not_reused():
     from planX_CAD_arac_Seti.core.sketcher_layer_utils import get_or_create_layer
 
@@ -335,6 +409,7 @@ def run_all():
         test_extend_reaches_distant_boundary(),
         test_extend_never_chooses_boundary_behind_endpoint(),
         test_offset_uses_cross_version_join_enum(),
+        test_affine_transforms_preserve_curves_and_zm(),
         test_same_name_incompatible_layer_is_not_reused(),
         test_divide_preserves_all_multipart_components(),
         test_trim_splits_at_every_intersection(),

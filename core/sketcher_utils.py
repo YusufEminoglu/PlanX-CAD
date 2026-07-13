@@ -5,6 +5,7 @@ Offset, trim, extend, fillet, buffer ve ölçüm işlemleri.
 """
 
 import math
+from qgis.PyQt.QtGui import QTransform
 from qgis.core import (
     QgsGeometry, QgsPointXY, QgsLineString, QgsPoint,
     QgsWkbTypes, QgsDistanceArea, QgsProject, QgsFeature, Qgis
@@ -199,74 +200,51 @@ def rotate_geometry(geom, center, angle_degrees):
         QgsGeometry
     """
     result = QgsGeometry(geom)
-    result.rotate(angle_degrees, center)
+    operation = result.rotate(angle_degrees, center)
+    if operation != Qgis.GeometryOperationResult.Success:
+        return None
     return result
 
 
-def _transform_vertices(geom, transform_fn):
-    """Apply transform_fn(QgsPointXY) -> QgsPointXY across all rings/parts.
-
-    Preserves multipart, polygon holes, and single/multi distinction.
-    """
+def _affine_transform(geom, transform):
+    """Transform a detached geometry while preserving curves and Z/M values."""
     if geom is None or geom.isEmpty():
         return None
-
-    g_type = geom.type()
-
-    if g_type == QgsWkbTypes.PointGeometry:
-        if geom.isMultipart():
-            new_pts = [transform_fn(QgsPointXY(p)) for p in geom.asMultiPoint()]
-            return QgsGeometry.fromMultiPointXY(new_pts)
-        return QgsGeometry.fromPointXY(transform_fn(QgsPointXY(geom.asPoint())))
-
-    if g_type == QgsWkbTypes.LineGeometry:
-        if geom.isMultipart():
-            new_lines = [[transform_fn(QgsPointXY(p)) for p in line]
-                         for line in geom.asMultiPolyline()]
-            return QgsGeometry.fromMultiPolylineXY(new_lines)
-        return QgsGeometry.fromPolylineXY(
-            [transform_fn(QgsPointXY(p)) for p in geom.asPolyline()]
-        )
-
-    if g_type == QgsWkbTypes.PolygonGeometry:
-        if geom.isMultipart():
-            new_polys = [
-                [[transform_fn(QgsPointXY(p)) for p in ring] for ring in poly]
-                for poly in geom.asMultiPolygon()
-            ]
-            return QgsGeometry.fromMultiPolygonXY(new_polys)
-        return QgsGeometry.fromPolygonXY(
-            [[transform_fn(QgsPointXY(p)) for p in ring] for ring in geom.asPolygon()]
-        )
-
-    return None
+    result = QgsGeometry(geom)
+    operation = result.transform(transform)
+    if operation != Qgis.GeometryOperationResult.Success:
+        return None
+    return result
 
 
 def scale_geometry(geom, center, factor):
-    """Multipart-safe scale around `center` by `factor`."""
-    def fn(v):
-        return QgsPointXY(
-            center.x() + (v.x() - center.x()) * factor,
-            center.y() + (v.y() - center.y()) * factor,
-        )
-    return _transform_vertices(geom, fn)
+    """Scale around ``center`` without linearizing curves or dropping Z/M."""
+    transform = QTransform(
+        factor, 0.0,
+        0.0, factor,
+        center.x() * (1.0 - factor),
+        center.y() * (1.0 - factor),
+    )
+    return _affine_transform(geom, transform)
 
 
 def mirror_geometry(geom, line_start, line_end):
-    """Multipart-safe mirror across the line through line_start→line_end."""
+    """Mirror across a line without linearizing curves or dropping Z/M."""
     dx = line_end.x() - line_start.x()
     dy = line_end.y() - line_start.y()
     length_sq = dx * dx + dy * dy
     if length_sq == 0:
         return None
 
-    def fn(v):
-        t = ((v.x() - line_start.x()) * dx + (v.y() - line_start.y()) * dy) / length_sq
-        proj_x = line_start.x() + t * dx
-        proj_y = line_start.y() + t * dy
-        return QgsPointXY(2 * proj_x - v.x(), 2 * proj_y - v.y())
-
-    return _transform_vertices(geom, fn)
+    ux = dx / math.sqrt(length_sq)
+    uy = dy / math.sqrt(length_sq)
+    a = 2.0 * ux * ux - 1.0
+    b = 2.0 * ux * uy
+    d = 2.0 * uy * uy - 1.0
+    tx = line_start.x() - (a * line_start.x() + b * line_start.y())
+    ty = line_start.y() - (b * line_start.x() + d * line_start.y())
+    transform = QTransform(a, b, b, d, tx, ty)
+    return _affine_transform(geom, transform)
 
 
 def point_distance(p1, p2):

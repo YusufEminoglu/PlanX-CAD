@@ -38,8 +38,8 @@ class JunctionDialog(QDialog):
         layout.addWidget(title)
 
         desc = QLabel(
-            "Yol kesişimlerinde dış kaldırımlar kırma açısı ile,\n"
-            "iç kaldırımlar radius ile bağlanır."
+            "Yol kesişimindeki kaldırım köşelerini düz kırma veya\n"
+            "teğet fillet yayı ile çözün."
         )
         desc.setWordWrap(True)
         desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -73,9 +73,23 @@ class JunctionDialog(QDialog):
 
         layout.addWidget(radius_group)
 
-        # ── Dış Kaldırım (Chamfer / Kırma) ───────────────────────────────
-        outer_group = QGroupBox("Dış Kaldırım — Kırma (Chamfer)")
-        outer_form = QFormLayout(outer_group)
+        # ── Köşe çözümü ─────────────────────────────────────────────────
+        corner_group = QGroupBox("Kaldırım Köşe Çözümü")
+        corner_form = QFormLayout(corner_group)
+
+        self.cmb_corner_mode = QComboBox()
+        self.cmb_corner_mode.addItems([
+            "Düz kırma (Chamfer)",
+            "Yuvarlatma (Fillet)",
+        ])
+        self.cmb_corner_mode.setToolTip(
+            "Kaldırım destek doğrularının gerçek kesişiminde uygulanacak "
+            "köşe çözümü"
+        )
+        self.cmb_corner_mode.currentIndexChanged.connect(
+            self._on_corner_mode_changed
+        )
+        corner_form.addRow("Çözüm tipi:", self.cmb_corner_mode)
 
         self.spn_chamfer_dist = QDoubleSpinBox()
         self.spn_chamfer_dist.setRange(0.5, 50.0)
@@ -87,13 +101,7 @@ class JunctionDialog(QDialog):
             "Kesişim noktasından bu mesafe kadar geriye kesilir ve\n"
             "düz bir çizgi ile bağlanır (ark değil, düz kırma)."
         )
-        outer_form.addRow("Kırma mesafesi:", self.spn_chamfer_dist)
-
-        layout.addWidget(outer_group)
-
-        # ── İç Kaldırım (Fillet / Radius) ────────────────────────────────
-        inner_group = QGroupBox("İç Kaldırım — Bağlantı (Fillet)")
-        inner_form = QFormLayout(inner_group)
+        corner_form.addRow("Kırma mesafesi:", self.spn_chamfer_dist)
 
         self.spn_fillet_radius = QDoubleSpinBox()
         self.spn_fillet_radius.setRange(0.5, 50.0)
@@ -101,12 +109,13 @@ class JunctionDialog(QDialog):
         self.spn_fillet_radius.setSuffix(" m")
         self.spn_fillet_radius.setSingleStep(0.5)
         self.spn_fillet_radius.setToolTip(
-            "İç kaldırım çizgilerinin kavşakta buluşma noktasında\n"
-            "yay (ark) ile bağlanma yarıçapı."
+            "Kaldırım destek doğrularının kesişiminde uygulanacak\n"
+            "teğet yay yarıçapı."
         )
-        inner_form.addRow("Bağlantı yarıçapı:", self.spn_fillet_radius)
+        corner_form.addRow("Fillet yarıçapı:", self.spn_fillet_radius)
 
-        layout.addWidget(inner_group)
+        layout.addWidget(corner_group)
+        self._on_corner_mode_changed(0)
 
         # ── Kavşak Adası ─────────────────────────────────────────────────
         island_group = QGroupBox("Kavşak Adası")
@@ -164,6 +173,12 @@ class JunctionDialog(QDialog):
         self.spn_ada_radius.setEnabled(index > 0)
         self.spn_teardrop_uzunluk.setEnabled(index == 2)
 
+    def _on_corner_mode_changed(self, index):
+        """Enable only the parameter consumed by the selected solver."""
+        self.spn_chamfer_dist.setEnabled(index == 0)
+        self.spn_fillet_radius.setEnabled(index == 1)
+        self._draw_schema()
+
     def _draw_schema(self):
         """Kavşak şemasını çiz."""
         px = QPixmap(380, 110)
@@ -187,12 +202,21 @@ class JunctionDialog(QDialog):
             p.drawLine(cx + offset, 5, cx + offset, cy - 30)
             p.drawLine(cx + offset, cy + 30, cx + offset, 105)
 
-        # Chamfer (dış kırma) — düz çizgi
+        mode = (
+            self.cmb_corner_mode.currentIndex()
+            if hasattr(self, "cmb_corner_mode") else 0
+        )
         p.setPen(QPen(QColor(255, 109, 0), 2))
-        p.drawLine(cx - 30, cy - 18, cx - 18, cy - 30)
-        p.drawLine(cx + 30, cy - 18, cx + 18, cy - 30)
-        p.drawLine(cx - 30, cy + 18, cx - 18, cy + 30)
-        p.drawLine(cx + 30, cy + 18, cx + 18, cy + 30)
+        if mode == 0:
+            p.drawLine(cx - 30, cy - 18, cx - 18, cy - 30)
+            p.drawLine(cx + 30, cy - 18, cx + 18, cy - 30)
+            p.drawLine(cx - 30, cy + 18, cx - 18, cy + 30)
+            p.drawLine(cx + 30, cy + 18, cx + 18, cy + 30)
+        else:
+            p.drawArc(cx - 42, cy - 42, 48, 48, 0, 90 * 16)
+            p.drawArc(cx - 6, cy - 42, 48, 48, 90 * 16, 90 * 16)
+            p.drawArc(cx - 42, cy - 6, 48, 48, 270 * 16, 90 * 16)
+            p.drawArc(cx - 6, cy - 6, 48, 48, 180 * 16, 90 * 16)
 
         # Ada
         p.setPen(QPen(QColor(76, 175, 80), 2))
@@ -203,7 +227,10 @@ class JunctionDialog(QDialog):
         p.setPen(QColor(255, 109, 0))
         font = QFont("Arial", 7)
         p.setFont(font)
-        p.drawText(cx - 65, cy - 22, "kırma (düz)")
+        p.drawText(
+            cx - 72, cy - 22,
+            "kırma (düz)" if mode == 0 else "fillet (teğet)",
+        )
 
         p.setPen(QColor(76, 175, 80))
         p.drawText(cx + 12, cy + 4, "ada")
@@ -216,6 +243,10 @@ class JunctionDialog(QDialog):
         ada_tipi_map = {0: "yok", 1: "yuvarlak", 2: "su_damlasi"}
         return {
             "radius": self.spn_radius.value(),
+            "corner_mode": (
+                "chamfer" if self.cmb_corner_mode.currentIndex() == 0
+                else "fillet"
+            ),
             "chamfer_dist": self.spn_chamfer_dist.value(),
             "fillet_radius": self.spn_fillet_radius.value(),
             "ada_tipi": ada_tipi_map.get(self.cmb_ada_tipi.currentIndex(), "yok"),

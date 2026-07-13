@@ -19,6 +19,7 @@ from qgis.core import QgsApplication, QgsProject, QgsVectorLayer
 from qgis.gui import QgsMapCanvas, QgsMapTool
 
 from ..main_plugin import PlanXCADPlugin
+from ..urban.junction_dialog import JunctionDialog
 
 
 class _MessageBar:
@@ -98,6 +99,19 @@ def run_all() -> bool:
         plugin._toggle_dock()
         app.processEvents()
         checks.append(("dock exposes every tool", len(plugin._dock.buttons) == 33))
+
+        junction_dialog = JunctionDialog(iface.mainWindow())
+        default_params = junction_dialog.get_params()
+        junction_dialog.cmb_corner_mode.setCurrentIndex(1)
+        fillet_params = junction_dialog.get_params()
+        checks.append((
+            "junction mode controls the active numeric parameter",
+            default_params["corner_mode"] == "chamfer"
+            and fillet_params["corner_mode"] == "fillet"
+            and not junction_dialog.spn_chamfer_dist.isEnabled()
+            and junction_dialog.spn_fillet_radius.isEnabled(),
+        ))
+        junction_dialog.close()
 
         line = QgsVectorLayer("LineString?crs=EPSG:3857", "target", "memory")
         project.addMapLayer(line)

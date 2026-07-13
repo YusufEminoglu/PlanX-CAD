@@ -74,7 +74,8 @@ Developed with feedback from educational workflows at **Dokuz Eylül University,
 | Mirror | `MI` | — |
 | Array (rect + polar) | `AR` | `Ctrl+Shift+Y` |
 
-All transforms are **multipart-safe** — holes and multi-rings survive.
+All transforms are **multipart-, curve-, and Z/M-safe** — holes, multi-rings,
+CircularString/CompoundCurve geometry, elevations, and measures survive.
 
 ### Measure & Annotate
 
@@ -107,7 +108,7 @@ Resolution precedence: **alias → exact tool key → fuzzy name match**. Unknow
 | | |
 |---|---|
 | 🛣 **Road Platform Generator** | Interactive road cross-section design: draw an axis, configure carriageway and lane widths, get a ready platform polygon. |
-| ➕ **Junction Topology Fixer** | Cleans A–B road intersection connections so your network stays topologically sound. |
+| ➕ **Junction Topology Fixer** | Solves X/T/skew road corners with a selectable metric Chamfer or tangent Fillet, exact curb trims, and gap-free connections. |
 | 🔲 **Block Chamfering** *(Ada Kırma)* | EasyFillet-powered corner rounding for urban blocks — one click per corner. |
 
 ---
