@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.26.2] - 2026-07-15
+
+- Revert author spelling to Yusuf Eminoglu
+
 ## [1.26.1] - 2026-07-13
 
 - Plugin Hub compatibility and security-scan maintenance release; no functional changes.
