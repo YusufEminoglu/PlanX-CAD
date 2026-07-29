@@ -1,13 +1,22 @@
 # -*- coding: utf-8 -*-
 """Layer creation, feature insertion, and attribute helpers for PlanX CAD."""
 
-from qgis.PyQt.QtCore import QVariant
 from qgis.core import (
-    QgsProject, QgsVectorLayer, QgsField, QgsFields,
-    QgsFeature, QgsGeometry, QgsWkbTypes, QgsFeatureSink,
+    QgsProject, QgsVectorLayer,
+    QgsFeature, QgsGeometry, QgsWkbTypes,
     QgsCoordinateTransform
 )
 
+
+# Memory-provider URI field types. Declaring fields in the URI keeps the plugin
+# free of QVariant: PyQt6 dropped QVariant.Type, and the QgsField(QMetaType)
+# overload only exists from QGIS 3.38, below this plugin's 3.28 floor.
+_URI_FIELD_TYPES = {
+    "int": "integer",
+    "double": "double",
+    "string": "string",
+    "longlong": "long",
+}
 
 ROAD_PLATFORM_LAYER_NAME = "planx_road_platform"
 LEGACY_ROAD_PLATFORM_LAYER_NAME = "planx_yol_platformu"
@@ -117,26 +126,15 @@ def get_or_create_layer(layer_name, geom_type="MultiLineString", crs=None,
 
     crs_str = crs.authid()
     uri = f"{geom_type}?crs={crs_str}"
+    # Declare the schema in the URI so the provider creates the fields itself.
+    for field_name, field_type in (fields or []):
+        uri_type = _URI_FIELD_TYPES.get(field_type)
+        if uri_type:
+            uri += f"&field={field_name}:{uri_type}"
     layer = QgsVectorLayer(uri, layer_name, "memory")
 
     if not layer.isValid():
         return None
-
-    # Add the requested fields before exposing the layer to the project.
-    if fields:
-        dp = layer.dataProvider()
-        qgs_fields = []
-        for field_name, field_type in fields:
-            if field_type == "int":
-                qgs_fields.append(QgsField(field_name, QVariant.Int))
-            elif field_type == "double":
-                qgs_fields.append(QgsField(field_name, QVariant.Double))
-            elif field_type == "string":
-                qgs_fields.append(QgsField(field_name, QVariant.String))
-            elif field_type == "longlong":
-                qgs_fields.append(QgsField(field_name, QVariant.LongLong))
-        dp.addAttributes(qgs_fields)
-        layer.updateFields()
 
     project.addMapLayer(layer)
     return layer

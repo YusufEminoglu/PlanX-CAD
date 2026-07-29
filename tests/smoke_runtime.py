@@ -7,6 +7,7 @@ Run from the plugins parent directory so the package import is realistic::
 """
 from __future__ import annotations
 
+import math
 import os
 import sys
 import tempfile
@@ -22,6 +23,7 @@ from qgis.core import (
     QgsGeometry,
     QgsPointXY,
     QgsProject,
+    QgsRectangle,
     QgsVectorLayer,
 )
 from qgis.gui import QgsMapCanvas, QgsMapTool
@@ -85,6 +87,158 @@ def _assert(condition, message):
         raise AssertionError(message)
 
 
+def _seed_layer(project, uri, name, geometries):
+    """Create an editable memory layer preloaded with geometries."""
+    layer = QgsVectorLayer(uri, name, "memory")
+    project.addMapLayer(layer)
+    layer.startEditing()
+    for geometry in geometries:
+        feature = QgsFeature(layer.fields())
+        feature.setGeometry(geometry)
+        layer.addFeature(feature)
+    return layer
+
+
+def _modify_write_checks(iface, project):
+    """Drive the 1.27 modify tools against real layers, bypassing dialogs.
+
+    The tool classes own the layer writes (edit commands, part creation,
+    managed output layers), so the geometry helpers passing is not enough.
+    """
+    from ..core.sketcher_utils import explode_geometry
+    from ..tools.tool_align import tool_align
+    from ..tools.tool_break import tool_break
+    from ..tools.tool_chamfer import tool_chamfer
+    from ..tools.tool_explode import tool_explode
+    from ..tools.tool_stretch import tool_stretch
+
+    canvas = iface.mapCanvas()
+    checks = []
+    line_uri = "LineString?crs=EPSG:3857"
+
+    # Break splits the picked feature and adds the remainder.
+    break_layer = _seed_layer(project, line_uri, "break_target", [
+        QgsGeometry.fromPolylineXY([QgsPointXY(0, 0), QgsPointXY(10, 0)]),
+    ])
+    breaker = tool_break(canvas, iface)
+    breaker.selected_layer = break_layer
+    breaker.selected_feature = next(break_layer.getFeatures())
+    breaker._step = 3
+    breaker._apply_break(QgsPointXY(4, 0), None)
+    lengths = sorted(round(f.geometry().length(), 6)
+                     for f in break_layer.getFeatures())
+    checks.append((
+        "break tool writes both parts to the layer",
+        break_layer.featureCount() == 2 and lengths == [4.0, 6.0],
+    ))
+
+    # Break with a gap keeps two parts and drops the span between the picks.
+    gap_layer = _seed_layer(project, line_uri, "break_gap_target", [
+        QgsGeometry.fromPolylineXY([QgsPointXY(0, 0), QgsPointXY(10, 0)]),
+    ])
+    gap_tool = tool_break(canvas, iface)
+    gap_tool.selected_layer = gap_layer
+    gap_tool.selected_feature = next(gap_layer.getFeatures())
+    gap_tool._step = 3
+    gap_tool._apply_break(QgsPointXY(3, 0), QgsPointXY(7, 0))
+    gap_lengths = sorted(round(f.geometry().length(), 6)
+                         for f in gap_layer.getFeatures())
+    checks.append((
+        "break tool with a gap removes the middle span",
+        gap_layer.featureCount() == 2 and gap_lengths == [3.0, 3.0],
+    ))
+
+    # Chamfer trims both lines and adds the cut segment.
+    chamfer_layer = _seed_layer(project, line_uri, "chamfer_target", [
+        QgsGeometry.fromPolylineXY([QgsPointXY(0, 0), QgsPointXY(10, 0)]),
+        QgsGeometry.fromPolylineXY([QgsPointXY(10, 0), QgsPointXY(10, 10)]),
+    ])
+    features = list(chamfer_layer.getFeatures())
+    chamfer = tool_chamfer(canvas, iface)
+    chamfer.first_distance = 2.0
+    chamfer.second_distance = 2.0
+    chamfer.first_layer = chamfer_layer
+    chamfer.first_feature = features[0]
+    chamfer._do_chamfer(chamfer_layer, features[1])
+    chamfer_lengths = sorted(round(f.geometry().length(), 3)
+                             for f in chamfer_layer.getFeatures())
+    checks.append((
+        "chamfer tool trims both lines and adds the cut",
+        chamfer_layer.featureCount() == 3
+        and abs(chamfer_lengths[0] - 2.0 * math.sqrt(2.0)) < 0.05
+        and all(abs(value - 8.0) < 0.05 for value in chamfer_lengths[1:]),
+    ))
+
+    # Stretch moves only the vertices caught by the window.
+    stretch_layer = _seed_layer(project, line_uri, "stretch_target", [
+        QgsGeometry.fromPolylineXY([
+            QgsPointXY(0, 0), QgsPointXY(10, 0), QgsPointXY(10, 10),
+        ]),
+    ])
+    window = QgsRectangle(9.0, -1.0, 11.0, 1.0)
+    stretcher = tool_stretch(canvas, iface)
+    stretcher.base_point = QgsPointXY(0, 0)
+    stretcher.window_rect = window
+    stretcher.targets = [
+        (stretch_layer, next(stretch_layer.getFeatures()), window)
+    ]
+    stretcher._step = tool_stretch._STEP_TARGET
+    stretcher._apply_stretch(QgsPointXY(0, 5))
+    stretched = next(stretch_layer.getFeatures()).geometry().asPolyline()
+    checks.append((
+        "stretch tool moves only the enclosed vertex",
+        len(stretched) == 3
+        and abs(stretched[0].y()) < 1e-6
+        and abs(stretched[1].y() - 5.0) < 1e-6
+        and abs(stretched[2].y() - 10.0) < 1e-6,
+    ))
+
+    # Align rotates the picked feature onto the destination pair.
+    align_layer = _seed_layer(project, line_uri, "align_target", [
+        QgsGeometry.fromPolylineXY([QgsPointXY(0, 0), QgsPointXY(1, 0)]),
+    ])
+    aligner = tool_align(canvas, iface)
+    aligner.selected_layer = align_layer
+    aligner.selected_feature = next(align_layer.getFeatures())
+    aligner.src1 = QgsPointXY(0, 0)
+    aligner.dst1 = QgsPointXY(10, 10)
+    aligner.src2 = QgsPointXY(1, 0)
+    aligner._step = tool_align._STEP_TARGET_2
+    aligner._apply_align(QgsPointXY(10, 11))
+    aligned = next(align_layer.getFeatures()).geometry().asPolyline()
+    checks.append((
+        "align tool rewrites the feature onto the destination pair",
+        len(aligned) == 2
+        and abs(aligned[0].x() - 10.0) < 1e-6 and abs(aligned[0].y() - 10.0) < 1e-6
+        and abs(aligned[1].x() - 10.0) < 1e-6 and abs(aligned[1].y() - 11.0) < 1e-6,
+    ))
+
+    # Explode sends polygon segments to the managed line layer.
+    polygon_layer = _seed_layer(
+        project, "Polygon?crs=EPSG:3857", "explode_target",
+        [QgsGeometry.fromPolygonXY([[
+            QgsPointXY(0, 0), QgsPointXY(10, 0), QgsPointXY(10, 10),
+            QgsPointXY(0, 10), QgsPointXY(0, 0),
+        ]])],
+    )
+    exploder = tool_explode(canvas, iface)
+    exploder.remove_source = False
+    source = next(polygon_layer.getFeatures())
+    pieces = explode_geometry(source.geometry(), "segments")
+    written = exploder._write_pieces(polygon_layer, source, pieces, "segments")
+    managed = project.mapLayersByName("planx_explode")
+    checks.append((
+        "explode writes polygon segments to the managed layer",
+        written and len(managed) == 1 and managed[0].featureCount() == 4
+        and polygon_layer.featureCount() == 1,
+    ))
+
+    for layer in (break_layer, gap_layer, chamfer_layer, stretch_layer,
+                  align_layer, polygon_layer):
+        layer.rollBack()
+    return checks
+
+
 def run_all() -> bool:
     app = QgsApplication.instance()
     owns_app = app is None
@@ -107,7 +261,11 @@ def run_all() -> bool:
         plugin.initGui()
         plugin._toggle_dock()
         app.processEvents()
-        checks.append(("dock exposes every tool", len(plugin._dock.buttons) == 33))
+        checks.append(("dock exposes every tool", len(plugin._dock.buttons) == 39))
+        checks.append((
+            "dock has a button for every registered tool key",
+            set(plugin._ALL_TOOL_KEYS) == set(plugin._dock.buttons),
+        ))
 
         junction_dialog = JunctionDialog(iface.mainWindow())
         default_params = junction_dialog.get_params()
@@ -289,6 +447,32 @@ def run_all() -> bool:
         iface.set_active_layer(line)
         plugin._toggle_active_layer_editing()
         checks.append(("edit toggle never commits directly", line.isEditable()))
+
+        modify_keys = ("chamfer", "break", "lengthen", "align", "stretch",
+                       "explode")
+        modify_tools = {key: plugin._create_tool(key) for key in modify_keys}
+        checks.append((
+            "modify gap-filler tools construct",
+            all(tool is not None for tool in modify_tools.values()),
+        ))
+        checks.append((
+            "modify gap-filler tools report their name",
+            [modify_tools[key].tool_name() for key in modify_keys] ==
+            ["Chamfer", "Break", "Lengthen", "Align", "Stretch", "Explode"],
+        ))
+
+        # Break and Stretch open no dialog, so they can be activated headless.
+        iface.set_active_layer(line)
+        plugin._activate_tool("break")
+        break_tool = plugin._current_tool
+        plugin._activate_tool("stretch")
+        stretch_tool = plugin._current_tool
+        checks.append((
+            "dialog-free modify tools activate",
+            break_tool is not None and stretch_tool is not None
+            and plugin._current_tool_key == "stretch",
+        ))
+        checks.extend(_modify_write_checks(iface, project))
 
         iface.set_active_layer(None)
         plugin._activate_tool("construction_seg")

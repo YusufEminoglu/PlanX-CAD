@@ -331,7 +331,7 @@ class PlanXCADPlugin:
     # ═══════════════════════════════════════════════════════════════════════
 
     # Dialog-based tools require a fresh instance for every activation.
-    _DIALOG_TOOLS = {"buffer", "fillet", "polygon", "road", "junction", "measure_area", "ada_kirma", "array", "divide", "multi_offset", "join", "hatch"}
+    _DIALOG_TOOLS = {"buffer", "fillet", "polygon", "road", "junction", "measure_area", "ada_kirma", "array", "divide", "multi_offset", "join", "hatch", "chamfer", "lengthen", "align", "explode"}
     # Drawing tools write to the active layer. Feature-editing tools may pick
     # from any editable vector layer in the project. Output tools (Buffer,
     # Hatch, Dimension, Construction and Road) create their own layers and
@@ -351,6 +351,7 @@ class PlanXCADPlugin:
         "offset", "trim", "extend", "fillet", "vertex_edit",
         "move", "copy", "rotate", "scale", "mirror", "array",
         "divide", "multi_offset", "join",
+        "chamfer", "break", "lengthen", "align", "stretch", "explode",
     }
     _READ_ONLY_PICK_TOOLS = {"buffer", "hatch", "measure_select_line", "measure_select_area"}
 
@@ -390,8 +391,9 @@ class PlanXCADPlugin:
     )
     _ALL_TOOL_KEYS = (
         "line", "polyline", "rectangle", "polygon", "circle", "arc",
-        "offset", "trim", "extend", "fillet", "buffer", "array",
+        "offset", "trim", "extend", "fillet", "chamfer", "buffer", "array",
         "vertex_edit", "divide", "multi_offset", "join", "hatch",
+        "break", "lengthen", "align", "stretch", "explode",
         "construction_inf", "construction_ray", "construction_seg",
         "move", "copy", "rotate", "scale", "mirror",
         "measure", "measure_area", "dimension", "measure_select_line",
@@ -644,7 +646,7 @@ class PlanXCADPlugin:
 
     def _doc_anchor_for_tool(self, tool_key):
         drawing = {"line", "polyline", "rectangle", "polygon", "circle", "arc"}
-        editing = {"offset", "trim", "extend", "fillet", "buffer", "vertex_edit", "hatch", "construction_inf", "construction_ray", "construction_seg", "divide", "multi_offset", "join"}
+        editing = {"offset", "trim", "extend", "fillet", "chamfer", "buffer", "vertex_edit", "hatch", "construction_inf", "construction_ray", "construction_seg", "divide", "multi_offset", "join", "break", "lengthen", "align", "stretch", "explode"}
         transform = {"move", "copy", "rotate", "scale", "mirror", "array"}
         measure = {"dimension", "measure", "measure_area", "measure_select_line", "measure_select_area"}
         urban = {"road", "junction", "ada_kirma"}
@@ -1114,6 +1116,24 @@ class PlanXCADPlugin:
             elif key == "fillet":
                 from .tools.tool_fillet import tool_fillet
                 t = tool_fillet(canvas, self.iface)
+            elif key == "chamfer":
+                from .tools.tool_chamfer import tool_chamfer
+                t = tool_chamfer(canvas, self.iface)
+            elif key == "break":
+                from .tools.tool_break import tool_break
+                t = tool_break(canvas, self.iface)
+            elif key == "lengthen":
+                from .tools.tool_lengthen import tool_lengthen
+                t = tool_lengthen(canvas, self.iface)
+            elif key == "align":
+                from .tools.tool_align import tool_align
+                t = tool_align(canvas, self.iface)
+            elif key == "stretch":
+                from .tools.tool_stretch import tool_stretch
+                t = tool_stretch(canvas, self.iface)
+            elif key == "explode":
+                from .tools.tool_explode import tool_explode
+                t = tool_explode(canvas, self.iface)
             elif key == "buffer":
                 from .tools.tool_buffer import tool_buffer
                 t = tool_buffer(canvas, self.iface)
@@ -1263,7 +1283,7 @@ class PlanXCADPlugin:
 <h3>Features</h3>
 <ul>
 <li><b>6 Drawing Tools:</b> Line, Polyline, Rectangle, Polygon, Circle, Arc</li>
-<li><b>14 Editing and Construction Tools:</b> Offset, Trim, Extend, Fillet, Buffer, Array, Vertex Edit, Divide, Multi-Offset, Join, Hatch, XLine, Ray, Segment</li>
+<li><b>20 Editing and Construction Tools:</b> Offset, Trim, Extend, Fillet, Chamfer, Break, Lengthen, Align, Stretch, Explode, Buffer, Array, Vertex Edit, Divide, Multi-Offset, Join, Hatch, XLine, Ray, Segment</li>
 <li><b>5 Transform Tools:</b> Move, Copy, Rotate, Scale, Mirror</li>
 <li><b>5 Measurement Tools:</b> Distance, Area, Dimension, Select Line, Select Area</li>
 <li><b>3 Urban Planning Tools:</b> Road, Junction, Block Chamfer</li>

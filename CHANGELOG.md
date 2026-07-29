@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.27.0] - 2026-07-29
+
+Core modify gap-fillers: the six commands every AutoCAD user reaches for, now
+native to the CAD dock. The toolset grows from 33 to 39 tools.
+
+### Added
+- **Chamfer** (`CHA`) — straight distance-distance corner cut between two lines. Enter both cutbacks (or tick *equal distances*), pick the two lines, and the tool trims both to the corner and adds the chamfer segment, all in one undo step. A live dashed hover preview shows the cut before you commit, and a cutback longer than the retained leg is rejected instead of corrupting the source line. Distances stay metre-accurate in geographic projects.
+- **Break** (`BR`) — split a line at a picked point, or remove the span between two picked points. Enter or right-click after the first point breaks there with no gap. The picked feature keeps the first part; the remainder is added with the same attributes. Intermediate polyline vertices survive the split, and a break on an endpoint is refused.
+- **Lengthen** (`LEN`) — change a line by delta, percent, or total length. The end you click is the end that moves, extension follows the terminal segment direction, and shortening trims cleanly through intermediate vertices.
+- **Align** (`AL`) — move and rotate a feature onto source/destination point pairs, with optional scaling by the pair length ratio. Enter after the first pair moves without rotating. Curves and Z/M values survive because the whole operation is a single affine transform.
+- **Stretch** (`S`) — drag a crossing window, pick a base and target point, and only the vertices inside the window move. Every editable layer crossing the window is stretched in one pass, and polygon rings stay closed.
+- **Explode** (`X`) — split a multipart feature into single parts, or a line/polygon boundary into single segments. Polygon segments (including interior rings) are written to a managed `planx_explode` line layer, and removing the source feature is optional.
+- All six commands join the command line, the command palette, the shortcut guide, the tool hints, and the in-app command reference.
+
+### Changed
+- `CHAMFER` and `CHA` now start the general two-line Chamfer tool, matching AutoCAD. The urban Block Chamfer keeps its own `BLOCK` and `BLOCKCHAMFER` aliases.
+- The command palette alias for Extend changed from `lengthen` to `extend to boundary`, so it no longer collides with the new Lengthen command.
+
+### Compatibility
+- Managed memory layers now declare their schema in the provider URI instead of building `QgsField` objects, removing the last `QVariant` usage from the plugin. PyQt6 dropped `QVariant.Type`, and the Hub's Qt6 checker flags `QVariant` regardless, while the `QgsField(QMetaType)` alternative would have required QGIS 3.38 and broken the 3.28 floor.
+
+### Quality
+- New `tests/smoke_modify_geometry.py`: 21 geometry checks for the chamfer, break, lengthen, align, stretch, and explode helpers, verified on QGIS 3.44 LTR and QGIS 4.2.
+- `tests/smoke_runtime.py` grew from 20 to 30 checks, including layer-write verification for each new tool (edit commands, part creation, and managed output layers) and a guarantee that every registered tool key has a dock button.
+- `tests/smoke_compat.py` now enforces that every command alias resolves to a real tool key, so a future rename cannot leave an alias silently dead.
+
 ## [1.26.2] - 2026-07-15
 
 - Revert author spelling to Yusuf Eminoglu

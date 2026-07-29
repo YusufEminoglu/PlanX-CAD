@@ -49,6 +49,63 @@
   </div>
 
   <div class="card">
+    <strong>Chamfer</strong> <span class="k">CHA</span>
+    <ul>
+      <li>Enter both cutback distances first; tick <em>Use the first distance for both lines</em> for a symmetric cut.</li>
+      <li>Pick the first line, then the second; the hover preview shows the cut before you commit.</li>
+      <li>Both lines are trimmed to the corner and the chamfer segment is added as a new feature.</li>
+      <li>A distance longer than the retained leg is rejected rather than corrupting the source line.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <strong>Break</strong> <span class="k">BR</span>
+    <ul>
+      <li>Pick the line, click the first break point, then click a second point to remove the span between them.</li>
+      <li>Press <span class="k">Enter</span> or right-click after the first point to break there with no gap.</li>
+      <li>The picked feature keeps the first part; the remainder is added as a new feature with the same attributes.</li>
+      <li>A break on an endpoint is rejected: pick a point between the two ends.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <strong>Lengthen</strong> <span class="k">LEN</span>
+    <ul>
+      <li>Click the line near the end you want to change; that end is the one that moves.</li>
+      <li>Delta adds or removes length (negative shortens), Percent scales the current length, Total sets an absolute length.</li>
+      <li>Values are metres and stay metre-accurate in geographic projects.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <strong>Align</strong> <span class="k">AL</span>
+    <ul>
+      <li>Optionally tick <em>Scale to match the destination distance</em> before starting.</li>
+      <li>Pick the feature, then source point 1, destination point 1, source point 2, destination point 2.</li>
+      <li>Press <span class="k">Enter</span> after the first pair to move without rotating.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <strong>Stretch</strong> <span class="k">S</span>
+    <ul>
+      <li>Click two opposite corners to define a crossing window, then pick the base and target points.</li>
+      <li>Only the vertices inside the window move; every editable layer crossing the window is stretched in one step.</li>
+      <li>Polygon rings stay closed, so areas remain valid after the stretch.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <strong>Explode</strong> <span class="k">X</span>
+    <ul>
+      <li><em>Parts</em> turns a multipart feature into single-part features on the same layer.</li>
+      <li><em>Segments</em> turns a line, or a polygon boundary, into two-point segments.</li>
+      <li>Polygon segments are written to a managed <span class="k">planx_explode</span> line layer, since a polygon layer cannot hold them.</li>
+      <li>Untick <em>Remove the source feature</em> to keep the original alongside the pieces.</li>
+    </ul>
+  </div>
+
+  <div class="card">
     <strong>Hatch / Construction</strong>
     <ul>
       <li>Hatch requires closed polygon geometry for reliable clipping.</li>

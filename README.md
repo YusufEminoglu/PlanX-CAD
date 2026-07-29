@@ -12,8 +12,8 @@
 [![Plugin Hub](https://img.shields.io/badge/QGIS-Plugin%20Hub-589632)](https://plugins.qgis.org/)
 [![Part of PlanX](https://img.shields.io/badge/suite-PlanX-ff8a3d)](https://github.com/YusufEminoglu/PlanX)
 
-Type `L` ↵, draw a line. Type `F` ↵, fillet a corner.
-**30+ CAD tools, an AutoCAD-style command line, and road-platform design — without ever leaving QGIS.**
+Type `L` ↵, draw a line. Type `F` ↵, fillet a corner. Type `BR` ↵, break it.
+**39 CAD tools, an AutoCAD-style command line, and road-platform design — without ever leaving QGIS.**
 
 [Install](#-installation) · [Tools](#-tool-catalog) · [Command line](#-autocad-style-command-line) · [Urban tools](#-urban-planning-tools) · [Shortcuts](#-keyboard-shortcuts)
 
@@ -26,7 +26,7 @@ Type `L` ↵, draw a line. Type `F` ↵, fillet a corner.
 | | |
 |---|---|
 | ⚡ **Muscle-memory friendly** | AutoCAD-style command aliases (`L`, `PL`, `TR`, `F`, `CO`…), empty-Enter repeats the last command, Up/Down recalls history — a real command loop. |
-| 📐 **Drafting-grade picking** | A true 10-px pickbox with snap markers, hover highlighting, and self-pick protection in two-step tools (Fillet/Trim/Extend). |
+| 📐 **Drafting-grade picking** | A true 10-px pickbox with snap markers, hover highlighting, and self-pick protection in two-step tools (Fillet/Chamfer/Trim/Extend). |
 | 🏙️ **Built for planners** | Interactive road platform generator, junction topology fixer, and block-corner chamfering — tools you won't find in generic CAD plugins. |
 | 🌍 **Global by design** | A concise English-only workbench, documentation set, command palette, and output schema built for international teams. |
 | 🧩 **Zero friction** | Pure QGIS API — no external dependencies, no build step. One dockable panel, native snapping, works on **QGIS 3.28 LTR through QGIS 4**. |
@@ -58,6 +58,12 @@ Developed with feedback from educational workflows at **Dokuz Eylül University,
 | Trim | `TR` | `Ctrl+Shift+T` | Click the side to remove |
 | Extend | `EX` | `Ctrl+Shift+E` | To nearest boundary intersection |
 | Fillet | `F` | `Ctrl+Shift+F` | Radius arc + auto-trim, live hover preview |
+| Chamfer | `CHA` | — | Distance-distance corner cut + auto-trim, live hover preview |
+| Break | `BR` | — | Split at a point, or remove the span between two points |
+| Lengthen | `LEN` | — | Delta, percent, or total length; the end you click is the end that moves |
+| Align | `AL` | — | Move + rotate (+ optional scale) by source/destination point pairs |
+| Stretch | `S` | — | Crossing-window stretch across every editable layer at once |
+| Explode | `X` | — | Multipart → single parts, or boundary → single segments |
 | Buffer | `B` | `Ctrl+Shift+B` | Attribute-preserving |
 | Hatch | `H` | `Ctrl+Shift+H` | Parallel/cross/diagonal pattern fill, export-safe attributes |
 | Divide | `DIV` | `Ctrl+Shift+U` | Equal-length segmentation |
@@ -116,7 +122,7 @@ While a drawing or transform tool is active, type a number, `-`, or `@` directly
 |---|---|
 | 🛣 **Road Platform Generator** | Interactive road cross-section design: draw an axis, configure carriageway and lane widths, and generate ready road-platform linework. |
 | ➕ **Junction Topology Fixer** | Solves X/T/skew road corners with a selectable metric Chamfer or tangent Fillet, exact curb trims, and gap-free connections. |
-| 🔲 **Block Chamfering** | EasyFillet-powered corner rounding for urban blocks — one click per corner. |
+| 🔲 **Block Chamfering** (`BLOCK`) | EasyFillet-powered corner rounding for urban blocks — one click per corner. For a plain two-line corner cut, use the general `CHA` Chamfer tool instead. |
 
 ---
 

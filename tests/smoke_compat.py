@@ -314,6 +314,53 @@ def check_command_line() -> bool:
                "wired" if ok else f"missing: {', '.join(missing)}")
 
 
+def _class_attribute_literal(path: Path, attribute: str):
+    """Return a literal class attribute value parsed straight from source."""
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except (OSError, SyntaxError):
+        return None
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name) and target.id == attribute:
+                try:
+                    return ast.literal_eval(node.value)
+                except ValueError:
+                    return None
+    return None
+
+
+def check_command_aliases_resolve() -> bool:
+    """Every command alias must point at a tool key the plugin can create.
+
+    An alias that survives a tool rename resolves to nothing and fails
+    silently at the command line, so the mapping is verified statically.
+    """
+    aliases = _class_attribute_literal(
+        PLUGIN_DIR / "dialogs" / "cad_dock.py", "_COMMAND_ALIASES"
+    )
+    tool_keys = _class_attribute_literal(
+        PLUGIN_DIR / "main_plugin.py", "_ALL_TOOL_KEYS"
+    )
+    if not aliases or not tool_keys:
+        return _ok("command aliases resolve to tool keys", False,
+                   "could not read _COMMAND_ALIASES or _ALL_TOOL_KEYS")
+
+    known = set(tool_keys)
+    orphans = sorted({
+        f"{alias} -> {key}" for alias, key in aliases.items()
+        if key not in known
+    })
+    return _ok(
+        "command aliases resolve to tool keys",
+        not orphans,
+        f"{len(aliases)} aliases over {len(known)} tools"
+        if not orphans else f"orphans: {', '.join(orphans)}",
+    )
+
+
 def check_english_only_surface() -> bool:
     """Keep the shipped plugin, documentation, and UI English-only."""
     failures: list[str] = []
@@ -378,6 +425,7 @@ def run_all() -> bool:
         check_dock_quick_actions_grid(),
         check_dock_accessibility(),
         check_command_line(),
+        check_command_aliases_resolve(),
         check_pick_aperture_and_exclusion(),
         check_english_only_surface(),
     ]

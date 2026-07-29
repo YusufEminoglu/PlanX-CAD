@@ -19,14 +19,12 @@ from qgis.core import (  # noqa: E402
     QgsCoordinateReferenceSystem,
     QgsDistanceArea,
     QgsFeature,
-    QgsField,
     QgsGeometry,
     QgsPointXY,
     QgsProject,
     QgsVectorLayer,
     QgsWkbTypes,
 )
-from qgis.PyQt.QtCore import QVariant  # noqa: E402
 from qgis.gui import QgsMapCanvas  # noqa: E402
 
 from planX_CAD_arac_Seti.urban.ada_kirma_sketcher import (  # noqa: E402
@@ -503,22 +501,14 @@ def test_legacy_schema_compatibility(canvas, iface):
     canvas.setDestinationCrs(geographic)
 
     legacy_road = QgsVectorLayer(
-        "MultiLineString?crs=EPSG:4326", "planx_yol_platformu", "memory"
+        "MultiLineString?crs=EPSG:4326"
+        "&field=yol_id:integer&field=yol_tipi:string&field=bilesen:string"
+        "&field=taraf:string&field=serit_no:integer"
+        "&field=serit_sayisi:integer&field=serit_genisligi:double"
+        "&field=refuj_genislik:double&field=kaldirim_genislik:double"
+        "&field=toplam_genislik:double&field=gorunur:integer",
+        "planx_yol_platformu", "memory"
     )
-    legacy_road.dataProvider().addAttributes([
-        QgsField("yol_id", QVariant.Int),
-        QgsField("yol_tipi", QVariant.String),
-        QgsField("bilesen", QVariant.String),
-        QgsField("taraf", QVariant.String),
-        QgsField("serit_no", QVariant.Int),
-        QgsField("serit_sayisi", QVariant.Int),
-        QgsField("serit_genisligi", QVariant.Double),
-        QgsField("refuj_genislik", QVariant.Double),
-        QgsField("kaldirim_genislik", QVariant.Double),
-        QgsField("toplam_genislik", QVariant.Double),
-        QgsField("gorunur", QVariant.Int),
-    ])
-    legacy_road.updateFields()
     project.addMapLayer(legacy_road)
 
     # Saved projects commonly change their project CRS while managed output
@@ -550,14 +540,10 @@ def test_legacy_schema_compatibility(canvas, iface):
     )
 
     legacy_islands = QgsVectorLayer(
-        "Polygon?crs=EPSG:4326", "kavsak_ada", "memory"
+        "Polygon?crs=EPSG:4326&field=kavsak_id:integer"
+        "&field=ada_tipi:string&field=ada_radius:double",
+        "kavsak_ada", "memory"
     )
-    legacy_islands.dataProvider().addAttributes([
-        QgsField("kavsak_id", QVariant.Int),
-        QgsField("ada_tipi", QVariant.String),
-        QgsField("ada_radius", QVariant.Double),
-    ])
-    legacy_islands.updateFields()
     project.addMapLayer(legacy_islands)
     resolved_islands = JunctionSketcher(
         canvas, iface

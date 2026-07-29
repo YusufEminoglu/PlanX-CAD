@@ -2,12 +2,12 @@
 name=PlanX CAD Toolset
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
-description=AutoCAD-style drafting inside QGIS: 30+ tools for precise drawing, editing, snapping, dimensions, hatching, transforms, and urban road design.
-version=1.26.2
+description=AutoCAD-style drafting inside QGIS: 39 tools for precise drawing, editing, snapping, dimensions, hatching, transforms, and urban road design.
+version=1.27.0
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
-about=PlanX CAD Toolset brings a keyboard-first, AutoCAD-style drafting workflow to QGIS 3.28 LTR through QGIS 4. Its 30+ tools cover line and polygon drawing, offset, trim, extend, tangent fillet, transform, array, vertex editing, hatch, construction geometry, measurement, dimensions, and urban road-platform design. The dock includes command aliases, history, favorites, live coordinates, layer-readiness guidance, and native QGIS snapping. It has no external dependencies and is developed with feedback from urban-planning education at Dokuz Eylül University.
+about=PlanX CAD Toolset brings a keyboard-first, AutoCAD-style drafting workflow to QGIS 3.28 LTR through QGIS 4. Its 39 tools cover line and polygon drawing, offset, trim, extend, tangent fillet, straight chamfer, break, lengthen, align, stretch, explode, transform, array, vertex editing, hatch, construction geometry, measurement, dimensions, and urban road-platform design. The dock includes command aliases, history, favorites, live coordinates, layer-readiness guidance, and native QGIS snapping. It has no external dependencies and is developed with feedback from urban-planning education at Dokuz Eylül University.
 
 tracker=https://github.com/YusufEminoglu/PlanX-CAD/issues
 repository=https://github.com/YusufEminoglu/PlanX-CAD
@@ -24,6 +24,16 @@ experimental=False
 deprecated=False
 
 changelog=
+    PlanX CAD Toolset 1.27.0 - Core modify gap-fillers: six new drafting commands.
+        - Chamfer (CHA): straight distance-distance corner cut between two lines, with a live hover preview and automatic trimming of both lines.
+        - Break (BR): split a line at a picked point, or remove the span between two picked points.
+        - Lengthen (LEN): change a line by delta, percent, or total length; the end you click is the end that moves.
+        - Align (AL): move and rotate a feature onto source/destination point pairs, with optional scaling.
+        - Stretch (S): drag a crossing window and move only the vertices inside it, across every editable layer at once.
+        - Explode (X): split a multipart feature into single parts, or a line/polygon boundary into single segments.
+        - CHAMFER and CHA now start the general two-line Chamfer tool; the urban Block Chamfer keeps BLOCK and BLOCKCHAMFER.
+        - QGIS 4 readiness: managed memory layers declare their fields in the provider URI, removing the last QVariant usage from the plugin.
+    PlanX CAD Toolset 1.26.2 - Restored the author spelling in plugin metadata.
     PlanX CAD Toolset 1.26.1 - QGIS 4 / Qt6 compatibility and Plugin Hub security-scan maintenance.
         - Scoped every QGIS enum access for Qt6 / QGIS 4 (geometry types via QgsWkbTypes.GeometryType, vertex and rubber-band markers via IconType), clearing all Qt6 enum-compatibility warnings while staying compatible with QGIS 3.28 LTR.
         - Replaced defensive try/except wrappers with contextlib.suppress to resolve the Plugin Hub Bandit security-scan findings; the same best-effort operations remain guarded with no change in behavior.
