@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.27.1] - 2026-08-07
+
+- Add comprehensive academic reference manual
+
 ## [1.27.0] - 2026-07-29
 
 Core modify gap-fillers: the six commands every AutoCAD user reaches for, now
