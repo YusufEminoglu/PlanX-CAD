@@ -22,6 +22,11 @@ Type `L` ↵, draw a line. Type `F` ↵, fillet a corner. Type `BR` ↵, break i
 
 ---
 
+## 📖 Documentation
+
+**[Comprehensive Academic Reference Manual](https://yusufeminoglu.github.io/PlanX-CAD/)** — complete documentation of every feature, parameter, and workflow. Hosted on GitHub Pages.
+
+
 ## ✨ Why PlanX CAD?
 
 | | |
