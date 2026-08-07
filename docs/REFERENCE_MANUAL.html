@@ -31,27 +31,35 @@ th,td{border:1px solid var(--border);padding:8px 12px;text-align:left}
 th{background:var(--code-bg);font-weight:600}
 .refs{font-size:12px;color:var(--muted)}
 .refs a{color:var(--link)}
+.formula{background:var(--card-bg);border:1px solid var(--border);border-radius:6px;padding:10px 16px;margin:8px 0;font-family:Cambria,'Times New Roman',serif;font-size:15px;text-align:center}
 @media(max-width:760px){body{flex-direction:column}#sidebar{width:100%;min-width:auto;height:auto;position:static;border-right:none;border-bottom:1px solid var(--border)}#main{padding:24px}}
 .hidden{display:none}
 </style>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
 <aside id="sidebar">
   <input type="text" id="search" placeholder="Search manual&hellip;" autocomplete="off">
   <h2>Contents</h2>
   <nav id="toc">
-    <a href="#overview">Overview</a>
-    <a href="#features" class="sub">Features</a>
-    <a href="#drawing" class="sub">Drawing Tools</a>
-    <a href="#editing" class="sub">Editing Tools</a>
-    <a href="#transform" class="sub">Transform Tools</a>
-    <a href="#measurement" class="sub">Measurement</a>
-    <a href="#urban" class="sub">Urban Planning</a>
-    <a href="#precision" class="sub">Precision Input</a>
-    <a href="#commandline" class="sub">Command Line</a>
-    <a href="#workflow" class="sub">Workflow</a>
-    <a href="#technical" class="sub">Technical Notes</a>
-    <a href="#literature">Literature</a>
+    <a href="#overview">1. Overview</a>
+    <a href="#theory" class="sub">2. Geometric Foundations</a>
+    <a href="#drawing" class="sub">3. Drawing Tools (6)</a>
+    <a href="#editing" class="sub">4. Editing Tools (20)</a>
+    <a href="#fillet" class="sub">5. Fillet and Chamfer Geometry</a>
+    <a href="#trim" class="sub">6. Trim/Extend/Break/Lengthen</a>
+    <a href="#multi" class="sub">7. Multi-Feature Operations</a>
+    <a href="#transform" class="sub">8. Transform Tools (6)</a>
+    <a href="#urban" class="sub">9. Urban Planning Tools (3)</a>
+    <a href="#junction" class="sub">10. Junction Solver</a>
+    <a href="#precision" class="sub">11. Precision Input</a>
+    <a href="#commandline" class="sub">12. Command Line</a>
+    <a href="#layers" class="sub">13. Managed Layers</a>
+    <a href="#crs" class="sub">14. CRS Safety</a>
+    <a href="#edit" class="sub">15. Edit Session Safety</a>
+    <a href="#workflow" class="sub">16. Workflow Guide</a>
+    <a href="#technical" class="sub">17. Technical Notes</a>
+    <a href="#literature" class="sub">18. Literature</a>
   </nav>
 </aside>
 <main id="main">
@@ -59,134 +67,210 @@ th{background:var(--code-bg);font-weight:600}
 <p>AutoCAD-style drafting workbench inside QGIS &bull; v1.27.0 &bull; 39 tools</p>
 
 <h2 id="overview">1. Overview</h2>
-<p>PlanX CAD Toolset is a QGIS plugin delivering an AutoCAD-style drafting workbench with 39 tools across six categories: drawing, editing, construction, transform, measurement, and urban planning. Every tool is accessible through an AutoCAD-style command line with muscle-memory aliases (<span class="k">L</span>, <span class="k">TR</span>, <span class="k">F</span>, <span class="k">CO</span>, etc.), an empty-Enter-repeat-last convention, Up/Down history recall, and a searchable command palette. The plugin has zero external dependencies and supports QGIS 3.28 through 4.x on both PyQt5 and PyQt6.</p>
+<p>PlanX CAD Toolset delivers an AutoCAD-style drafting workbench within QGIS, providing 39 tools across six categories: drawing, editing, construction, transform, measurement, and urban planning. Every tool is accessible through an AutoCAD-style command line with muscle-memory aliases (<span class="k">L</span>, <span class="k">TR</span>, <span class="k">F</span>, <span class="k">CO</span>, etc.), empty-Enter repeat-last convention, Up/Down history recall, and a searchable command palette. The plugin has zero external dependencies and supports QGIS 3.28 through 4.x on both PyQt5 and PyQt6.</p>
 
-<h2 id="features">2. Feature Summary</h2>
-<table>
-  <tr><th>Category</th><th>Count</th><th>Tools</th></tr>
-  <tr><td>Drawing</td><td>6</td><td>Line, Polyline, Rectangle, Polygon, Circle, Arc</td></tr>
-  <tr><td>Editing / Construction</td><td>20</td><td>Offset, Trim, Extend, Fillet, Chamfer, Break, Lengthen, Align, Stretch, Explode, Buffer, Hatch, Construction (Infinite/Ray/Segment), Divide, Multi-Offset, Join, Vertex Edit, Dimension</td></tr>
-  <tr><td>Transform</td><td>6</td><td>Move, Copy, Rotate, Scale, Mirror, Array (Rectangular/Polar)</td></tr>
-  <tr><td>Measurement</td><td>5</td><td>Distance, Area, Measure Selected Line, Measure Selected Polygon, Dimension</td></tr>
-  <tr><td>Urban Planning</td><td>3</td><td>Road Platform Generator, Junction Solver, Block Chamfer</td></tr>
-</table>
+<h2 id="theory">2. Geometric Foundations</h2>
 
-<h2 id="drawing">3. Drawing Tools</h2>
+<h3>2.1 Computational Geometry in CAD</h3>
+<p>The plugin's editing tools implement classic computational geometry algorithms as formalised by de Berg et al. (2008). The fillet operation solves the tangent-circle problem: given two line segments meeting at an intersection point, find the two tangent points and the arc centre such that the arc radius equals a user-specified value and the arc is tangent to both lines. The chamfer operation generalises this with unequal cutback distances. The offset operation uses the straight-skeleton approximation implemented by QGIS's <code>offsetCurve()</code> with round join style. The trim and extend operations solve line-segment intersection and ray-casting problems, respectively.</p>
+
+<h3>2.2 Affine Transformations</h3>
+<p>Transform tools (Move, Copy, Rotate, Scale, Mirror, Align) apply affine transformations through homogeneous coordinates. A 2D affine transformation is expressed in matrix form as:</p>
+<div class="formula">
+\(\begin{pmatrix} x' \\ y' \end{pmatrix} = \begin{pmatrix} m_{11} & m_{12} \\ m_{21} & m_{22} \end{pmatrix} \begin{pmatrix} x \\ y \end{pmatrix} + \begin{pmatrix} d_x \\ d_y \end{pmatrix}\)
+</div>
+<p>The Mirror tool constructs a reflection matrix from the axis direction: \(m_{11} = 2u_x^2 - 1\), \(m_{12} = m_{21} = 2u_x u_y\), \(m_{22} = 2u_y^2 - 1\). The Align tool composes translation, rotation, and optional scaling into a single <code>QTransform</code> matrix using two source-to-destination point pairs. All transforms preserve Z and M values and handle multipart geometries correctly.</p>
+
+<h3>2.3 CRS-Aware Coordinate Operations</h3>
+<p>Farin (2002) notes that distance-based operations in CAD systems are meaningless in angular coordinate systems. The plugin addresses this through a local metric work CRS: every distance-bearing operation (precision input, offset, fillet, chamfer, buffer, hatch) transforms geometries to a local UTM or Azimuthal Equidistant (for polar regions) projection before computing in metres, then transforms results back. This ensures that a 5-metre offset applied in EPSG:4326 produces a geometrically correct 5-metre offset on the ground.</p>
+
+<h2 id="drawing">3. Drawing Tools (6)</h2>
 <div class="card">
   <h4>6 Tools with Precision Input</h4>
   <ul>
-    <li><strong>Line</strong> <span class="k">L</span>: 2-click segment, auto-finish.</li>
-    <li><strong>Polyline</strong> <span class="k">PL</span>: N-click chain; Enter/Right-click to finish; Backspace to undo last vertex.</li>
-    <li><strong>Rectangle</strong> <span class="k">REC</span>: 2 opposite corners; metric-safe in geographic CRS.</li>
-    <li><strong>Polygon</strong> <span class="k">POL</span>: Dialog for N sides (3&ndash;100), then centre + radius.</li>
-    <li><strong>Circle</strong> <span class="k">C</span>: Centre + radius point; 64 segments; metric-safe.</li>
-    <li><strong>Arc</strong> <span class="k">A</span>: 3-point arc (start, intermediate, end); circumcircle method.</li>
+    <li><strong>Line</strong> <span class="k">L</span>: 2-click straight segment. Auto-finishes after second click. Builds <code>QgsGeometry.fromPolylineXY()</code>.</li>
+    <li><strong>Polyline</strong> <span class="k">PL</span>: N-click chain; Enter/right-click to finish; Backspace to undo last vertex. Arbitrary vertex count.</li>
+    <li><strong>Rectangle</strong> <span class="k">REC</span>: 2 opposite-corner clicks. Geographic-safe: transforms corners to local UTM before computing right-angle corners. Builds closed-ring polygon.</li>
+    <li><strong>Polygon</strong> <span class="k">POL</span>: Dialog for N sides (3&ndash;100). Click centre, then radius and orientation. Distributes <code>sides</code> vertices around centre at <code>radius</code> starting from the cursor bearing. Geographic-safe via local UTM.</li>
+    <li><strong>Circle</strong> <span class="k">C</span>: Centre + edge point. 64-segment circle. Geographic-safe: <code>center.buffer(radius, 64)</code> in local UTM.</li>
+    <li><strong>Arc</strong> <span class="k">A</span>: 3-point arc via circumcircle. Solves centre using determinant formula: \(D = 2[x_a(y_b - y_c) + x_b(y_c - y_a) + x_c(y_a - y_b)]\). Produces 32-segment arc following the shortest angular path through the intermediate point.</li>
   </ul>
-  <p>All drawing tools support native QGIS snapping, precision point input, Backspace undo, Enter finish, and Escape cancel.</p>
+  <p>All drawing tools support native QGIS snapping, Backspace undo, Enter finish, and Escape cancel.</p>
 </div>
 
-<h2 id="editing">4. Editing and Construction Tools</h2>
+<h2 id="editing">4. Editing Tools (20)</h2>
+
+<h3>4.1 Core Modification Tools</h3>
 <div class="card">
-  <h4>20 Tools with Live Preview</h4>
-  <p><strong>Trim</strong> <span class="k">TR</span>: Pick cutting boundary, then the target line side to remove.</p>
-  <p><strong>Extend</strong> <span class="k">EX</span>: Pick boundary, then the line to extend along its terminal segment direction.</p>
-  <p><strong>Fillet</strong> <span class="k">F</span>: Enter radius, pick two lines; live hover preview; auto-trims both lines to the tangent arc.</p>
-  <p><strong>Chamfer</strong> <span class="k">CHA</span>: Enter d1/d2 with "equal" checkbox; live hover preview; rejects cutbacks longer than the retained leg.</p>
-  <p><strong>Break</strong> <span class="k">BR</span>: Pick line, click two break points or Enter after one for break-at-point; first part stays on original, remainder added as new feature.</p>
-  <p><strong>Lengthen</strong> <span class="k">LEN</span>: Pick line near end to change; Delta/Percent/Total modes; extension follows terminal segment direction.</p>
-  <p><strong>Align</strong> <span class="k">AL</span>: Pick feature, source1, destination1, source2, destination2; Enter after first pair = translate only; optional scaling by pair length ratio.</p>
-  <p><strong>Stretch</strong> <span class="k">S</span>: Crossing window defines vertices to move; operates across all editable layers at once; polygon rings stay closed.</p>
-  <p><strong>Explode</strong> <span class="k">X</span>: Parts (multipart to single-part) or Segments (line/polygon to two-point segments); optional source removal.</p>
-  <p><strong>Buffer</strong> <span class="k">B</span>: Dialog for distance/join-style/segments; writes to managed <code>planx_buffer</code> layer.</p>
-  <p><strong>Hatch</strong> <span class="k">H</span>: Pick polygon; pattern (parallel/cross/diagonal), spacing, angle, colour; clipped to polygon; 20,000 line limit.</p>
-  <p><strong>Construction</strong> <span class="k">XL</span>/<span class="k">RAY</span>/<span class="k">SEG</span>: Infinite, ray, or segment modes on managed <code>planx_construction</code> layer; dashed cyan style.</p>
-  <p><strong>Divide</strong> <span class="k">DIV</span>: Split line into segments or create points; writes to <code>planx_divisions</code> layer.</p>
-  <p><strong>Multi-Offset</strong> <span class="k">MO</span>: Comma-separated distances; left/right/both/clicked-side modes; batched undo.</p>
-  <p><strong>Join</strong> <span class="k">J</span>: Pick multiple lines, right-click/Enter to join; dialog tolerance; replaces first feature, deletes originals.</p>
-  <p><strong>Vertex Edit</strong> <span class="k">VE</span>: Drag box handles to move, click line to insert, right-click handle to delete; multipart-safe.</p>
-  <p><strong>Offset</strong> <span class="k">O</span>: Enter distance, click side for preview; left/right/both options; metric-safe.</p>
+  <h4>Offset, Fillet, Chamfer, Break, Lengthen</h4>
+  <p><strong>Offset</strong> <span class="k">O</span>: Enter distance, click side for preview. Uses <code>QgsGeometry.offsetCurve()</code> with round join style in local metric CRS. Computes both left and right offsets, picks nearest to click point.</p>
+  <p><strong>Buffer</strong> <span class="k">B</span>: Dialog for distance, join style (Round/Bevel/Miter), segment count. Pick any readable feature. Output to managed <code>planx_buffer</code> layer.</p>
+  <p><strong>Hatch</strong> <span class="k">H</span>: Pick polygon. Dialog for pattern (parallel/cross/diagonal), spacing, angle, colour. Algorithm creates parallel lines spanning the polygon bounding box diagonal at the specified angle, clips each against the polygon via <code>line.intersection(polygon)</code>. Works in local UTM. Max 20,000 candidate lines.</p>
+  <p><strong>Construction</strong> <span class="k">XL</span>/<span class="k">RAY</span>/<span class="k">SEG</span>: Three modes. Infinite mode extends through both points by 10x canvas diagonal. Ray extends from first through second. Segment is bounded. Writes to <code>planx_construction</code> layer with dashed cyan style.</p>
+  <p><strong>Divide</strong> <span class="k">DIV</span>: Dialog for segment count (2&ndash;10,000) and method. Split mode uses <code>QgsGeometry.interpolate()</code> at regular intervals along cumulative distance. Points mode creates points on <code>planx_divisions</code> layer.</p>
+  <p><strong>Multi-Offset</strong> <span class="k">MO</span>: Comma-separated distances; left/right/both/pick-side modes. Batched undo for all offsets.</p>
 </div>
 
-<h2 id="transform">5. Transform Tools</h2>
+<h2 id="fillet">5. Fillet and Chamfer Geometry</h2>
 <div class="card">
-  <h4>6 Tools with Affine Precision</h4>
-  <p><strong>Move</strong> <span class="k">M</span> / <strong>Copy</strong> <span class="k">CO</span>: Base point + target; precision input support (relative, polar, direct distance).</p>
-  <p><strong>Rotate</strong> <span class="k">RO</span>: Signed degrees or point target; Ctrl for 90-degree snap.</p>
-  <p><strong>Scale</strong> <span class="k">SC</span>: Factor or point target.</p>
-  <p><strong>Mirror</strong> <span class="k">MI</span>: Axis defined by two points; validates axis before confirming.</p>
-  <p><strong>Array</strong> <span class="k">AR</span>: Rectangular (rows x cols with independent dx/dy) or polar (count x sweep angle with live preview); 10,000 copy limit.</p>
+  <h4>Tangent Arc and Straight Corner Resolution</h4>
+  <p>Both operations follow a common two-step pattern: (1) find intersection of two picked lines, (2) compute cutback points and connection geometry.</p>
+  <p><strong>Fillet algorithm (<code>create_fillet_and_trims()</code>):</strong></p>
+  <ol>
+    <li>Find the intersection point of the two input lines via <code>line_intersection()</code> (determinant-based 2D line intersection).</li>
+    <li>Determine unit vectors from the intersection toward the "keep" end of each line.</li>
+    <li>Compute included angle: \(\theta = \arccos(\mathbf{v}_1 \cdot \mathbf{v}_2)\), clamped to \([-1, 1]\).</li>
+    <li>Tangent distance: \(d_t = r / \tan(\theta/2)\).</li>
+    <li>Tangent points: \(\mathbf{tp}_i = \mathbf{p}_{\mathrm{inter}} + d_t \cdot \mathbf{v}_i\).</li>
+    <li>Arc centre along bisector: \(d_c = r / \sin(\theta/2)\), \(\mathbf{c} = \mathbf{p}_{\mathrm{inter}} + d_c \cdot \frac{\mathbf{v}_1 + \mathbf{v}_2}{\|\mathbf{v}_1 + \mathbf{v}_2\|}\).</li>
+    <li>Construct 20-segment arc through the shortest angular sweep (not forced CCW).</li>
+    <li>Snap first and last arc points exactly to tangent points for topology safety.</li>
+  </ol>
+  <p><strong>Chamfer algorithm (<code>create_chamfer_and_trims()</code>):</strong> Similar to fillet but produces a straight line. Cut back along each direction vector by user-specified distances \(d_1\) and \(d_2\). Validates that cutback does not exceed the available leg length. If "equal" checkbox is active, \(d_1 = d_2\). Rejects cutbacks longer than the retained leg.</p>
+  <p>Both operations work on a single edit command spanning both layers. Live preview shows the arc/line on hover before the final click. Trim operations trim each line to its tangent/cutback point via <code>trim_line_to_point()</code>.</p>
+</div>
+
+<h2 id="trim">6. Trim, Extend, Break, and Lengthen</h2>
+<div class="card">
+  <h4>Line-Endpoint Operations</h4>
+  <p><strong>Trim</strong> <span class="k">TR</span>: Pick cutting boundary, then target line region to remove. Splits target at intersection points via <code>splitGeometry()</code>. Keeps all parts except the one nearest the click point. For multi-part layers, adds extra parts as new features with copied attributes. Fallback: subtracts narrow buffer around cutting boundary.</p>
+  <p><strong>Extend</strong> <span class="k">EX</span>: Pick boundary, then line to extend. Projects a ray from the terminal segment direction, extends by the bounding box diagonal length, intersects with boundary geometry. Picks nearest forward intersection point. Appends to line preserving all existing vertices.</p>
+  <p><strong>Break</strong> <span class="k">BR</span>: Pick line, click two break points or Enter after one for break-at-point. Uses <code>line_substring()</code> which walks cumulative segment distances preserving interior vertices. Single-point mode splits at point; two-point mode creates a gap (first part + remainder).</p>
+  <p><strong>Lengthen</strong> <span class="k">LEN</span>: Three modes. Delta: target = current + value (negative shortens). Percent: target = current &times; value / 100. Total: target = value. Shortening uses <code>line_substring()</code> from the appropriate end. Extending moves the terminal vertex along the terminal segment direction by the extra distance. Pick the line near the end to modify.</p>
+</div>
+
+<h2 id="multi">7. Multi-Feature Operations</h2>
+<div class="card">
+  <h4>Join, Align, Stretch, Explode, Vertex Edit</h4>
+  <p><strong>Join</strong> <span class="k">J</span>: Multiple picks (left-click to add, right-click to finish). Dialog tolerance. Iteratively welds paths by checking all four endpoint-pair cases with tolerance distance. Result replaces first feature; deletes originals.</p>
+  <p><strong>Align</strong> <span class="k">AL</span>: Pick feature, source1&rarr;dest1, source2&rarr;dest2. Enter after first pair = translate only. Optional scaling by pair length ratio. Transform: translate(-src1) + rotate + translate(+dst1) composed into a single <code>QTransform</code>. Two-pair mode derives rotation from source and destination vectors; scale factor = |dest_vector| / |source_vector|.</p>
+  <p><strong>Stretch</strong> <span class="k">S</span>: Crossing window defines vertices to move by (dx, dy). Iterates all vertices; moves those inside <code>QgsRectangle</code>. Operates across all editable layers simultaneously. Polygon rings stay closed. Returns None if no vertex falls in window.</p>
+  <p><strong>Explode</strong> <span class="k">X</span>: Parts mode splits multipart via <code>asGeometryCollection()</code>. Segments mode splits lines/polygon boundaries into individual two-point segments. Optional source removal. Writes to <code>planx_explode</code> layer for cross-type explosions.</p>
+  <p><strong>Vertex Edit</strong> <span class="k">VE</span>: Renders all vertices as orange <code>QgsVertexMarker</code> box handles. Drag to move (via <code>moveVertex()</code>), right-click to delete (via <code>deleteVertex()</code>), click on line to insert (via <code>insertVertex()</code>). Multipart-safe with part/vertex index tracking. Refuses operations leaving fewer than 2 (line) or 4 (polygon ring) vertices.</p>
+</div>
+
+<h2 id="transform">8. Transform Tools (6)</h2>
+<div class="card">
+  <h4>Affine Transformations with Precision</h4>
+  <p><strong>Move</strong> <span class="k">M</span> / <strong>Copy</strong> <span class="k">CO</span>: Base point + target point. Translation via <code>QgsGeometry.translate(dx, dy)</code>. Copy duplicates geometry + attributes as new feature. Both support precision input (relative, polar, direct distance).</p>
+  <p><strong>Rotate</strong> <span class="k">RO</span>: Centre + reference direction + target angle. Hold Ctrl for 90-degree snap (<code>round(angle/90) &times; 90</code>). Accepts direct angle entry. Uses <code>QgsGeometry.rotate()</code> in local metric CRS.</p>
+  <p><strong>Scale</strong> <span class="k">SC</span>: Centre + reference distance + target distance. Factor = target / reference. Matrix: <code>QTransform(factor, 0, 0, factor, cx(1-factor), cy(1-factor))</code>.</p>
+  <p><strong>Mirror</strong> <span class="k">MI</span>: Two-point axis. Reflection matrix from normalised axis direction (ux, uy): \(m_{11} = 2u_x^2 - 1\), \(m_{12} = m_{21} = 2u_x u_y\), \(m_{22} = 2u_y^2 - 1\), translation = <code>(start - m*start)</code>. Adds mirrored copy; never modifies original.</p>
+  <p><strong>Array</strong> <span class="k">AR</span>: Dialog for rectangular (rows, cols, dx, dy) or polar (count, sweep angle) parameters. Rectangular: nested-loop translation. Polar: equal-angle rotation around centre. Max 10,000 copies. Live preview via <code>unaryUnion()</code>.</p>
   <p>All transforms are multipart, curve, and Z/M-safe via <code>QTransform</code>-based affine operations.</p>
 </div>
 
-<h2 id="measurement">6. Measurement and Annotation</h2>
-<div class="card">
-  <h4>5 Tools</h4>
-  <p><strong>Measure Distance:</strong> Click-click with live running total; geodesic if canvas is geographic.</p>
-  <p><strong>Measure Area:</strong> Click vertices, auto-closes polygon; shows area + perimeter.</p>
-  <p><strong>Measure Selected:</strong> Reports length or area of a selected feature via dialog.</p>
-  <p><strong>Dimension</strong> <span class="k">DIM</span>: Creates persistent linear dimension features on <code>planx_dimensions</code> layer with <code>distance_m</code>, <code>label</code>, and from/to coordinate fields; auto-enables labels.</p>
-</div>
-
-<h2 id="urban">7. Urban Planning Tools</h2>
+<h2 id="urban">9. Urban Planning Tools (3)</h2>
 <div class="card">
   <h4>Road Platform Generator <span class="k">ROAD</span></h4>
-  <p>Dialog controls: road type (Vehicular/Pedestrian/Bicycle/Collector/Arterial), direction, lane count (1&ndash;8), lane width (2&ndash;10 m), median width (0&ndash;20 m), sidewalks (0&ndash;10 m each side). Live total width readout. Generates centerline, lane lines, median, and sidewalk edges on <code>planx_road_platform</code> layer.</p>
-</div>
-<div class="card">
-  <h4>Junction Solver <span class="k">JUNCTION</span></h4>
-  <p>Dialog: impact radius (3&ndash;100 m), corner solution (Chamfer/Fillet), chamfer distance / fillet radius, island type (None/Round/Teardrop). Schematic preview. Click junction centre; solves half-edge curb intersections; trims road platform components at tangent points; creates traffic islands on <code>planx_junction_islands</code> layer.</p>
+  <p>Dialog: road type (Vehicular/Pedestrian/Bicycle/Collector/Arterial), direction, lane count (1&ndash;8), lane width (2&ndash;10 m), median width (0&ndash;20 m), sidewalks (0&ndash;10 m each side). Live total width readout. Sketch centreline on canvas. <code>RoadGenerator.generate()</code> offsets centreline in local CRS for each lane, median, and sidewalk edge. Writes to <code>planx_road_platform</code> MultiLineString layer with 11 attribute fields (road_id, road_type, component, side, lane_no, lane_width, median_width, sidewalk_left, sidewalk_right, direction, visible). Supports one-way and two-way generation.</p>
 </div>
 <div class="card">
   <h4>Block Chamfer <span class="k">BLOCK</span></h4>
-  <p>One-click corner filleting for block/parcel geometry. Curved (tangent fillet) or Straight chamfer; configurable distance/radius and tolerance. Finds two intersecting lines near the click, trims both, adds chamfer or arc. Automatic short remnant cleanup.</p>
+  <p>One-click corner resolution. Straight mode: finds two nearest intersecting line features near click point, trims both by distance along each line from the intersection, adds straight connection. Curved mode: uses same fillet geometry as the Fillet tool. Remnant cleanup: deletes lines shorter than the cleanup threshold within tolerance of the corner centre. Supports sequential corners (click&rarr;result&rarr;click&rarr;result...).</p>
 </div>
 
-<h2 id="precision">8. Precision Point Input</h2>
+<h2 id="junction">10. Junction Solver</h2>
+<div class="card">
+  <h4>Geometric Intersection Resolution (<span class="k">JUNCTION</span>)</h4>
+  <p>The junction solver (<code>urban/junction_geometry.py</code>) is a pure-geometry module operating on curb half-edges. Its algorithm proceeds through five phases:</p>
+  <ol>
+    <li><strong>Half-edge extraction:</strong> Click the junction centre. Creates a circular buffer at the specified impact radius (3&ndash;100 m). Intersects with road platform features. Extracts outward curb rays (<code>CurbHalfEdge</code> objects) with cut points, outward direction vectors, and road/component metadata.</li>
+    <li><strong>Approach clustering (<code>cluster_approaches()</code>):</strong> Groups half-edges by road ID, sorts by angle, clusters edges within an angular tolerance (default 12&deg;). Merges wrap-around clusters near 0/360&deg;. Discards clusters with fewer than 2 edges. Each cluster becomes an <code>Approach</code> with <code>left_curb()</code> and <code>right_curb()</code> (signed lateral offset via cross product).</li>
+    <li><strong>Sector pairing:</strong> For each approach in counter-clockwise order, the active corner sector spans between the current approach's left curb and the next approach's right curb. Sectors with sweep angle &ge; &pi; (straight-through or reflex) are skipped&mdash;these are not local corners.</li>
+    <li><strong>Corner solving:</strong> Uses the <code>support_line_intersection()</code> method (2D cross-product intersection of directed support lines). Chamfer mode: extends from intersection by distance along each ray, connects with straight line. Fillet mode: uses the tangent-circle algorithm from the Fillet tool, adapted for directed rays. Validates each solution against distance constraints.</li>
+    <li><strong>Application:</strong> Trims road platform components at tangent/cutback points. Creates connection geometry (arc or line) from the first road's attributes. Optionally creates round or teardrop traffic islands on <code>planx_junction_islands</code> layer. All within a single rollback-safe edit command.</li>
+  </ol>
+</div>
+
+<h2 id="precision">11. Precision Point Input</h2>
 <div class="card">
   <h4>Four Input Formats, Metre-Accurate in All CRS</h4>
+  <p>The precision input system (<code>core/precision_input.py</code>) supports four coordinate formats, all resolved through a local UTM work CRS for metre-accuracy:</p>
   <ul>
-    <li><span class="k">x,y</span> &mdash; absolute point in canvas CRS.</li>
-    <li><span class="k">@dx,dy</span> &mdash; relative Cartesian offset in metres.</li>
-    <li><span class="k">@distance&lt;angle</span> &mdash; relative polar in metres and degrees.</li>
-    <li><span class="k">distance</span> &mdash; direct distance along cursor bearing.</li>
+    <li><span class="k">x,y</span> &mdash; absolute Cartesian coordinates in the canvas CRS.</li>
+    <li><span class="k">@dx,dy</span> &mdash; relative Cartesian offset in metres (not canvas units). Transforms base point to local UTM, adds dx,dy, transforms back.</li>
+    <li><span class="k">@distance&lt;angle</span> &mdash; relative polar: distance in metres, angle in degrees. Computes target as: target = base + distance &times; (cos(angle), sin(angle)) in local UTM.</li>
+    <li><span class="k">distance</span> &mdash; direct distance along the cursor bearing in metres. Transforms both base and cursor to UTM, normalises direction vector, scales by distance.</li>
   </ul>
-  <p>Type a number, minus sign, or <span class="k">@</span> directly on the canvas, or focus the command line with <span class="k">Ctrl+Shift+S</span>. All relative/polar/direct-distance values are resolved through a local UTM or azimuthal equidistant work CRS, ensuring metre-accuracy in geographic projects. Supported by Line, Polyline, Rectangle, Circle, Polygon, Arc, Move, Copy, Rotate (signed degrees), and Scale (positive factor).</p>
+  <p>Type a number, minus sign, or <span class="k">@</span> directly on the canvas, or focus the command line with <span class="k">Ctrl+Shift+S</span>. Supported by Line, Polyline, Rectangle, Circle, Polygon, Arc, Move, Copy, Rotate, and Scale.</p>
 </div>
 
-<h2 id="commandline">9. Command Line</h2>
+<h2 id="commandline">12. Command Line</h2>
 <div class="card">
   <h4>AutoCAD-Style Command Interface</h4>
-  <p>The dock includes a command line with: muscle-memory aliases (65 entries mapping <span class="k">L</span>, <span class="k">TR</span>, <span class="k">CO</span>, etc. to tools), full autocomplete by alias, tool key, and fuzzy name match, 50-entry history ring with consecutive duplicate skipping, empty-Enter to repeat the last tool, and session persistence via QSettings for recent tools and pinned favourites. Press <span class="k">Ctrl+Shift+Space</span> to repeat the last tool instantly. Press <span class="k">Ctrl+Shift+S</span> to focus the command line.</p>
+  <p>The dock includes a command line (<code>CommandLineEdit</code>) with: muscle-memory aliases (65 entries: <span class="k">L</span> = Line, <span class="k">TR</span> = Trim, <span class="k">CO</span> = Copy, <span class="k">F</span> = Fillet, <span class="k">CHA</span> = Chamfer, <span class="k">XL</span> = Construction Infinite, <span class="k">DIM</span> = Dimension, etc.), full autocomplete by alias, tool key, and fuzzy name match (<code>QCompleter</code> with <code>PopupCompletion</code>), 50-entry history ring with consecutive duplicate skipping, empty-Enter to repeat the last tool or finish an in-progress sketch, and session persistence for recent tools and pinned favourites. <code>Ctrl+Shift+Space</code> repeats the last tool instantly. <code>Ctrl+Shift+S</code> focuses the command line. <code>Ctrl+Shift+Q</code> opens the <em>Command Palette</em> dialog with fuzzy search across all 39 tools.</p>
 </div>
 
-<h2 id="workflow">10. Workflow Guide</h2>
+<h2 id="layers">13. Managed Layer System</h2>
+<div class="card">
+  <h4>Eight Output Layers, Auto-Created on First Use</h4>
+  <p>The plugin uses managed memory layers for output tools rather than writing to the user's active layer:</p>
+  <table>
+    <tr><th>Layer</th><th>Geometry</th><th>Created By</th></tr>
+    <tr><td><code>planx_buffer</code></td><td>Polygon</td><td>Buffer tool</td></tr>
+    <tr><td><code>planx_construction</code></td><td>LineString</td><td>Construction Line tools</td></tr>
+    <tr><td><code>planx_dimensions</code></td><td>LineString</td><td>Dimension tool</td></tr>
+    <tr><td><code>planx_hatch</code></td><td>LineString</td><td>Hatch tool</td></tr>
+    <tr><td><code>planx_divisions</code></td><td>Point</td><td>Divide tool (points mode)</td></tr>
+    <tr><td><code>planx_explode</code></td><td>LineString</td><td>Explode tool (cross-type)</td></tr>
+    <tr><td><code>planx_road_platform</code></td><td>MultiLineString</td><td>Road Generator, Junction</td></tr>
+    <tr><td><code>planx_junction_islands</code></td><td>Polygon</td><td>Junction (islands)</td></tr>
+  </table>
+  <p>Layers are reused across sessions: <code>get_or_create_layer()</code> searches existing project layers by name, validates WKB type, CRS, and field schema. If no compatible layer exists, creates a new in-memory layer. The road platform layer supports bilingual (English/Turkish) schemas with <code>road_field_name()</code> translation for legacy compatibility.</p>
+</div>
+
+<h2 id="crs">14. CRS Safety</h2>
+<div class="card">
+  <h4>Local Metric Work CRS for Distance-Bearing Operations</h4>
+  <p>The function <code>local_metric_crs(point, source_crs)</code> creates a local work CRS where distances are true metres:</p>
+  <ol>
+    <li>Transform the work point to WGS84 geographic coordinates.</li>
+    <li>For normal latitudes (&minus;80&deg; to 84&deg;): compute UTM zone as \(\lfloor(\lambda + 180)/6\rfloor + 1\), EPSG = 32600 + zone (north) or 32700 + zone (south).</li>
+    <li>For polar regions: use Azimuthal Equidistant projection (AEQD) centred on the work point, which preserves distances and angles from the centre.</li>
+  </ol>
+  <p>This CRS is used by: precision input resolution, rotate/mirror operations, circle/polygon/rectangle geometry building in geographic projects, offset/fillet/chamfer/hatch, road generator, junction solver, and block chamfer. Each operation gets its own CRS based on its specific work location, so even operations far apart in the project receive the appropriate zone.</p>
+</div>
+
+<h2 id="edit">15. Edit Session Safety</h2>
+<div class="card">
+  <h4>Transactional Geometry Operations</h4>
+  <p>Every geometry-modifying operation uses <code>beginEditCommand()</code>/<code>endEditCommand()</code> for transactional safety with full rollback on failure. Multi-layer operations (Fillet, Chamfer, Junction) open edit commands on all involved layers simultaneously and only commit if all succeed. The Junction solver keeps its edit command open across trim operations, corner connection adds, and median cap creation. Tools that write to managed layers check <code>layer.isEditable()</code> before starting their own session; if the layer is already being edited by the user, they use the existing session without auto-committing. Drawing tools auto-start editing if the target layer is not already editable.</p>
+  <p>For single-part layers, operations that would produce disconnected MultiLineString results (Trim, Divide) replace the original feature with the first part and add remaining parts as new features with copied attributes incremented through the self-pick exclusion buffer.</p>
+</div>
+
+<h2 id="workflow">16. Workflow Guide</h2>
 <ol>
   <li>Open the PlanX CAD dock from the toolbar icon. The dock shows collapsible tool groups, a command line, recent tools, and quick-action buttons.</li>
   <li>Ensure the target layer is editable. The dock's layer state indicator shows the active layer name and edit status.</li>
-  <li>Choose a tool by clicking its icon, typing its alias in the command line, or using a keyboard shortcut (<span class="k">Ctrl+Shift+Letter</span> for most tools).</li>
-  <li>For drawing tools: keep snapping enabled. Use precision input for exact placement. Backspace to undo the last vertex, Enter to finish, Escape to cancel.</li>
-  <li>For editing tools: pick the reference geometry first, then the target. Tools like Trim, Extend, Fillet, and Chamfer exclude self-pick.</li>
-  <li>Use <span class="k">Ctrl+Shift+Space</span> to repeat the last tool. Pin frequently used tools via the "Pin" button for one-click access.</li>
-  <li>Use the <strong>Docs</strong> button for in-context help, <strong>Keys</strong> for the shortcut reference, and <strong>Diag</strong> / <strong>Stats</strong> for operational diagnostics.</li>
+  <li>Choose a tool by clicking its icon, typing its alias in the command line, or using a keyboard shortcut.</li>
+  <li>For drawing tools: keep snapping enabled. Use precision input for exact placement. Backspace to undo last vertex, Enter to finish, Escape to cancel.</li>
+  <li>For editing tools: pick reference geometry first, then the target. Tools like Trim, Extend, Fillet, and Chamfer exclude self-pick.</li>
+  <li>Use <span class="k">Ctrl+Shift+Space</span> to repeat the last tool. Pin frequently used tools for one-click access.</li>
+  <li>Use the <strong>Docs</strong> button for in-context help, <strong>Keys</strong> for the shortcut reference, and <strong>Diag</strong> / <strong>Stats</strong> for diagnostics.</li>
+  <li>Hatch and Buffer output to their respective managed layers; cut/copy them to your working layer as needed.</li>
 </ol>
 
-<h2 id="technical">11. Technical Notes</h2>
+<h2 id="technical">17. Technical Notes</h2>
 <ul>
-  <li><strong>CRS safety:</strong> All distance-based operations use a local UTM or azimuthal equidistant work CRS. Distances stay metre-accurate in geographic projects.</li>
-  <li><strong>Edit session safety:</strong> Tools distinguish between plugin-owned and pre-existing edit sessions. Multi-step edits use <code>beginEditCommand()</code>/<code>endEditCommand()</code> with full rollback on failure.</li>
-  <li><strong>Managed output layers:</strong> Eight helper layers are auto-created: <code>planx_road_platform</code>, <code>planx_junction_islands</code>, <code>planx_buffer</code>, <code>planx_hatch</code>, <code>planx_construction</code>, <code>planx_dimensions</code>, <code>planx_explode</code>, and <code>planx_divisions</code>.</li>
-  <li><strong>Pick aperture:</strong> 10-pixel tolerance enforced on both bounding box and real geometry distance.</li>
-  <li><strong>Self-pick exclusion:</strong> Two-step tools exclude the first picked feature from the second search.</li>
+  <li><strong>Line intersection:</strong> Determinant-based 2D intersection: \(\Delta = (x_1-x_2)(y_3-y_4) - (y_1-y_2)(x_3-x_4)\). Rejects parallel lines when \(|\Delta| &lt; 10^{-12}\).</li>
+  <li><strong>3-point arc:</strong> Circumcircle centre via determinant formula; shortest angular sweep CW/CCW determined by checking if the intermediate angle falls between start and end angles in CCW direction.</li>
+  <li><strong>Mirror matrix:</strong> Reflection across line with normalised direction (ux, uy): \(a = 2u_x^2 - 1\), \(b = 2u_x u_y\), \(d = 2u_y^2 - 1\).</li>
+  <li><strong>Hatch clipping:</strong> Parallel lines generated at spacing intervals along the polygon bbox diagonal, each clipped via <code>line.intersection(polygon)</code>. Multi-line results split to single-part.</li>
+  <li><strong>Pick aperture:</strong> 10-pixel tolerance on both bounding box and real geometry distance. Self-pick exclusion: two-step tools exclude the first picked feature from the second search.</li>
   <li><strong>Accessibility:</strong> Every button has <code>accessibleName</code> and <code>accessibleDescription</code>; all tool buttons use <code>TabFocus</code> policy.</li>
-  <li><strong>QGIS compatibility:</strong> 3.28 LTR through 4.x. PyQt5 and PyQt6 verified. Zero external dependencies.</li>
+  <li><strong>QGIS compatibility:</strong> 3.28&ndash;4.x. PyQt5 and PyQt6 verified. Zero external dependencies.</li>
 </ul>
 
-<h2 id="literature">12. Literature</h2>
+<h2 id="literature">18. Literature</h2>
 <ol class="refs">
   <li>Farin, G. (2002). <em>Curves and Surfaces for CAGD: A Practical Guide</em> (5th ed.). Morgan Kaufmann. <a href="https://doi.org/10.1016/B978-1-55860-737-8.X5000-5">DOI: 10.1016/B978-1-55860-737-8.X5000-5</a></li>
   <li>de Berg, M., Cheong, O., van Kreveld, M., &amp; Overmars, M. (2008). <em>Computational Geometry: Algorithms and Applications</em> (3rd ed.). Springer. <a href="https://doi.org/10.1007/978-3-540-77974-2">DOI: 10.1007/978-3-540-77974-2</a></li>
   <li>Douglas, D. H. &amp; Peucker, T. K. (1973). Algorithms for the reduction of the number of points required to represent a digitized line or its caricature. <em>Cartographica</em>, 10(2), 112&ndash;122. <a href="https://doi.org/10.3138/FM57-6770-U75U-7727">DOI: 10.3138/FM57-6770-U75U-7727</a></li>
-  <li>Shoelace, M. (1986). Computation of polygon areas. In <em>Graphics Gems</em> (pp. 4&ndash;8). Academic Press.</li>
+  <li>Goldman, R. (2003). <em>Pyramid Algorithms: A Dynamic Programming Approach to Curves and Surfaces for Geometric Modeling</em>. Morgan Kaufmann. <a href="https://doi.org/10.1016/B978-1-55860-354-7.X5000-3">DOI: 10.1016/B978-1-55860-354-7.X5000-3</a></li>
+  <li>O'Rourke, J. (1998). <em>Computational Geometry in C</em> (2nd ed.). Cambridge University Press. <a href="https://doi.org/10.1017/CBO9780511804120">DOI: 10.1017/CBO9780511804120</a></li>
+  <li>Glassner, A. S. (Ed.). (1990). <em>Graphics Gems</em>. Academic Press. <a href="https://doi.org/10.1016/C2009-0-22266-2">DOI: 10.1016/C2009-0-22266-2</a></li>
+  <li>Snyder, J. P. (1987). <em>Map Projections&mdash;A Working Manual</em> (USGS Professional Paper 1395). U.S. Government Printing Office. <a href="https://doi.org/10.3133/pp1395">DOI: 10.3133/pp1395</a></li>
   <li>Emino&#287;lu, Y. (2025). PlanX CAD Toolset: An AutoCAD-style drafting workbench for QGIS. <em>Zenodo</em>. <a href="https://doi.org/10.5281/zenodo.20753127">DOI: 10.5281/zenodo.20753127</a></li>
 </ol>
 </main>
@@ -231,7 +315,7 @@ th{background:var(--code-bg);font-weight:600}
 @media print { #print-pdf-btn { display: none !important; } }
 @media (max-width: 768px) { #print-pdf-btn { bottom: 12px; right: 12px; padding: 8px 14px; font-size: 12px; } }
 </style>
-<button id="print-pdf-btn" onclick="window.print()" title="Save as PDF / Print">🖨️ Save as PDF</button>
+<button id="print-pdf-btn" onclick="window.print()" title="Save as PDF / Print">&#x1F5A8;&#xFE0F; Save as PDF</button>
 
 </body>
 </html>
