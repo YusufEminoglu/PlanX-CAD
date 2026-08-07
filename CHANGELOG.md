@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.27.3] - 2026-08-07
+
+- Expand reference manual 3x with theory, math, 8 DOI refs
+
 ## [1.27.2] - 2026-08-07
 
 - Add floating Save as PDF button to reference manual
