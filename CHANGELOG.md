@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.27.4] - 2026-08-07
+
+- Added online user manual link (https://yusufeminoglu.github.io/PlanX-CAD/) and GitHub repository star call-to-action.
+
 ## [1.27.3] - 2026-08-07
 
 - Expand reference manual 3x with theory, math, 8 DOI refs
