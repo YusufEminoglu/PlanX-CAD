@@ -7,10 +7,10 @@ version=1.27.5
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
-about=PlanX CAD Toolset brings a keyboard-first, AutoCAD-style drafting workflow to QGIS 3.28 LTR through QGIS 4. Its 39 tools cover line and polygon drawing, offset, trim, extend, tangent fillet, straight chamfer, break, lengthen, align, stretch, explode, transform, array, vertex editing, hatch, construction geometry, measurement, dimensions, and urban road-platform design. The dock includes command aliases, history, favorites, live coordinates, layer-readiness guidance, and native QGIS snapping. It has no external dependencies and is developed with feedback from urban-planning education at Dokuz Eylül University. Online User Manual & Documentation: https://geophilo.com/planX_CAD_arac_Seti/ | If you find this plugin helpful, please consider starring the repository on GitLab (https://gitlab.com/geospacephilo/planX_CAD_arac_Seti)!
+about=PlanX CAD Toolset brings a keyboard-first, AutoCAD-style drafting workflow to QGIS 3.28 LTR through QGIS 4. Its 39 tools cover line and polygon drawing, offset, trim, extend, tangent fillet, straight chamfer, break, lengthen, align, stretch, explode, transform, array, vertex editing, hatch, construction geometry, measurement, dimensions, and urban road-platform design. The dock includes command aliases, history, favorites, live coordinates, layer-readiness guidance, and native QGIS snapping. It has no external dependencies and is developed with feedback from urban-planning education at Dokuz Eylül University. Online User Manual & Documentation: https://geophilo.com/planX_CAD_arac_Seti/ | If you find this plugin helpful, please consider starring the repository on GitHub (https://github.com/YusufEminoglu/PlanX-CAD)!
 
-tracker=https://gitlab.com/geospacephilo/planX_CAD_arac_Seti/-/issues
-repository=https://gitlab.com/geospacephilo/planX_CAD_arac_Seti
+tracker=https://github.com/YusufEminoglu/PlanX-CAD/issues
+repository=https://github.com/YusufEminoglu/PlanX-CAD
 
 hasProcessingProvider=no
 
