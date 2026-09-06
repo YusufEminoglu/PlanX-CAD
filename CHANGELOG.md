@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.27.5] - 2026-09-06
+
+- Migrate repository and documentation URLs to GitLab and Cloudflare Pages.
+
 ## [1.27.4] - 2026-08-07
 
 - Added online user manual link (https://yusufeminoglu.github.io/PlanX-CAD/) and GitHub repository star call-to-action.

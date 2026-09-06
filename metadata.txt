@@ -3,21 +3,21 @@ name=PlanX CAD Toolset
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=AutoCAD-style drafting inside QGIS: 39 tools for precise drawing, editing, snapping, dimensions, hatching, transforms, and urban road design.
-version=1.27.4
+version=1.27.5
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
-about=PlanX CAD Toolset brings a keyboard-first, AutoCAD-style drafting workflow to QGIS 3.28 LTR through QGIS 4. Its 39 tools cover line and polygon drawing, offset, trim, extend, tangent fillet, straight chamfer, break, lengthen, align, stretch, explode, transform, array, vertex editing, hatch, construction geometry, measurement, dimensions, and urban road-platform design. The dock includes command aliases, history, favorites, live coordinates, layer-readiness guidance, and native QGIS snapping. It has no external dependencies and is developed with feedback from urban-planning education at Dokuz Eylül University. Online User Manual & Documentation: https://yusufeminoglu.github.io/PlanX-CAD/ | If you find this plugin helpful, please consider starring the repository on GitHub (https://github.com/YusufEminoglu/PlanX-CAD)!
+about=PlanX CAD Toolset brings a keyboard-first, AutoCAD-style drafting workflow to QGIS 3.28 LTR through QGIS 4. Its 39 tools cover line and polygon drawing, offset, trim, extend, tangent fillet, straight chamfer, break, lengthen, align, stretch, explode, transform, array, vertex editing, hatch, construction geometry, measurement, dimensions, and urban road-platform design. The dock includes command aliases, history, favorites, live coordinates, layer-readiness guidance, and native QGIS snapping. It has no external dependencies and is developed with feedback from urban-planning education at Dokuz Eylül University. Online User Manual & Documentation: https://geophilo.pages.dev/planX_CAD_arac_Seti/ | If you find this plugin helpful, please consider starring the repository on GitLab (https://gitlab.com/geospacephilo/planX_CAD_arac_Seti)!
 
-tracker=https://github.com/YusufEminoglu/PlanX-CAD/issues
-repository=https://github.com/YusufEminoglu/PlanX-CAD
+tracker=https://gitlab.com/geospacephilo/planX_CAD_arac_Seti/-/issues
+repository=https://gitlab.com/geospacephilo/planX_CAD_arac_Seti
 
 hasProcessingProvider=no
 
 tags=cad, drafting, digitizing, autocad, drawing, editing, snapping, dimensioning, offset, fillet, polyline, polygon, road design, urban planning
 icon=icons/icon.png
 
-homepage=https://yusufeminoglu.github.io/PlanX-CAD/
+homepage=https://geophilo.pages.dev/planX_CAD_arac_Seti/
 category=Vector
 
 experimental=False
