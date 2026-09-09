@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PlanX CAD Toolset — Reference Manual v1.27.4</title>
+<title>PlanX CAD Toolset — Reference Manual v1.27.5</title>
 <script>
 MathJax = {
   tex: {
@@ -148,6 +148,21 @@ nav#sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border
   color: var(--gs-teal-300);
   margin-top: 6px;
   font-family: var(--font-mono);
+}
+
+.sidebar-search {
+  width: 100%; margin-top: 14px; padding: 7px 11px;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+  border-radius: var(--radius-sm); color: #fff; font-size: .8rem;
+  font-family: var(--font-body);
+}
+.sidebar-search::placeholder { color: var(--gs-teal-300); }
+.sidebar-search:focus { outline: none; border-color: var(--gs-gold-400); background: rgba(255,255,255,.1); }
+
+.sidebar-nav a.nav-hidden,
+.sidebar-nav .group-label.nav-hidden { display: none; }
+.sidebar-nav .no-results {
+  display: none; padding: 10px 22px; font-size: .78rem; color: var(--gs-teal-300);
 }
 
 .sidebar-nav { flex: 1; padding: 12px 0; }
@@ -655,7 +670,8 @@ main {
 <nav id="sidebar">
 <div class="sidebar-header">
   <div class="brand">PlanX CAD Toolset<span>Drafting Workbench</span></div>
-  <div class="version">Reference Manual — v1.27.4</div>
+  <div class="version">Reference Manual — v1.27.5</div>
+  <input type="text" id="sidebar-search" class="sidebar-search" placeholder="Search manual…" autocomplete="off">
 </div>
 <div class="sidebar-nav">
   <a href="#overview">Overview &amp; Philosophy</a>
@@ -722,6 +738,7 @@ main {
 
   <div class="group-label">Appendices</div>
   <a href="#references">Academic References</a>
+  <div class="no-results" id="sidebar-no-results">No matches</div>
 </div>
 <div class="sidebar-footer">
   PlanX CAD Toolset<br>
@@ -743,7 +760,7 @@ main {
 </div>
 
 <div class="meta-row">
-    <span class="meta-chip">v1.27.4</span>
+    <span class="meta-chip">v1.27.5</span>
     <span class="meta-chip">39 tools</span>
     <span class="meta-chip">6 groups</span>
     <span class="meta-chip">79 command aliases</span>
@@ -3140,6 +3157,34 @@ Source code is licensed GPL-3.0. Geometry methods are drawn from the peer-review
   const active = sidebar.querySelector('a.active');
   if (active) {
     active.scrollIntoView({ block: 'center', behavior: 'instant' });
+  }
+
+  // Sidebar search: matches a link's own label OR its target section's full
+  // text, so a query like "eigenvalue" finds Rotate/Align even when neither
+  // word appears in the sidebar label itself.
+  const searchInput = document.getElementById('sidebar-search');
+  const noResults = document.getElementById('sidebar-no-results');
+  if (searchInput) {
+    searchInput.addEventListener('input', function () {
+      const q = searchInput.value.trim().toLowerCase();
+      let anyVisible = false;
+      links.forEach(function (a) {
+        const target = sections.find(function (s) { return s.link === a; });
+        const sectionText = target ? target.el.textContent.toLowerCase() : '';
+        const match = !q || a.textContent.toLowerCase().indexOf(q) !== -1 || sectionText.indexOf(q) !== -1;
+        a.classList.toggle('nav-hidden', !match);
+        if (match) anyVisible = true;
+      });
+      sidebar.querySelectorAll('.group-label').forEach(function (label) {
+        let next = label.nextElementSibling, hasVisible = false;
+        while (next && !next.classList.contains('group-label')) {
+          if (next.tagName === 'A' && !next.classList.contains('nav-hidden')) hasVisible = true;
+          next = next.nextElementSibling;
+        }
+        label.classList.toggle('nav-hidden', !hasVisible && !!q);
+      });
+      if (noResults) noResults.style.display = anyVisible || !q ? 'none' : 'block';
+    });
   }
 })();
 </script>
