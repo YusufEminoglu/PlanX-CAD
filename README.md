@@ -6,12 +6,12 @@
 
 **Drafting-grade CAD for urban planning — inside QGIS.**
 
-[![Release](https://img.shields.io/github/v/release/YusufEminoglu/PlanX-CAD?color=0d9488&label=release)](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti/releases)
+[![Release](https://img.shields.io/github/v/release/YusufEminoglu/PlanX-CAD?color=0d9488&label=release)](https://gitlab.com/geophilo1/planX_CAD_arac_Seti/releases)
 [![License: GPL v3](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 [![Documentation](https://img.shields.io/badge/📖_Reference_Manual-13a0a0)](https://geophilo.com/planX_CAD_arac_Seti/)
 [![QGIS](https://img.shields.io/badge/QGIS-3.28%20LTR%20%E2%86%92%204.x-589632?logo=qgis&logoColor=white)](https://qgis.org)
 [![Plugin Hub](https://img.shields.io/badge/QGIS-Plugin%20Hub-589632)](https://plugins.qgis.org/)
-[![Part of PlanX](https://img.shields.io/badge/suite-PlanX-ff8a3d)](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti)
+[![Part of PlanX](https://img.shields.io/badge/suite-PlanX-ff8a3d)](https://gitlab.com/geophilo1/planX_CAD_arac_Seti)
 
 Type `L` ↵, draw a line. Type `F` ↵, fillet a corner. Type `BR` ↵, break it.
 **39 CAD tools, an AutoCAD-style command line, and road-platform design — without ever leaving QGIS.**
@@ -138,11 +138,11 @@ While a drawing or transform tool is active, type a number, `-`, or `@` directly
 > `Plugins → Manage and Install Plugins…` → search for **PlanX CAD Toolset** → Install.
 
 **From ZIP**
-> Download the latest `planX_CAD_arac_Seti.zip` from [Releases](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti/releases), then `Plugins → Install from ZIP`.
+> Download the latest `planX_CAD_arac_Seti.zip` from [Releases](https://gitlab.com/geophilo1/planX_CAD_arac_Seti/releases), then `Plugins → Install from ZIP`.
 
 **From source** *(development)*
 ```text
-git clone https://gitlab.com/geospacephilo/planX_CAD_arac_Seti
+git clone https://gitlab.com/geophilo1/planX_CAD_arac_Seti
 set QGIS_PLUGINPATH=<clone parent dir>   →  restart QGIS
 ```
 
@@ -185,17 +185,17 @@ This plugin belongs to a growing open-source QGIS ecosystem for urban planning b
 
 | Planning & analysis | CAD & production | 3D & visualization |
 |---|---|---|
-| [PlanX](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti) — spatial-planning suite | [PlanX CAD Toolset](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti) — drafting-grade CAD | [PlanX 3D City](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti) — Three.js city viewer |
-| [GeoStats Lab](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti) — spatial statistics | [EasyFillet](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti) — tangent-arc fillet | [3D OSM Model](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti) — OSM → 3D city in browser |
-| [Suitability Lab](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti) — raster MCDA | [Settlement Toolset](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti) — 9-stage settlement plans | [OSM Quick 3D](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti) — OSM → native QGIS 3D |
-| [DataCube Lab](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti) — spatiotemporal cubes | [UIP Toolset](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti) — master-plan automation | [Urban Procedural 3D](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti) — parametric zoning lab |
-| [Urban Resilience](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti) — 28 resilience tools | [ParcelFlux](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti) — parcel subdivision | [CartoLab](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti) — publication cartography |
+| [PlanX](https://gitlab.com/geophilo1/planX_CAD_arac_Seti) — spatial-planning suite | [PlanX CAD Toolset](https://gitlab.com/geophilo1/planX_CAD_arac_Seti) — drafting-grade CAD | [PlanX 3D City](https://gitlab.com/geophilo1/planX_CAD_arac_Seti) — Three.js city viewer |
+| [GeoStats Lab](https://gitlab.com/geophilo1/planX_CAD_arac_Seti) — spatial statistics | [EasyFillet](https://gitlab.com/geophilo1/planX_CAD_arac_Seti) — tangent-arc fillet | [3D OSM Model](https://gitlab.com/geophilo1/planX_CAD_arac_Seti) — OSM → 3D city in browser |
+| [Suitability Lab](https://gitlab.com/geophilo1/planX_CAD_arac_Seti) — raster MCDA | [Settlement Toolset](https://gitlab.com/geophilo1/planX_CAD_arac_Seti) — 9-stage settlement plans | [OSM Quick 3D](https://gitlab.com/geophilo1/planX_CAD_arac_Seti) — OSM → native QGIS 3D |
+| [DataCube Lab](https://gitlab.com/geophilo1/planX_CAD_arac_Seti) — spatiotemporal cubes | [UIP Toolset](https://gitlab.com/geophilo1/planX_CAD_arac_Seti) — master-plan automation | [Urban Procedural 3D](https://gitlab.com/geophilo1/planX_CAD_arac_Seti) — parametric zoning lab |
+| [Urban Resilience](https://gitlab.com/geophilo1/planX_CAD_arac_Seti) — 28 resilience tools | [ParcelFlux](https://gitlab.com/geophilo1/planX_CAD_arac_Seti) — parcel subdivision | [CartoLab](https://gitlab.com/geophilo1/planX_CAD_arac_Seti) — publication cartography |
 
 ---
 
 ## 🤝 Contributing & Support
 
-- 🐛 **Bugs / requests** → [Issues](https://gitlab.com/geospacephilo/planX_CAD_arac_Seti/-/issues) — the in-plugin **Issue Template** dialog (`Ctrl+Alt+N`) pre-fills diagnostics for you.
+- 🐛 **Bugs / requests** → [Issues](https://gitlab.com/geophilo1/planX_CAD_arac_Seti/-/issues) — the in-plugin **Issue Template** dialog (`Ctrl+Alt+N`) pre-fills diagnostics for you.
 - 📜 **Changelog** → [CHANGELOG.md](CHANGELOG.md) follows *Keep a Changelog*.
 - ✅ Before a PR: run `py -3 tests/smoke_compat.py` (12 static checks, including the English-only release gate), then run all `tests/smoke_*` runtime suites with both `python-qgis-ltr.bat` and `python-qgis.bat`.
 
