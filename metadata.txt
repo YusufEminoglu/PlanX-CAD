@@ -3,7 +3,7 @@ name=PlanX CAD Toolset
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=AutoCAD-style drafting inside QGIS: 39 tools for precise drawing, editing, snapping, dimensions, hatching, transforms, and urban road design.
-version=1.27.5
+version=1.27.6
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
@@ -24,6 +24,7 @@ experimental=False
 deprecated=False
 
 changelog=
+    1.27.6 - Redesign plugin icon to high-end 3D tactile brand design with circular teal pedestal, zero margin, and refreshed documentation links.
     PlanX CAD Toolset 1.27.0 - Core modify gap-fillers: six new drafting commands.
         - Chamfer (CHA): straight distance-distance corner cut between two lines, with a live hover preview and automatic trimming of both lines.
         - Break (BR): split a line at a picked point, or remove the span between two picked points.
