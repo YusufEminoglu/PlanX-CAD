@@ -1,1 +1,12 @@
 media
+
+# Repository-only content, not part of the installed plugin.
+#
+# docs/command_reference.html, docs/shortcuts.html and
+# docs/smoke_test_checklist.html ARE shipped: DocsDialog loads all three and the
+# health audit warns when one is missing. The reference manual and the
+# landing-page stub are opened by no code path -- Help points at the online
+# copies -- so only those two are left out, along with the CI workflows.
+docs/REFERENCE_MANUAL.html
+docs/index.html
+.github
