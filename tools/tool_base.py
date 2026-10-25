@@ -26,6 +26,7 @@ from ..core.precision_input import (
     parse_precision_input,
     resolve_precision_point,
 )
+from ..core.drafting_workbench import DraftingWorkbench
 
 
 class tool_base(QgsMapTool):
@@ -58,12 +59,9 @@ class tool_base(QgsMapTool):
         self._last_cursor_canvas_point = None
 
         # Visual feedback: snap marker and feature highlight.
-        self.snap_marker = QgsVertexMarker(self.canvas)
-        self.snap_marker.setIconType(QgsVertexMarker.IconType.ICON_CIRCLE)
-        self.snap_marker.setColor(QColor(13, 148, 136))
-        self.snap_marker.setIconSize(12)
-        self.snap_marker.setPenWidth(2)
-        self.snap_marker.hide()
+        self.drafting = DraftingWorkbench(self.canvas, self.iface)
+        self.drafting.tool_status_message.connect(self.tool_message.emit)
+        self.snap_marker = self.drafting.osnap_markers._marker
 
         self.highlight_rb = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.LineGeometry)
         self.highlight_rb.setWidth(4)
@@ -111,14 +109,8 @@ class tool_base(QgsMapTool):
         self._step = 0
         self._last_cursor_canvas_point = None
         self.preview_rb = create_preview_rubberband(self.canvas)
-
-        if getattr(self, 'snap_marker', None) is None:
-            self.snap_marker = QgsVertexMarker(self.canvas)
-            self.snap_marker.setIconType(QgsVertexMarker.IconType.ICON_CIRCLE)
-            self.snap_marker.setColor(QColor(13, 148, 136))
-            self.snap_marker.setIconSize(12)
-            self.snap_marker.setPenWidth(2)
-            self.snap_marker.hide()
+        self.drafting._setup_tracking_band()
+        self.snap_marker = self.drafting.osnap_markers._marker
 
         if getattr(self, 'highlight_rb', None) is None:
             self.highlight_rb = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.LineGeometry)
@@ -133,9 +125,7 @@ class tool_base(QgsMapTool):
 
     def deactivate(self):
         self._cleanup()
-        if self.snap_marker:
-            self.canvas.scene().removeItem(self.snap_marker)
-            self.snap_marker = None
+        self.drafting.cleanup()
         if self.highlight_rb:
             self.canvas.scene().removeItem(self.highlight_rb)
             self.highlight_rb = None
@@ -145,8 +135,7 @@ class tool_base(QgsMapTool):
         cleanup_sketcher_rubberband(self.canvas, self.preview_rb)
         if self.highlight_rb:
             self.highlight_rb.reset()
-        if self.snap_marker:
-            self.snap_marker.hide()
+        self.drafting.hide()
         self.preview_rb = None
         self.selected_layer = None
         self.selected_feature = None
@@ -238,20 +227,28 @@ class tool_base(QgsMapTool):
             layer_point = self.to_layer_coordinates(point)
             self.on_click(layer_point, event.button())
 
-    def canvasMoveEvent(self, event):
-        point = self.toMapCoordinates(event.pos())
-        snapped = self._snap_point(event.pos())
-        if snapped is not None:
-            point = snapped
-            if self.snap_marker:
-                self.snap_marker.setCenter(point)
-                self.snap_marker.show()
-        else:
-            if self.snap_marker:
-                self.snap_marker.hide()
+    def _get_current_anchor(self) -> QgsPointXY | None:
+        """Return the active anchor point (in canvas coordinates) for the current step."""
+        pt = None
+        if getattr(self, "base_point", None) is not None:
+            pt = self.base_point
+        elif getattr(self, "center", None) is not None:
+            pt = self.center
+        elif getattr(self, "line_start", None) is not None:
+            pt = self.line_start
+        elif getattr(self, "src1", None) is not None:
+            pt = self.src1
+        elif getattr(self, "selected_point", None) is not None and self._step > 0:
+            pt = self.selected_point
 
+        if pt is not None:
+            return self.to_canvas_coordinates(pt, self.selected_layer)
+        return None
+
+    def canvasMoveEvent(self, event):
+        anchor = self._get_current_anchor()
+        point, snap_res, track_res = self.drafting.process_move(event.pos(), anchor_point=anchor)
         self._last_cursor_canvas_point = QgsPointXY(point)
-        # A hover highlight can be added later; for now, dispatch on_move only.
         layer_point = self.to_layer_coordinates(point)
         self.on_move(layer_point)
 
@@ -279,17 +276,29 @@ class tool_base(QgsMapTool):
             event.accept()
         elif event.key() == Qt.Key.Key_Escape:
             self._reset()
+        elif event.key() == Qt.Key.Key_F3:
+            enabled = not self.drafting.is_osnap_enabled()
+            self.drafting.set_osnap_enabled(enabled)
+            self.tool_message.emit(f"OSNAP: {'ON' if enabled else 'OFF'}")
+            event.accept()
+        elif event.key() == Qt.Key.Key_F8:
+            mode = self.drafting.toggle_ortho()
+            self.tool_message.emit(f"Tracking: {mode.value.upper()}")
+            event.accept()
+        elif event.key() == Qt.Key.Key_F10:
+            mode = self.drafting.toggle_polar()
+            self.tool_message.emit(f"Tracking: {mode.value.upper()}")
+            event.accept()
+        elif event.key() == Qt.Key.Key_F12:
+            enabled = not self.drafting.is_dynamic_input_enabled()
+            self.drafting.set_dynamic_input_enabled(enabled)
+            self.tool_message.emit(f"Dynamic Input: {'ON' if enabled else 'OFF'}")
+            event.accept()
 
     # ── Helpers ─────────────────────────────────────────────────────────
 
     def _snap_point(self, pos):
-        snapper = self.canvas.snappingUtils()
-        if snapper is None:
-            return None
-        match = snapper.snapToMap(pos)
-        if match.isValid():
-            return match.point()
-        return None
+        return self.drafting.snap_point(pos, anchor_point=self._get_current_anchor())
 
     def _pick_feature(self, pos, exclude=None):
         """Find the closest feature at the clicked point.

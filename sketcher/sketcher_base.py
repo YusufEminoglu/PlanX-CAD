@@ -21,6 +21,7 @@ from ..core.precision_input import (
     parse_precision_input,
     resolve_precision_point,
 )
+from ..core.drafting_workbench import DraftingWorkbench
 
 
 class sketcher_base(QgsMapTool):
@@ -47,6 +48,8 @@ class sketcher_base(QgsMapTool):
         self.preview_rb = None
         self._is_active = False
         self._last_cursor_point = None
+        self.drafting = DraftingWorkbench(self.canvas, self.iface)
+        self.drafting.tool_status_message.connect(self.sketcher_message.emit)
 
     # ── Override edilecek metodlar ────────────────────────────────────────
 
@@ -78,6 +81,7 @@ class sketcher_base(QgsMapTool):
         self._is_active = True
         self.vertices = []
         self._last_cursor_point = None
+        self.drafting._setup_tracking_band()
         self.rb = create_sketcher_rubberband(self.canvas, self.geom_type())
         self.preview_rb = create_preview_rubberband(self.canvas, self.geom_type())
         self.sketcher_message.emit(
@@ -89,12 +93,14 @@ class sketcher_base(QgsMapTool):
         """Deactivate the tool and remove its feedback items."""
         self._is_active = False
         self._cleanup()
+        self.drafting.cleanup()
         super().deactivate()
 
     def _cleanup(self):
         """Remove all sketch rubber bands and reset transient state."""
         cleanup_sketcher_rubberband(self.canvas, self.rb)
         cleanup_sketcher_rubberband(self.canvas, self.preview_rb)
+        self.drafting.hide()
         self.rb = None
         self.preview_rb = None
         self.vertices = []
@@ -118,13 +124,8 @@ class sketcher_base(QgsMapTool):
         if not self._is_active:
             return
 
-        point = self.toMapCoordinates(event.pos())
-
-        # Apply native snapping.
-        snapped = self._snap_point(event.pos())
-        if snapped is not None:
-            point = snapped
-
+        anchor = self.vertices[-1] if self.vertices else None
+        point, snap_res, track_res = self.drafting.process_move(event.pos(), anchor_point=anchor)
         self._last_cursor_point = QgsPointXY(point)
         self.on_move(point)
 
@@ -141,18 +142,31 @@ class sketcher_base(QgsMapTool):
         elif event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
             self.handle_command_enter()
             event.accept()
+        elif event.key() == Qt.Key.Key_F3:
+            enabled = not self.drafting.is_osnap_enabled()
+            self.drafting.set_osnap_enabled(enabled)
+            self.sketcher_message.emit(f"OSNAP: {'ON' if enabled else 'OFF'}")
+            event.accept()
+        elif event.key() == Qt.Key.Key_F8:
+            mode = self.drafting.toggle_ortho()
+            self.sketcher_message.emit(f"Tracking: {mode.value.upper()}")
+            event.accept()
+        elif event.key() == Qt.Key.Key_F10:
+            mode = self.drafting.toggle_polar()
+            self.sketcher_message.emit(f"Tracking: {mode.value.upper()}")
+            event.accept()
+        elif event.key() == Qt.Key.Key_F12:
+            enabled = not self.drafting.is_dynamic_input_enabled()
+            self.drafting.set_dynamic_input_enabled(enabled)
+            self.sketcher_message.emit(f"Dynamic Input: {'ON' if enabled else 'OFF'}")
+            event.accept()
 
     # ── Helpers ────────────────────────────────────────────────
 
     def _snap_point(self, pos):
-        """Return the nearest point reported by native QGIS snapping."""
-        snapper = self.canvas.snappingUtils()
-        if snapper is None:
-            return None
-        match = snapper.snapToMap(pos)
-        if match.isValid():
-            return match.point()
-        return None
+        """Return the nearest point reported by OSNAP and native snapping."""
+        anchor = self.vertices[-1] if self.vertices else None
+        return self.drafting.snap_point(pos, anchor_point=anchor)
 
     def add_vertex(self, point):
         """Add a new sketch vertex."""

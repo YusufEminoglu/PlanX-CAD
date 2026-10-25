@@ -725,7 +725,7 @@ main {
   <div class="group-label">06 — Urban Planning</div>
   <a href="#alg-road">Road Platform Generator</a>
   <a href="#alg-junction">Junction Solver</a>
-  <a href="#alg-ada-kirma">Block Chamfer</a>
+  <a href="#alg-block-chamfer">Block Chamfer</a>
 
   <div class="group-label">Systems</div>
   <a href="#command-line">Command Line &amp; Aliases</a>
@@ -1523,11 +1523,11 @@ Sixteen editing tools that reshape existing geometry. The two-step tools (Trim, 
 
   <h5>5. Usage &amp; Tips</h5>
   <div class="interp-box">
-  <strong>Radius vs leg length.</strong> The radius must fit within both retained legs; an oversized radius relative to a short line trims that line away. <strong>Corner rounding.</strong> For a straight (non-arc) corner cut, use <a href="#alg-chamfer">Chamfer</a>. <strong>Block corners.</strong> For urban block-corner rounding across many corners, use <a href="#alg-ada-kirma">Block Chamfer</a>.
+  <strong>Radius vs leg length.</strong> The radius must fit within both retained legs; an oversized radius relative to a short line trims that line away. <strong>Corner rounding.</strong> For a straight (non-arc) corner cut, use <a href="#alg-chamfer">Chamfer</a>. <strong>Block corners.</strong> For urban block-corner rounding across many corners, use <a href="#alg-block-chamfer">Block Chamfer</a>.
   </div>
 
   <div class="see-also-box">
-  <strong>See also:</strong> <a href="#alg-chamfer">Chamfer</a> &middot; <a href="#alg-arc">Arc</a> &middot; <a href="#alg-ada-kirma">Block Chamfer</a> &middot; <a href="#alg-junction">Junction Solver</a> &middot; <a href="#references">Academic References</a>
+  <strong>See also:</strong> <a href="#alg-chamfer">Chamfer</a> &middot; <a href="#alg-arc">Arc</a> &middot; <a href="#alg-block-chamfer">Block Chamfer</a> &middot; <a href="#alg-junction">Junction Solver</a> &middot; <a href="#references">Academic References</a>
   </div>
 
   <h5>6. Literature</h5>
@@ -1584,11 +1584,11 @@ Sixteen editing tools that reshape existing geometry. The two-step tools (Trim, 
 
   <h5>5. Usage &amp; Tips</h5>
   <div class="interp-box">
-  <strong>Equal vs unequal.</strong> Equal cutbacks give a symmetric corner; unequal cutbacks give a skewed cut, useful for matching two road edges of different character. <strong>Rejection.</strong> A cutback longer than the retained leg is refused rather than corrupting the source line. <strong>Urban block corner.</strong> The general Chamfer is a two-line command; for one-click urban block-corner resolution across all project lines, use <a href="#alg-ada-kirma">Block Chamfer</a>.
+  <strong>Equal vs unequal.</strong> Equal cutbacks give a symmetric corner; unequal cutbacks give a skewed cut, useful for matching two road edges of different character. <strong>Rejection.</strong> A cutback longer than the retained leg is refused rather than corrupting the source line. <strong>Urban block corner.</strong> The general Chamfer is a two-line command; for one-click urban block-corner resolution across all project lines, use <a href="#alg-block-chamfer">Block Chamfer</a>.
   </div>
 
   <div class="see-also-box">
-  <strong>See also:</strong> <a href="#alg-fillet">Fillet</a> &middot; <a href="#alg-ada-kirma">Block Chamfer</a> &middot; <a href="#alg-break">Break</a> &middot; <a href="#references">Academic References</a>
+  <strong>See also:</strong> <a href="#alg-fillet">Fillet</a> &middot; <a href="#alg-block-chamfer">Block Chamfer</a> &middot; <a href="#alg-break">Break</a> &middot; <a href="#references">Academic References</a>
   </div>
 </div>
 </article>
@@ -2836,7 +2836,7 @@ Three tools written specifically for the planning workflow: a parametric road-pl
   </div>
 
   <div class="see-also-box">
-  <strong>See also:</strong> <a href="#alg-road">Road Platform Generator</a> &middot; <a href="#alg-fillet">Fillet</a> &middot; <a href="#alg-chamfer">Chamfer</a> &middot; <a href="#alg-ada-kirma">Block Chamfer</a> &middot; <a href="#references">Academic References</a>
+  <strong>See also:</strong> <a href="#alg-road">Road Platform Generator</a> &middot; <a href="#alg-fillet">Fillet</a> &middot; <a href="#alg-chamfer">Chamfer</a> &middot; <a href="#alg-block-chamfer">Block Chamfer</a> &middot; <a href="#references">Academic References</a>
   </div>
 
   <h5>5. Literature</h5>
@@ -2847,14 +2847,14 @@ Three tools written specifically for the planning workflow: a parametric road-pl
 </article>
 
 <!-- Block Chamfer -->
-<article class="alg-card" id="alg-ada-kirma">
+<article class="alg-card" id="alg-block-chamfer">
 <div class="alg-card-header">
   <div class="alg-icon">🔲</div>
   <div class="alg-info">
     <h4>Block Chamfer</h4>
     <div class="alg-id">ada_kirma · aliases <span class="key">BLOCK</span> / <span class="key">BLOCKCHAMFER</span> · dialog tool</div>
   </div>
-  <button class="copy-anchor-btn" data-anchor="alg-ada-kirma" title="Copy link to this section" type="button">🔗</button>
+  <button class="copy-anchor-btn" data-anchor="alg-block-chamfer" title="Copy link to this section" type="button">🔗</button>
 </div>
 <div class="alg-card-body">
   <div class="alg-desc">

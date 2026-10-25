@@ -267,6 +267,10 @@ class PlanXCADPlugin:
                 dock.usage_stats_requested.connect(self._show_usage_stats)
                 dock.health_check_requested.connect(self._show_health_check)
                 dock.shortcut_audit_requested.connect(self._show_shortcut_audit)
+                dock.ortho_toggle_requested.connect(self._toggle_ortho)
+                dock.polar_toggle_requested.connect(self._toggle_polar)
+                dock.osnap_toggle_requested.connect(self._toggle_osnap)
+                dock.dynamic_input_toggle_requested.connect(self._toggle_dynamic_input)
                 try:
                     self.iface.currentLayerChanged.connect(self._on_current_layer_changed)
                     self._layer_signal_connected = True
@@ -494,6 +498,60 @@ class PlanXCADPlugin:
         release_readiness.setContext(Qt.ShortcutContext.ApplicationShortcut)
         release_readiness.activated.connect(self._show_release_readiness)
         self._shortcuts.append(release_readiness)
+        osnap_sc = QShortcut(QKeySequence("F3"), parent)
+        osnap_sc.setContext(Qt.ShortcutContext.ApplicationShortcut)
+        osnap_sc.activated.connect(self._toggle_osnap)
+        self._shortcuts.append(osnap_sc)
+        ortho_sc = QShortcut(QKeySequence("F8"), parent)
+        ortho_sc.setContext(Qt.ShortcutContext.ApplicationShortcut)
+        ortho_sc.activated.connect(self._toggle_ortho)
+        self._shortcuts.append(ortho_sc)
+        polar_sc = QShortcut(QKeySequence("F10"), parent)
+        polar_sc.setContext(Qt.ShortcutContext.ApplicationShortcut)
+        polar_sc.activated.connect(self._toggle_polar)
+        self._shortcuts.append(polar_sc)
+        dyn_sc = QShortcut(QKeySequence("F12"), parent)
+        dyn_sc.setContext(Qt.ShortcutContext.ApplicationShortcut)
+        dyn_sc.activated.connect(self._toggle_dynamic_input)
+        self._shortcuts.append(dyn_sc)
+
+    def _toggle_osnap(self):
+        tool = self._current_tool
+        drafting = getattr(tool, "drafting", None)
+        if drafting:
+            enabled = not drafting.is_osnap_enabled()
+            drafting.set_osnap_enabled(enabled)
+            self._set_status(f"Object Snap: {'ON' if enabled else 'OFF'} [F3]")
+        else:
+            self._set_status("Object Snap: toggled [F3]")
+
+    def _toggle_ortho(self):
+        tool = self._current_tool
+        drafting = getattr(tool, "drafting", None)
+        if drafting:
+            mode = drafting.toggle_ortho()
+            self._set_status(f"Tracking: {mode.value.upper()} [F8]")
+        else:
+            self._set_status("Ortho tracking toggled [F8]")
+
+    def _toggle_polar(self):
+        tool = self._current_tool
+        drafting = getattr(tool, "drafting", None)
+        if drafting:
+            mode = drafting.toggle_polar()
+            self._set_status(f"Tracking: {mode.value.upper()} [F10]")
+        else:
+            self._set_status("Polar tracking toggled [F10]")
+
+    def _toggle_dynamic_input(self):
+        tool = self._current_tool
+        drafting = getattr(tool, "drafting", None)
+        if drafting:
+            enabled = not drafting.is_dynamic_input_enabled()
+            drafting.set_dynamic_input_enabled(enabled)
+            self._set_status(f"Dynamic Input: {'ON' if enabled else 'OFF'} [F12]")
+        else:
+            self._set_status("Dynamic Input toggled [F12]")
 
     def _repeat_last_tool(self):
         if self._last_tool_key:
@@ -766,6 +824,10 @@ class PlanXCADPlugin:
             ("open_shortcut_audit", "Ctrl+Alt+Y"),
             ("open_issue_template", "Ctrl+Alt+N"),
             ("open_release_readiness", "Ctrl+Alt+V"),
+            ("toggle_osnap", "F3"),
+            ("toggle_ortho", "F8"),
+            ("toggle_polar", "F10"),
+            ("toggle_dynamic_input", "F12"),
         ]
         for name, seq in system_pairs:
             s = str(seq).lower()

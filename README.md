@@ -31,6 +31,7 @@ Type `L` ↵, draw a line. Type `F` ↵, fillet a corner. Type `BR` ↵, break i
 
 | | |
 |---|---|
+| 🎯 **Precision Drafting** | AutoCAD-grade Object Snap (OSNAP) with typed glyphs (Box, Triangle, Circle, Diamond, Cross, X), Ortho (F8) and Polar (F10) tracking with dashed rays, and a live Dynamic Input HUD (F12). |
 | ⚡ **Muscle-memory friendly** | AutoCAD-style command aliases (`L`, `PL`, `TR`, `F`, `CO`…), empty-Enter repeats the last command, Up/Down recalls history — a real command loop. |
 | 📐 **Drafting-grade picking** | A true 10-px pickbox with snap markers, hover highlighting, and self-pick protection in two-step tools (Fillet/Chamfer/Trim/Extend). |
 | 🏙️ **Built for planners** | Interactive road platform generator, junction topology fixer, and block-corner chamfering — tools you won't find in generic CAD plugins. |
@@ -207,3 +208,7 @@ This plugin belongs to a growing open-source QGIS ecosystem for urban planning b
 <div align="center">
 <sub>Built with ❤️ for the planning classroom and the drafting desk. If PlanX CAD saves you time, a ⭐ helps others find it.</sub>
 </div>
+
+### Precision Drafting — F-Keys
+
+F3 Toggle Object Snap (OSNAP) · F8 Toggle Ortho Mode (90° lock) · F10 Toggle Polar Tracking · F12 Toggle Dynamic Input HUD

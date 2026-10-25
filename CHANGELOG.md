@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.28.0] - 2026-10-25
+
+Precision Drafting: AutoCAD-grade Object Snap (OSNAP), Ortho and Polar tracking, and Dynamic Input HUD.
+
+### Added
+- **Precision Drafting Workbench**: Unified controller (DraftingWorkbench) coordinating Object Snap (OSNAP), Ortho and Polar tracking, guide rays, and Dynamic Input HUD across both 	ool_base and sketcher_base.
+- **AutoCAD-grade Object Snap (OSNAP)** (F3, OSNAP): 11 geometric snap modes (Endpoint, Midpoint, Centre, Quadrant, Vertex, Intersection, Apparent Intersection, Perpendicular, Tangent, Nearest, Extension) with AutoCAD-standard typed glyph markers (Box, Triangle, Circle, Diamond, Cross, X, Inverted Triangle, Tangent, Hourglass) and screen-reader status announcements.
+- **Ortho & Polar Tracking Engine**: F8 / ORTHO constrains movement to 0 deg, 90 deg, 180 deg, 270 deg with live dashed guide rays. F10 / POLAR tracks configurable rays (15 deg, 30 deg, 45 deg, 90 deg). Object Snap Tracking allows acquiring points by hovering, with alignment rays taking precedence (S3 rule).
+- **Dynamic Input HUD** (F12, DYN): Floating cursor overlay rendering live distance, angle, and delta coordinates in a high-contrast translucent dark slate pill with teal accent.
+- **Shortcuts & Aliases**: Application-wide shortcuts F3, F8, F10, F12 and command-line aliases OSNAP, ORTHO, POLAR, DYN.
+- **Comprehensive Test Suite**: Added pure pytest suite 	ests/test_drafting_pure.py (17 tests) and unified QGIS test runner 	ests/smoke_plugin.py running all 8 QGIS suites on both QGIS 3 LTR and QGIS 4.
+
 ## [1.27.6] - 2026-09-16
 
 - Redesign plugin icon to high-end 3D tactile brand design with circular teal pedestal, zero margin, and refreshed documentation links.

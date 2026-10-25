@@ -2,8 +2,8 @@
 name=PlanX CAD Toolset
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
-description=AutoCAD-style drafting inside QGIS: 39 tools for precise drawing, editing, snapping, dimensions, hatching, transforms, and urban road design.
-version=1.27.6
+description=AutoCAD-style drafting inside QGIS: 39 tools with OSNAP glyphs, Ortho and Polar tracking, Dynamic Input HUD, precision drawing, editing, dimensions, hatching, and urban road design.
+version=1.28.0
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
@@ -24,6 +24,7 @@ experimental=False
 deprecated=False
 
 changelog=
+    1.28.0 - Precision drafting: AutoCAD-grade Object Snap (OSNAP) with typed glyph markers, Ortho (F8) and Polar (F10) tracking with dashed rays, and live Dynamic Input Heads-Up Display (F12). Unified DraftingWorkbench, application-wide shortcuts, pure pytest suite, and dual-runtime QGIS 3 LTR and QGIS 4 verification.
     1.27.6 - Redesign plugin icon to high-end 3D tactile brand design with circular teal pedestal, zero margin, and refreshed documentation links.
     PlanX CAD Toolset 1.27.0 - Core modify gap-fillers: six new drafting commands.
         - Chamfer (CHA): straight distance-distance corner cut between two lines, with a live hover preview and automatic trimming of both lines.

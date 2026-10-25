@@ -122,6 +122,10 @@ class ShortcutHelpDialog(QDialog):
             {"command": "Open Shortcut Audit", "shortcut": "Ctrl+Alt+Y", "category": "System"},
             {"command": "Open Issue Template", "shortcut": "Ctrl+Alt+N", "category": "System"},
             {"command": "Open Release Readiness", "shortcut": "Ctrl+Alt+V", "category": "System"},
+            {"command": "Toggle Object Snap", "shortcut": "F3", "category": "System"},
+            {"command": "Toggle Ortho Tracking", "shortcut": "F8", "category": "System"},
+            {"command": "Toggle Polar Tracking", "shortcut": "F10", "category": "System"},
+            {"command": "Toggle Dynamic Input", "shortcut": "F12", "category": "System"},
         ])
 
         self._render_rows(self._rows)

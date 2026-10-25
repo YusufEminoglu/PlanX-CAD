@@ -186,6 +186,10 @@ class CADDockWidget(QDockWidget):
     diagnostics_requested = pyqtSignal()
     docs_requested = pyqtSignal()
     shortcuts_requested = pyqtSignal()
+    ortho_toggle_requested = pyqtSignal()
+    polar_toggle_requested = pyqtSignal()
+    osnap_toggle_requested = pyqtSignal()
+    dynamic_input_toggle_requested = pyqtSignal()
 
     def __init__(self, iface, icon_dir, parent=None):
         super().__init__("PlanX CAD Toolset", parent)
@@ -803,7 +807,8 @@ class CADDockWidget(QDockWidget):
     def _install_command_completer(self):
         """Attach an autocomplete popup to the command line, listing every
         AutoCAD alias plus each canonical tool key (built after buttons exist)."""
-        words = sorted(set(self._COMMAND_ALIASES.keys()) | set(self.buttons.keys()))
+        extra_commands = {"ortho", "polar", "osnap", "dyn"}
+        words = sorted(set(self._COMMAND_ALIASES.keys()) | set(self.buttons.keys()) | extra_commands)
         completer = QCompleter(words, self.search_input)
         completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
@@ -948,6 +953,24 @@ class CADDockWidget(QDockWidget):
             self.tool_activated.emit("__repeat__")
             return
         self.search_input.add_history(raw)
+        lower = raw.lower()
+        if lower in ("ortho", "f8"):
+            self.search_input.clear()
+            self.ortho_toggle_requested.emit()
+            return
+        if lower in ("polar", "f10"):
+            self.search_input.clear()
+            self.polar_toggle_requested.emit()
+            return
+        if lower in ("osnap", "f3"):
+            self.search_input.clear()
+            self.osnap_toggle_requested.emit()
+            return
+        if lower in ("dyn", "dynmode", "f12"):
+            self.search_input.clear()
+            self.dynamic_input_toggle_requested.emit()
+            return
+
         if self._precision_input_handler is not None:
             try:
                 if self._precision_input_handler(raw):
