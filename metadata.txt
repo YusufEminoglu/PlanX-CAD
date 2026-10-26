@@ -18,6 +18,7 @@ tags=cad, drafting, digitizing, autocad, drawing, editing, snapping, dimensionin
 icon=icons/icon.png
 
 homepage=https://geophilo.com/planX_CAD_arac_Seti/
+license=GPL-3.0-or-later
 category=Vector
 
 experimental=False

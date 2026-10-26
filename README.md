@@ -7,7 +7,7 @@
 **Drafting-grade CAD for urban planning — inside QGIS.**
 
 [![Release](https://img.shields.io/github/v/release/YusufEminoglu/PlanX-CAD?color=0d9488&label=release)](https://gitlab.com/geophilo1/planX_CAD_arac_Seti/releases)
-[![License: GPL v3](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
+[![License: GPL v3 or later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg)](LICENSE)
 [![Documentation](https://img.shields.io/badge/📖_Reference_Manual-13a0a0)](https://geophilo.com/planX_CAD_arac_Seti/)
 [![QGIS](https://img.shields.io/badge/QGIS-3.28%20LTR%20%E2%86%92%204.x-589632?logo=qgis&logoColor=white)](https://qgis.org)
 [![Plugin Hub](https://img.shields.io/badge/QGIS-Plugin%20Hub-589632)](https://plugins.qgis.org/)
@@ -151,7 +151,7 @@ set QGIS_PLUGINPATH=<clone parent dir>   →  restart QGIS
 |---|---|
 | QGIS | **3.28 LTR → 4.x** (PyQt5 **and** PyQt6 verified) |
 | Dependencies | None — pure `qgis.core` / `qgis.gui` / `qgis.PyQt` |
-| License | [GPL-3.0](LICENSE) |
+| License | [GPL-3.0-or-later](LICENSE) |
 
 ---
 
