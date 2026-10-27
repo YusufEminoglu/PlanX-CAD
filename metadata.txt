@@ -3,7 +3,7 @@ name=CAD Drafting Toolset
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=Keyboard-first CAD drafting in QGIS: 44 tools with command aliases, object snaps, Ortho and Polar tracking and dynamic input, from line and offset to fillet, array, dimensions and street design.
-version=1.29.0
+version=1.29.1
 author=Geophilo
 email=yusuf.eminoglu@deu.edu.tr
 

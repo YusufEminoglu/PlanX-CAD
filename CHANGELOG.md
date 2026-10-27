@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.29.1] - 2026-10-27
 
 Dock polish after the first desktop test, and the Hub name everywhere.
 
