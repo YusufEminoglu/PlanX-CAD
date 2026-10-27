@@ -28,6 +28,8 @@ experimental=False
 deprecated=False
 
 changelog=
+    1.29.1 - Alias badge beside each tool name; PlanX colours in light and dark themes; amber read-only layer bar; one-line coordinates; CAD Drafting Toolset in every title; developer smoke-test checklist removed from the menu and Docs.
+    1.29.0 - Three-tab dock (CAD, Measure, Urban) with labelled tools, inline settings for 12 tools, session-wide OSNAP/ORTHO/POLAR/DYN, and five street and parcel design tools: Buildable Envelope, Sight Triangle, Parking Layout, Roundabout and Turning Head (44 tools).
     1.28.0 - Precision drafting: AutoCAD-grade Object Snap (OSNAP) with typed glyph markers, Ortho (F8) and Polar (F10) tracking with dashed rays, and live Dynamic Input Heads-Up Display (F12). Unified DraftingWorkbench, application-wide shortcuts, pure pytest suite, and dual-runtime QGIS 3 LTR and QGIS 4 verification.
     1.27.6 - Redesign plugin icon to high-end 3D tactile brand design with circular teal pedestal, zero margin, and refreshed documentation links.
     PlanX CAD Toolset 1.27.0 - Core modify gap-fillers: six new drafting commands.

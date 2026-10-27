@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+Dock polish after the first desktop test, and the Hub name everywhere.
+
+### Changed
+- **Alias badges sit next to the tool name**: each tool row shows its command alias as a small badge right after the name, instead of at the far edge of a wide column.
+- **PlanX colours** for the dock in light and dark themes: slate text, one teal accent, a paper-coloured command card. The layer bar is left-aligned and turns amber with "read-only, click to edit" when the active layer cannot be edited. Coordinates, CRS and scale take one line and follow the theme.
+- **CAD Drafting Toolset** is the name in the dock, menu, toolbar, panel action and dialog titles, matching the QGIS Hub. The About box lists the tools straight from the tool catalogue.
+- The reference manual is published at https://geophilo.com/planX_CAD_arac_Seti/manual.html and is no longer part of the repository or the plugin package.
+
+### Removed
+- The developer smoke-test checklist: its menu item, the Ctrl+Alt+M shortcut, the Docs tab and the health-audit entry.
+
 ## [1.29.0] - 2026-10-27
 
 A redesigned dock: three tabs, labelled tools, settings inline, drafting aids always visible.
