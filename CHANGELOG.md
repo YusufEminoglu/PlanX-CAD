@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.29.0] - 2026-10-27
 
 A redesigned dock: three tabs, labelled tools, settings inline, drafting aids always visible.
 
