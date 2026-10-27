@@ -98,7 +98,6 @@ class ShortcutHelpDialog(QDialog):
             {"command": "Focus Command Line", "shortcut": "Ctrl+Shift+S", "category": "System"},
             {"command": "Open Shortcut Guide", "shortcut": "Ctrl+Shift+/", "category": "System"},
             {"command": "Open Command Reference", "shortcut": "Ctrl+Alt+H", "category": "System"},
-            {"command": "Open Smoke Test Checklist", "shortcut": "Ctrl+Alt+M", "category": "System"},
             {"command": "Open Command Palette", "shortcut": "Ctrl+Alt+P", "category": "System"},
             {"command": "Cancel Active Tool", "shortcut": "Ctrl+Alt+C", "category": "System"},
             {"command": "Toggle Layer Editing", "shortcut": "Ctrl+Alt+E", "category": "System"},

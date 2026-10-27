@@ -13,7 +13,7 @@ class DocsDialog(QDialog):
         self.plugin_dir = plugin_dir
         self.initial_tab = int(initial_tab)
         self.command_anchor = command_anchor or ""
-        self.setWindowTitle("PlanX CAD - Command Reference")
+        self.setWindowTitle("CAD Drafting Toolset - Command Reference")
         self.resize(920, 700)
         self._build_ui()
 
@@ -23,11 +23,9 @@ class DocsDialog(QDialog):
         self.tabs = QTabWidget(self)
         self.commands_browser = self._make_browser("command_reference.html", self.command_anchor)
         self.shortcuts_browser = self._make_browser("shortcuts.html")
-        self.smoke_browser = self._make_browser("smoke_test_checklist.html")
         self.tabs.addTab(self.commands_browser, "Commands")
         self.tabs.addTab(self.shortcuts_browser, "Shortcuts")
-        self.tabs.addTab(self.smoke_browser, "Smoke Test")
-        self.tabs.setCurrentIndex(0 if self.initial_tab < 0 else min(self.initial_tab, 2))
+        self.tabs.setCurrentIndex(0 if self.initial_tab < 0 else min(self.initial_tab, 1))
         layout.addWidget(self.tabs)
 
         close_btn = QPushButton("Close")

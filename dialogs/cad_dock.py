@@ -18,12 +18,13 @@ from __future__ import annotations
 import os
 from contextlib import suppress
 
-from qgis.PyQt.QtCore import Qt, pyqtSignal, QSize, QSettings, QByteArray, QEvent
+from qgis.PyQt.QtCore import Qt, pyqtSignal, QSize, QSettings, QByteArray, QEvent, QRect, QRectF
 from qgis.PyQt.QtGui import QIcon, QFont, QColor, QPainter, QPixmap, QPalette, QFontMetrics
 from qgis.PyQt.QtWidgets import (
     QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QFormLayout,
     QLabel, QFrame, QSizePolicy, QToolButton, QPushButton, QButtonGroup,
     QScrollArea, QLineEdit, QCompleter, QTabBar, QStackedWidget, QMenu,
+    QStyle, QStyleOptionButton, QStylePainter,
 )
 
 try:  # QtSvg ships with QGIS; recolouring icons for dark themes needs it.
@@ -43,16 +44,23 @@ _QUICK_SLOTS = 6
 _TWO_COLUMNS_MIN = 270
 _LABELS_MIN = 220
 
-# Colour tokens. The light set is the PlanX teal/slate palette; the dark set
-# keeps the accent readable on QGIS' "Night Mapping" and other dark themes.
+# Colour tokens: slate ink, one teal accent, a pale paper surface and an amber
+# warning. The dark set keeps the same roles readable on QGIS' "Night Mapping"
+# and other dark themes.
 _LIGHT = {
-    "accent": "#0f766e", "accent_soft": "#e6f4f1", "accent_mid": "#bfe8dc",
-    "muted": "#64748b", "border": "#d8e0ea", "pin": "#b45309", "icon_ink": None,
+    "ink": "#12343b", "ink2": "#4a5f66", "muted": "#74878d",
+    "accent": "#0f766e", "accent_soft": "#e3f2ef", "accent_mid": "#bfe8dc",
+    "border": "#d8e0ea", "paper": "#f6f8f8", "surface": "#ffffff",
+    "pin": "#b45309", "warn": "#b45309", "warn_soft": "#fef3c7", "icon_ink": None,
 }
 _DARK = {
-    "accent": "#2dd4bf", "accent_soft": "#173b37", "accent_mid": "#21564f",
-    "muted": "#94a3b8", "border": "#3d4b52", "pin": "#f59e0b", "icon_ink": "#c7d2fe",
+    "ink": "#e2ecea", "ink2": "#a9bbb8", "muted": "#7d918e",
+    "accent": "#3cc4b2", "accent_soft": "#163a37", "accent_mid": "#1f5a53",
+    "border": "#3a4b4f", "paper": "#1d2a2d", "surface": "#172326",
+    "pin": "#f0b155", "warn": "#f0b155", "warn_soft": "#3a2c12", "icon_ink": "#c7d2fe",
 }
+_MONO_FAMILIES = ["Consolas", "Cascadia Mono", "DejaVu Sans Mono", "Courier New"]
+_MONO = "'Consolas','Cascadia Mono','DejaVu Sans Mono','Courier New',monospace"
 # Hard-coded navy strokes in icons/*.svg, swapped for a light ink on dark themes.
 _ICON_INKS = ("#1a237e", "#283593")
 
@@ -89,7 +97,8 @@ def _load_icon(path: str, ink: str | None, size: int = 20) -> QIcon:
 
 
 class ToolRowButton(QPushButton):
-    """A labelled tool button with the command alias drawn as a right badge.
+    """A labelled tool button: icon, name, and the command alias as a small
+    badge right after the name, so the alias reads as part of the tool.
 
     In compact mode (narrow dock) it shrinks to an icon; the name and alias
     stay in the tooltip and the accessible name.
@@ -101,7 +110,7 @@ class ToolRowButton(QPushButton):
         self._label = label
         self._alias = alias
         self._compact = False
-        self.alias_color = QColor(_LIGHT["accent"])
+        self.apply_colors(_LIGHT)
         self.setProperty("toolRow", True)
         self.setCheckable(True)
         self.setIconSize(QSize(18, 18))
@@ -113,7 +122,15 @@ class ToolRowButton(QPushButton):
         # Keyboard accessibility: every tool is reachable with Tab.
         self.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        # The text stays set for accessibility; paintEvent draws it.
         self.setText(label)
+
+    def apply_colors(self, theme) -> None:
+        self.text_color = QColor(theme["ink"])
+        self.alias_color = QColor(theme["accent"])
+        self.alias_fill = QColor(theme["accent_soft"])
+        self.alias_fill_checked = QColor(theme["surface"])
+        self.update()
 
     def set_compact(self, compact: bool) -> None:
         self._compact = bool(compact)
@@ -122,7 +139,6 @@ class ToolRowButton(QPushButton):
         else:
             self.setMinimumSize(0, 26)
             self.setMaximumSize(16777215, 28)
-        self._update_text()
         self.update()
 
     def minimumSizeHint(self):
@@ -131,44 +147,71 @@ class ToolRowButton(QPushButton):
             return QSize(34, 30)
         return QSize(self.iconSize().width() + 40, 26)
 
+    def sizeHint(self):
+        return self.minimumSizeHint() if self._compact else QSize(160, 26)
+
     def _alias_font(self) -> QFont:
         font = QFont(self.font())
-        size = font.pointSizeF()
+        if hasattr(font, "setFamilies"):
+            font.setFamilies(_MONO_FAMILIES)
+        else:  # pragma: no cover - Qt < 5.13
+            font.setFamily(_MONO_FAMILIES[0])
+        font.setStyleHint(QFont.StyleHint.Monospace)
+        size = self.font().pointSizeF()
         if size > 0:
-            font.setPointSizeF(max(6.5, size * 0.82))
+            font.setPointSizeF(max(6.5, size * 0.8))
         font.setBold(True)
         return font
 
-    def _alias_width(self) -> int:
-        if self._compact or not self._alias:
-            return 0
-        return QFontMetrics(self._alias_font()).horizontalAdvance(self._alias) + 12
-
-    def _update_text(self) -> None:
-        if self._compact:
-            self.setText("")
-            return
-        available = self.width() - self.iconSize().width() - 22 - self._alias_width()
-        metrics = QFontMetrics(self.font())
-        self.setText(metrics.elidedText(self._label, Qt.TextElideMode.ElideRight, max(24, available)))
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self._update_text()
-
     def paintEvent(self, event):
-        super().paintEvent(event)
-        if self._compact or not self._alias:
+        option = QStyleOptionButton()
+        self.initStyleOption(option)
+        option.text = ""
+        option.icon = QIcon()
+        painter = QStylePainter(self)
+        painter.drawControl(QStyle.ControlElement.CE_PushButton, option)
+
+        rect = self.rect()
+        isize = self.iconSize()
+        mode = QIcon.Mode.Normal if self.isEnabled() else QIcon.Mode.Disabled
+        if self._compact:
+            icon_rect = QRect((rect.width() - isize.width()) // 2,
+                              (rect.height() - isize.height()) // 2,
+                              isize.width(), isize.height())
+            self.icon().paint(painter, icon_rect, Qt.AlignmentFlag.AlignCenter, mode)
             return
-        painter = QPainter(self)
-        painter.setFont(self._alias_font())
+
+        x = 7
+        icon_rect = QRect(x, (rect.height() - isize.height()) // 2, isize.width(), isize.height())
+        self.icon().paint(painter, icon_rect, Qt.AlignmentFlag.AlignCenter, mode)
+        x += isize.width() + 7
+
+        alias_font = self._alias_font()
+        alias_metrics = QFontMetrics(alias_font)
+        pill_w = alias_metrics.horizontalAdvance(self._alias) + 10 if self._alias else 0
+        metrics = QFontMetrics(self.font())
+        available = rect.width() - x - 6 - (pill_w + 6 if pill_w else 0)
+        text = metrics.elidedText(self._label, Qt.TextElideMode.ElideRight, max(12, available))
+        text_w = metrics.horizontalAdvance(text)
+
+        painter.setFont(self.font())
+        if self.isEnabled():
+            painter.setPen(self.text_color)
+        else:
+            painter.setPen(self.palette().color(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText))
+        painter.drawText(QRect(x, 0, text_w + 2, rect.height()),
+                         Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, text)
+        if not pill_w:
+            return
+        pill_h = alias_metrics.height() + 2
+        pill = QRectF(x + text_w + 6, (rect.height() - pill_h) / 2, pill_w, pill_h)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(self.alias_fill_checked if self.isChecked() else self.alias_fill)
+        painter.drawRoundedRect(pill, 3, 3)
+        painter.setFont(alias_font)
         painter.setPen(self.alias_color)
-        painter.drawText(
-            self.rect().adjusted(0, 0, -8, 0),
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
-            self._alias,
-        )
-        painter.end()
+        painter.drawText(pill, Qt.AlignmentFlag.AlignCenter, self._alias)
 
 
 class CommandLineEdit(QLineEdit):
@@ -341,7 +384,7 @@ class CADDockWidget(QDockWidget):
     )
 
     def __init__(self, iface, icon_dir, parent=None):
-        super().__init__("PlanX CAD Toolset", parent)
+        super().__init__("CAD Drafting Toolset", parent)
         self.iface = iface
         self.icon_dir = icon_dir
 
@@ -349,7 +392,7 @@ class CADDockWidget(QDockWidget):
             Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea
         )
         self.setMinimumWidth(190)
-        self.setAccessibleName("PlanX CAD Toolset panel")
+        self.setAccessibleName("CAD Drafting Toolset panel")
 
         self.buttons = {}
         self.button_group = QButtonGroup(self)
@@ -431,7 +474,7 @@ class CADDockWidget(QDockWidget):
         # ── Quick strip ────────────────────────────────────────────────
         quick_row = QHBoxLayout()
         quick_row.setSpacing(2)
-        quick_label = QLabel("Quick")
+        quick_label = QLabel("QUICK")
         self._quick_label = quick_label
         quick_label.setObjectName("metaLabel")
         quick_label.setToolTip("Pinned tools first, then recent ones. Right-click a tool to pin it.")
@@ -497,9 +540,9 @@ class CADDockWidget(QDockWidget):
         status_layout.setContentsMargins(0, 4, 0, 0)
         status_layout.setSpacing(4)
 
-        self.edit_btn = QToolButton()
+        self.edit_btn = QPushButton()
         self.edit_btn.setObjectName("layerBar")
-        self.edit_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        self.edit_btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self.edit_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.edit_btn.clicked.connect(self.edit_toggle_requested.emit)
         status_layout.addWidget(self.edit_btn)
@@ -719,63 +762,79 @@ class CADDockWidget(QDockWidget):
         self._theme = dict(_DARK if self._dark else _LIGHT)
         t = self._theme
         self.widget().setStyleSheet(f"""
-            QLabel#promptLine {{
-                color: {t['muted']}; font-family: 'Consolas','Courier New',monospace;
-            }}
+            QLabel#promptLine {{ color: {t['ink2']}; font-family: {_MONO}; }}
             QLineEdit#commandLine {{
-                border: 1px solid {t['border']}; border-radius: 4px; padding: 4px 6px;
-                font-family: 'Consolas','Courier New',monospace;
+                border: 1px solid {t['border']}; border-radius: 5px; padding: 5px 7px;
+                font-family: {_MONO};
             }}
             QLineEdit#commandLine:focus {{ border: 1px solid {t['accent']}; }}
-            QLabel#metaLabel {{ color: {t['muted']}; }}
-            QToolButton#quickButton {{ border: 1px solid transparent; border-radius: 4px; }}
+            QLabel#metaLabel {{
+                color: {t['muted']}; font-family: {_MONO}; font-size: 8pt; letter-spacing: 1px;
+            }}
+            QToolButton#quickButton {{ border: 1px solid transparent; border-radius: 5px; }}
             QToolButton#quickButton:hover {{ background: {t['accent_soft']}; border-color: {t['accent_mid']}; }}
             QToolButton#quickButton[pinned="true"] {{ border-bottom: 2px solid {t['pin']}; }}
             QTabBar#toolTabs::tab {{
-                padding: 5px 2px; border: 0; border-bottom: 2px solid transparent;
-                color: {t['muted']}; font-weight: bold;
+                padding: 6px 2px 5px 2px; border: 0; border-bottom: 2px solid {t['border']};
+                color: {t['ink2']}; font-weight: bold;
             }}
             QTabBar#toolTabs::tab:selected {{ color: {t['accent']}; border-bottom: 2px solid {t['accent']}; }}
             QTabBar#toolTabs::tab:hover {{ color: {t['accent']}; }}
-            QToolButton#moreButton {{ border: 0; padding: 0 8px; font-size: 14pt; color: {t['muted']}; }}
+            QToolButton#moreButton {{ border: 0; padding: 0 8px; font-size: 14pt; color: {t['ink2']}; }}
             QToolButton#moreButton:hover {{ color: {t['accent']}; }}
             QToolButton#moreButton::menu-indicator {{ image: none; }}
             QToolButton#sectionHeader {{
-                border: 0; color: {t['muted']}; font-weight: bold; text-align: left; padding: 4px 2px 2px 2px;
+                border: 0; color: {t['ink2']}; font-weight: bold; font-family: {_MONO};
+                font-size: 8pt; letter-spacing: 1px; text-align: left; padding: 6px 2px 2px 2px;
             }}
             QToolButton#sectionHeader:hover {{ color: {t['accent']}; }}
             QPushButton[toolRow="true"] {{
-                text-align: left; border: 1px solid transparent; border-radius: 4px;
-                padding: 2px 6px; background: transparent;
+                border: 1px solid transparent; border-radius: 5px; background: transparent;
             }}
             QPushButton[toolRow="true"]:hover {{ background: {t['accent_soft']}; border-color: {t['accent_mid']}; }}
             QPushButton[toolRow="true"]:focus {{ border: 1px solid {t['accent']}; }}
             QPushButton[toolRow="true"]:checked {{ background: {t['accent_mid']}; border: 1px solid {t['accent']}; }}
-            QFrame#activeCard {{ border: 1px solid {t['border']}; border-radius: 6px; }}
-            QLabel#cardName {{ font-weight: bold; letter-spacing: 1px; }}
-            QLabel#cardAlias {{ color: {t['accent']}; font-weight: bold; }}
-            QLabel#cardHint {{ color: {t['muted']}; }}
-            QToolButton#cardAction {{ border: 1px solid {t['border']}; border-radius: 4px; padding: 1px 7px; }}
+            QFrame#activeCard {{
+                background: {t['paper']}; border: 1px solid {t['border']}; border-radius: 6px;
+            }}
+            QLabel#cardName {{
+                color: {t['ink']}; font-weight: bold; font-family: {_MONO}; letter-spacing: 1px;
+            }}
+            QLabel#cardAlias {{
+                color: {t['accent']}; background: {t['accent_soft']}; border-radius: 3px;
+                padding: 1px 6px; font-weight: bold; font-family: {_MONO}; font-size: 8pt;
+            }}
+            QLabel#cardHint {{ color: {t['ink2']}; }}
+            QToolButton#cardAction {{
+                border: 1px solid {t['border']}; border-radius: 4px; padding: 1px 7px; background: {t['surface']};
+            }}
             QToolButton#cardAction:hover {{ border-color: {t['accent']}; color: {t['accent']}; }}
-            QToolButton#layerBar {{
-                border: 1px solid {t['border']}; border-radius: 4px; padding: 3px 6px; text-align: left;
+            QPushButton#layerBar {{
+                text-align: left; border: 1px solid {t['border']}; border-radius: 5px;
+                padding: 4px 8px; color: {t['ink']}; background: {t['surface']};
             }}
-            QToolButton#layerBar:hover {{ border-color: {t['accent']}; }}
+            QPushButton#layerBar:hover {{ border-color: {t['accent']}; }}
+            QPushButton#layerBar[layerState="editing"] {{ border-color: {t['accent']}; color: {t['accent']}; }}
+            QPushButton#layerBar[layerState="readonly"] {{
+                border-color: {t['warn']}; color: {t['warn']}; background: {t['warn_soft']};
+            }}
+            QPushButton#layerBar:disabled {{ color: {t['muted']}; }}
             QToolButton#draftChip {{
-                border: 1px solid {t['border']}; border-radius: 4px; padding: 2px 1px;
-                color: {t['muted']}; font-weight: bold; font-size: 8pt;
-                font-family: 'Consolas','Courier New',monospace;
+                border: 1px solid {t['border']}; border-radius: 4px; padding: 3px 1px;
+                color: {t['muted']}; font-weight: bold; font-size: 8pt; font-family: {_MONO};
             }}
+            QToolButton#draftChip:hover {{ border-color: {t['accent_mid']}; }}
             QToolButton#draftChip:checked {{
                 background: {t['accent_soft']}; color: {t['accent']}; border-color: {t['accent_mid']};
             }}
+            QLabel#coordXY {{ color: {t['ink2']}; font-family: {_MONO}; font-size: 8pt; }}
+            QLabel#coordMeta {{ color: {t['muted']}; font-family: {_MONO}; font-size: 8pt; }}
         """)
         for widget, icon_file in self._icon_targets:
             with suppress(RuntimeError):
                 widget.setIcon(self._themed_icon(icon_file))
         for btn in self.buttons.values():
-            btn.alias_color = QColor(t["accent"])
-            btn.update()
+            btn.apply_colors(t)
         self._refresh_quick_buttons()
         if self._card_key:
             self._set_card_icon(self._card_key)
@@ -953,7 +1012,7 @@ class CADDockWidget(QDockWidget):
                                 self._tooltip_for(entry))
             btn.setCheckable(False)
             btn.setIcon(self._themed_icon(entry.icon))
-            btn.alias_color = QColor(self._theme["accent"])
+            btn.apply_colors(self._theme)
             btn.clicked.connect(lambda _checked=False, k=entry.key: self._run_search_result(k))
             self._search_list.addWidget(btn)
             self._search_buttons.append(btn)
@@ -1236,6 +1295,7 @@ class CADDockWidget(QDockWidget):
 
     def refresh_layer_state(self):
         layer = self.iface.activeLayer()
+        self._set_layer_state("none")
         if layer is None:
             self.edit_btn.setText("○  No layer selected")
             self.edit_btn.setEnabled(False)
@@ -1255,12 +1315,13 @@ class CADDockWidget(QDockWidget):
             return
 
         editable = getattr(layer, "isEditable", lambda: False)()
+        self._set_layer_state("editing" if editable else "readonly")
         if editable:
-            text = f"●  {name}   editing"
+            text = f"●  {name}  ·  editing"
             tip = "Click to stop editing [Ctrl+Alt+E]"
             accessible = "Edit OFF"
         else:
-            text = f"○  {name}   read-only"
+            text = f"○  {name}  ·  read-only, click to edit"
             tip = "Click to start editing [Ctrl+Alt+E]"
             accessible = "Edit ON"
         metrics = QFontMetrics(self.edit_btn.font())
@@ -1269,6 +1330,14 @@ class CADDockWidget(QDockWidget):
         self.edit_btn.setToolTip(f"{name}: {'editing' if editable else 'read-only'}. {tip}")
         self.edit_btn.setAccessibleName(accessible)
         self.edit_btn.setAccessibleDescription(tip)
+
+    def _set_layer_state(self, state):
+        if self.edit_btn.property("layerState") == state:
+            return
+        self.edit_btn.setProperty("layerState", state)
+        with suppress(RuntimeError):
+            self.edit_btn.style().unpolish(self.edit_btn)
+            self.edit_btn.style().polish(self.edit_btn)
 
     def run_preflight(self):
         layer = self.iface.activeLayer()

@@ -10,7 +10,7 @@ from qgis.PyQt.QtWidgets import (
 class ReleaseReadinessDialog(QDialog):
     def __init__(self, rows, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("PlanX CAD - Release Readiness")
+        self.setWindowTitle("CAD Drafting Toolset - Release Readiness")
         self.setMinimumWidth(780)
         self.setMinimumHeight(520)
         self._rows = rows or []

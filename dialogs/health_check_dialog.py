@@ -10,7 +10,7 @@ from qgis.PyQt.QtWidgets import (
 class HealthCheckDialog(QDialog):
     def __init__(self, checks, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("PlanX CAD - Health Check")
+        self.setWindowTitle("CAD Drafting Toolset - Health Check")
         self.setMinimumWidth(720)
         self.setMinimumHeight(480)
 
@@ -27,7 +27,7 @@ class HealthCheckDialog(QDialog):
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         table.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        table.setAccessibleName("PlanX CAD runtime health checks")
+        table.setAccessibleName("CAD Drafting Toolset runtime health checks")
         table.setAccessibleDescription(
             "Read-only table of runtime checks, status values, and remediation hints."
         )

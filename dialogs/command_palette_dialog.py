@@ -14,7 +14,7 @@ class CommandPaletteDialog(QDialog):
 
     def __init__(self, shortcuts, usage_counts=None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("PlanX CAD - Command Palette")
+        self.setWindowTitle("CAD Drafting Toolset - Command Palette")
         self.setMinimumWidth(620)
         self.setMinimumHeight(500)
         self._shortcuts = shortcuts

@@ -10,8 +10,7 @@ from __future__ import annotations
 from contextlib import suppress
 
 from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtGui import QFont
-from qgis.PyQt.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
+from qgis.PyQt.QtWidgets import QHBoxLayout, QLabel, QWidget
 
 
 class LiveCoordWidget(QWidget):
@@ -37,38 +36,22 @@ class LiveCoordWidget(QWidget):
             self._signal_connections.append((signal, slot))
 
     def _build_ui(self) -> None:
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.setSpacing(2)
-
-        box = QFrame(self)
-        box.setFrameShape(QFrame.Shape.StyledPanel)
-        box.setStyleSheet(
-            "QFrame { background: #f4f7fb; border: 1px solid #d8e0ea;"
-            " border-radius: 4px; padding: 2px 4px; }"
-            "QLabel { color: #0f766e; font-family: 'Consolas','Courier New', monospace; }"
-        )
-        box_layout = QVBoxLayout(box)
-        box_layout.setContentsMargins(0, 0, 0, 0)
-        box_layout.setSpacing(0)
+        # One quiet line: cursor position on the left, CRS and scale on the
+        # right. Colours come from the dock's stylesheet (coordXY / coordMeta),
+        # so the read-out follows light and dark QGIS themes.
+        row = QHBoxLayout(self)
+        row.setContentsMargins(2, 0, 2, 0)
+        row.setSpacing(8)
 
         self.lbl_xy = QLabel("X: —   Y: —")
-        xy_font = QFont()
-        xy_font.setPointSize(9)
-        xy_font.setBold(True)
-        self.lbl_xy.setFont(xy_font)
-        self.lbl_xy.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        box_layout.addWidget(self.lbl_xy)
+        self.lbl_xy.setObjectName("coordXY")
+        self.lbl_xy.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        row.addWidget(self.lbl_xy)
+        row.addStretch(1)
 
-        self.lbl_meta = QLabel("CRS: —    1: —")
-        meta_font = QFont()
-        meta_font.setPointSizeF(7.5)
-        self.lbl_meta.setFont(meta_font)
-        self.lbl_meta.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_meta.setStyleSheet("color: #546e7a;")
-        box_layout.addWidget(self.lbl_meta)
-
-        outer.addWidget(box)
+        self.lbl_meta = QLabel("—   1: —")
+        self.lbl_meta.setObjectName("coordMeta")
+        row.addWidget(self.lbl_meta)
 
     def _on_xy(self, point) -> None:
         with suppress(Exception):
@@ -78,7 +61,7 @@ class LiveCoordWidget(QWidget):
         with suppress(Exception):
             crs = self.canvas.mapSettings().destinationCrs()
             crs_id = crs.authid() or "—"
-            self.lbl_meta.setText(f"CRS: {crs_id}    1: {scale:,.0f}")
+            self.lbl_meta.setText(f"{crs_id}   1:{scale:,.0f}")
 
     def _on_crs_changed(self, *_args) -> None:
         self._on_scale(self.canvas.scale())

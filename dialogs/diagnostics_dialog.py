@@ -12,7 +12,7 @@ from qgis.PyQt.QtWidgets import (
 class DiagnosticsDialog(QDialog):
     def __init__(self, report_text, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("PlanX CAD - Diagnostics")
+        self.setWindowTitle("CAD Drafting Toolset - Diagnostics")
         self.setMinimumWidth(760)
         self.setMinimumHeight(520)
 

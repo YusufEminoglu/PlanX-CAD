@@ -48,11 +48,11 @@ class PlanXCADPlugin:
     def initGui(self):
         """Add the menu, toolbar, dock, and shortcuts to QGIS."""
         # ── Menu ─────────────────────────────────────────────────────────
-        self.menu = QMenu("&planX CAD Toolset")
+        self.menu = QMenu("&CAD Drafting Toolset")
         self.iface.mainWindow().menuBar().addMenu(self.menu)
 
         # ── Toolbar ──────────────────────────────────────────────────────
-        self.toolbar = QToolBar("planX CAD Toolbar")
+        self.toolbar = QToolBar("CAD Drafting Toolbar")
         self.toolbar.setObjectName("PlanXCADToolbar")
         self.iface.addToolBar(self.toolbar)
 
@@ -60,10 +60,10 @@ class PlanXCADPlugin:
         main_icon = os.path.join(self.icon_dir, "icon.png")
         self.panel_action = self._add_action(
             main_icon,
-            "PlanX CAD Panel",
+            "CAD Drafting Panel",
             self._toggle_dock,
             checkable=True,
-            status_tip="Open or close the PlanX CAD panel"
+            status_tip="Open or close the CAD Drafting panel"
         )
 
         # ── Menu separator ───────────────────────────────────────────────
@@ -75,7 +75,7 @@ class PlanXCADPlugin:
             "About",
             self._show_about,
             add_to_toolbar=False,
-            status_tip="About PlanX CAD Toolset"
+            status_tip="About CAD Drafting Toolset"
         )
         self._add_action(
             main_icon,
@@ -97,13 +97,6 @@ class PlanXCADPlugin:
             self._show_command_reference,
             add_to_toolbar=False,
             status_tip="Open detailed command documentation"
-        )
-        self._add_action(
-            ":/images/themes/default/mActionHelpContents.svg",
-            "Smoke Test Checklist",
-            self._show_smoke_test,
-            add_to_toolbar=False,
-            status_tip="Open the QGIS smoke-test checklist"
         )
         self._add_action(
             ":/images/themes/default/mIconExpression.svg",
@@ -447,10 +440,6 @@ class PlanXCADPlugin:
         docs_help.setContext(Qt.ShortcutContext.ApplicationShortcut)
         docs_help.activated.connect(self._show_command_reference)
         self._shortcuts.append(docs_help)
-        smoke_test = QShortcut(QKeySequence("Ctrl+Alt+M"), parent)
-        smoke_test.setContext(Qt.ShortcutContext.ApplicationShortcut)
-        smoke_test.activated.connect(self._show_smoke_test)
-        self._shortcuts.append(smoke_test)
         palette = QShortcut(QKeySequence("Ctrl+Alt+P"), parent)
         palette.setContext(Qt.ShortcutContext.ApplicationShortcut)
         palette.activated.connect(self._show_command_palette)
@@ -825,7 +814,6 @@ class PlanXCADPlugin:
             ("focus_search", "Ctrl+Shift+S"),
             ("open_shortcuts", "Ctrl+Shift+/"),
             ("open_docs", "Ctrl+Alt+H"),
-            ("open_smoke_test", "Ctrl+Alt+M"),
             ("command_palette", "Ctrl+Alt+P"),
             ("cancel_active_tool", "Ctrl+Alt+C"),
             ("toggle_layer_editing", "Ctrl+Alt+E"),
@@ -955,7 +943,7 @@ class PlanXCADPlugin:
             "action": "Run Key Audit and resolve duplicates",
         })
 
-        docs = ["command_reference.html", "shortcuts.html", "smoke_test_checklist.html"]
+        docs = ["command_reference.html", "shortcuts.html"]
         for name in docs:
             path = os.path.join(self.plugin_dir, "docs", name)
             exists = os.path.exists(path)
@@ -1388,24 +1376,25 @@ class PlanXCADPlugin:
                 if match:
                     version = match.group(1).strip()
 
+        from .core.tool_catalog import TOOL_CATALOG
+
+        sections = {}
+        for entry in TOOL_CATALOG:
+            sections.setdefault(entry.section, []).append(entry.label)
+        items = "".join(
+            f"<li><b>{name} ({len(labels)}):</b> {', '.join(labels)}</li>"
+            for name, labels in sections.items()
+        )
         QMessageBox.about(
             self.iface.mainWindow(),
-            "About PlanX CAD Toolset",
+            "About CAD Drafting Toolset",
             f"""
-<h2>PlanX CAD Toolset</h2>
-<p>Version: {version}</p>
-
-<h3>Features</h3>
-<ul>
-<li><b>6 Drawing Tools:</b> Line, Polyline, Rectangle, Polygon, Circle, Arc</li>
-<li><b>20 Editing and Construction Tools:</b> Offset, Trim, Extend, Fillet, Chamfer, Break, Lengthen, Align, Stretch, Explode, Buffer, Array, Vertex Edit, Divide, Multi-Offset, Join, Hatch, XLine, Ray, Segment</li>
-<li><b>5 Transform Tools:</b> Move, Copy, Rotate, Scale, Mirror</li>
-<li><b>5 Measurement Tools:</b> Distance, Area, Dimension, Select Line, Select Area</li>
-<li><b>3 Urban Planning Tools:</b> Road, Junction, Block Chamfer</li>
-</ul>
-
-<p>Designed for precise CAD and urban-planning workflows inside QGIS.</p>
-<p><i>Integrates with native QGIS snapping and editing.</i></p>
+<h2>CAD Drafting Toolset</h2>
+<p>Version: {version} &middot; {len(TOOL_CATALOG)} tools &middot; Geophilo</p>
+<ul>{items}</ul>
+<p>Keyboard-first drafting with command aliases, object snaps, Ortho and Polar
+tracking and dynamic input, working with native QGIS snapping and editing.</p>
+<p>Manual: <a href="https://geophilo.com/planX_CAD_arac_Seti/manual.html">geophilo.com/planX_CAD_arac_Seti/manual.html</a></p>
 """
         )
 
@@ -1441,17 +1430,6 @@ class PlanXCADPlugin:
                 f"Command reference could not be opened:\n{e}"
             )
 
-    def _show_smoke_test(self):
-        try:
-            from .dialogs.docs_dialog import DocsDialog
-            dlg = DocsDialog(self.plugin_dir, self.iface.mainWindow(), initial_tab=2, command_anchor=None)
-            dlg.exec()
-        except Exception as e:
-            QMessageBox.warning(
-                self.iface.mainWindow(),
-                "Smoke Test Checklist",
-                f"Smoke test checklist could not be opened:\n{e}"
-            )
 
     def _show_command_palette(self):
         try:

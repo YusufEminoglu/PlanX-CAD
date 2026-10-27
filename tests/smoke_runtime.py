@@ -588,7 +588,7 @@ def run_all() -> bool:
         app.processEvents()
         toolbars = iface.mainWindow().findChildren(QToolBar)
         checks.append(("unload removes toolbar", not any(tb.objectName() == "PlanXCADToolbar" for tb in toolbars)))
-        checks.append(("unload removes menu", not any(action.text().startswith("&planX CAD") for action in iface.mainWindow().menuBar().actions())))
+        checks.append(("unload removes menu", not any(action.text().startswith("&CAD Drafting") for action in iface.mainWindow().menuBar().actions())))
     finally:
         if plugin.menu is not None or plugin.toolbar is not None:
             plugin.unload()

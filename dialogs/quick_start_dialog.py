@@ -8,7 +8,7 @@ from qgis.PyQt.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton
 class QuickStartDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("PlanX CAD - Quick Start")
+        self.setWindowTitle("CAD Drafting Toolset - Quick Start")
         self.setMinimumWidth(620)
         self.setMinimumHeight(420)
         self._build_ui()
