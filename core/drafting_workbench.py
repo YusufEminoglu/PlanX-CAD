@@ -22,6 +22,7 @@ from .osnap_engine import OsnapEngine, SnapKind, SnapResult
 from .osnap_markers import OsnapMarkerManager
 from .tracking_engine import TrackingEngine, TrackingMode, TrackingResult
 from .crs_utils import local_metric_crs, transform_point
+from .drafting_state import DRAFTING_STATE
 from ..dialogs.dynamic_input_hud import DynamicInputHud
 
 
@@ -41,8 +42,8 @@ class DraftingWorkbench(QObject):
         self.dynamic_hud = DynamicInputHud(canvas)
 
         self._tracking_band: QgsRubberBand | None = None
-        self._osnap_enabled: bool = True
         self._setup_tracking_band()
+        self._sync_shared_state()
 
     def _setup_tracking_band(self):
         if self._tracking_band is None and self.canvas is not None:
@@ -54,34 +55,53 @@ class DraftingWorkbench(QObject):
 
     # ── Configuration & Toggles ───────────────────────────────────────────────
 
-    def is_osnap_enabled(self) -> bool:
-        return self._osnap_enabled
+    # The toggles live in the session-wide DRAFTING_STATE so every tool, the
+    # F-key shortcuts and the dock chips agree. This workbench mirrors that
+    # state into its own engines before each use.
 
-    def set_osnap_enabled(self, enabled: bool) -> None:
-        self._osnap_enabled = bool(enabled)
-        if not self._osnap_enabled:
+    @property
+    def _osnap_enabled(self) -> bool:
+        return DRAFTING_STATE.osnap
+
+    def _sync_shared_state(self) -> None:
+        mode = TrackingMode(DRAFTING_STATE.tracking)
+        if self.tracking_engine.mode != mode:
+            self.tracking_engine.set_mode(mode)
+            self._reset_guides()
+        if self.dynamic_hud.is_enabled() != DRAFTING_STATE.dynamic_input:
+            self.dynamic_hud.set_enabled(DRAFTING_STATE.dynamic_input)
+        if not DRAFTING_STATE.osnap:
             self.osnap_markers.hide()
 
+    def is_osnap_enabled(self) -> bool:
+        return DRAFTING_STATE.osnap
+
+    def set_osnap_enabled(self, enabled: bool) -> None:
+        DRAFTING_STATE.set_osnap(enabled)
+        self._sync_shared_state()
+
     def toggle_ortho(self) -> TrackingMode:
-        mode = self.tracking_engine.toggle_ortho()
-        self._reset_guides()
-        return mode
+        DRAFTING_STATE.toggle_ortho()
+        self._sync_shared_state()
+        return self.tracking_engine.mode
 
     def toggle_polar(self) -> TrackingMode:
-        mode = self.tracking_engine.toggle_polar()
-        self._reset_guides()
-        return mode
+        DRAFTING_STATE.toggle_polar()
+        self._sync_shared_state()
+        return self.tracking_engine.mode
 
     def set_dynamic_input_enabled(self, enabled: bool) -> None:
-        self.dynamic_hud.set_enabled(enabled)
+        DRAFTING_STATE.set_dynamic_input(enabled)
+        self._sync_shared_state()
 
     def is_dynamic_input_enabled(self) -> bool:
-        return self.dynamic_hud.is_enabled()
+        return DRAFTING_STATE.dynamic_input
 
     # ── Main Processing Flow ──────────────────────────────────────────────────
 
     def snap_point(self, event_pos, anchor_point: QgsPointXY | None = None) -> QgsPointXY | None:
         """Query direct OSNAP point at event_pos."""
+        self._sync_shared_state()
         if not self._osnap_enabled:
             snapper = self.canvas.snappingUtils()
             if snapper:
@@ -105,6 +125,7 @@ class DraftingWorkbench(QObject):
     ) -> tuple[QgsPointXY, SnapResult | None, TrackingResult | None]:
         """Compute snapped/tracked coordinate, update markers, guides, and HUD."""
         self._setup_tracking_band()
+        self._sync_shared_state()
         raw_point = self.canvas.getCoordinateTransform().toMapCoordinates(event_pos)
         snap_res: SnapResult | None = None
         working_point = raw_point

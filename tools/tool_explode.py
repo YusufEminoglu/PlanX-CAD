@@ -10,6 +10,7 @@ from qgis.PyQt.QtWidgets import (
 from qgis.core import QgsGeometry, QgsWkbTypes
 
 from .tool_base import tool_base
+from ..core.tool_options import BOOL, CHOICE, OptionSpec
 from ..core.sketcher_layer_utils import add_feature_to_layer, get_or_create_layer
 from ..core.sketcher_utils import explode_geometry
 
@@ -88,9 +89,16 @@ class ExplodeDialog(QDialog):
 class tool_explode(tool_base):
     """Split a picked feature into single parts or single segments."""
 
+    INLINE_OPTIONS = (
+        OptionSpec("explode_mode", "Mode", CHOICE, "parts",
+                   choices=(("parts", "Parts"), ("segments", "Segments"))),
+        OptionSpec("remove_source", "Remove source", BOOL, True),
+    )
+
     def __init__(self, canvas, iface):
         super().__init__(canvas, iface)
         self.remove_source = True
+        self.explode_mode = "parts"
 
     def tool_name(self):
         return "Explode"
@@ -106,13 +114,17 @@ class tool_explode(tool_base):
             self._reset()
             return
 
-        dialog = ExplodeDialog(self.remove_source, self.iface.mainWindow())
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            self.tool_message.emit("⚠️ Explode — Cancelled")
-            self._reset()
-            return
-        params = dialog.params()
-        self.remove_source = params["remove_source"]
+        if self.use_inline_options():
+            params = {"mode": self.explode_mode, "remove_source": self.remove_source}
+        else:
+            dialog = ExplodeDialog(self.remove_source, self.iface.mainWindow())
+            if dialog.exec() != QDialog.DialogCode.Accepted:
+                self.tool_message.emit("⚠️ Explode — Cancelled")
+                self._reset()
+                return
+            params = dialog.params()
+            self.remove_source = params["remove_source"]
+            self.explode_mode = params["mode"]
 
         pieces = explode_geometry(geometry, params["mode"])
         if not pieces:

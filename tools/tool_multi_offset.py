@@ -17,6 +17,7 @@ from qgis.core import (
     QgsGeometry, QgsPointXY, QgsWkbTypes, QgsFeature, QgsProject
 )
 from .tool_base import tool_base
+from ..core.tool_options import CHOICE, TEXT, OptionSpec
 from ..core.sketcher_utils import offset_geometry
 from ..urban.crs_utils import local_metric_crs, transform_geometry, transform_point
 
@@ -90,6 +91,13 @@ class MultiOffsetDialog(QDialog):
 class tool_multi_offset(tool_base):
     """Offsets selected line features multiple times simultaneously."""
 
+    INLINE_OPTIONS = (
+        OptionSpec("distances_str", "Distances (m)", TEXT, "3.0, 6.0",
+                   tooltip="Comma-separated offset distances in metres"),
+        OptionSpec("side_mode", "Side", CHOICE, 2,
+                   choices=((0, "Left"), (1, "Right"), (2, "Both"), (3, "Pick on map"))),
+    )
+
     def __init__(self, canvas, iface):
         super().__init__(canvas, iface)
         self.distances_str = "3.0, 6.0"
@@ -116,16 +124,16 @@ class tool_multi_offset(tool_base):
             self._reset()
             return
 
-        # Open dialog
-        dlg = MultiOffsetDialog(self.iface.mainWindow(), self.distances_str, self.side_mode)
-        if dlg.exec() != QDialog.DialogCode.Accepted:
-            self.tool_message.emit("⚠️ Multi-Offset — Cancelled")
-            self._reset()
-            return
-
-        params = dlg.params()
-        self.distances_str = params["distances"]
-        self.side_mode = params["side"]
+        # Open the dialog unless the dock card supplies the settings.
+        if not self.use_inline_options():
+            dlg = MultiOffsetDialog(self.iface.mainWindow(), self.distances_str, self.side_mode)
+            if dlg.exec() != QDialog.DialogCode.Accepted:
+                self.tool_message.emit("⚠️ Multi-Offset — Cancelled")
+                self._reset()
+                return
+            params = dlg.params()
+            self.distances_str = params["distances"]
+            self.side_mode = params["side"]
 
         # Parse distances
         raw_vals = [x.strip() for x in self.distances_str.split(",") if x.strip()]

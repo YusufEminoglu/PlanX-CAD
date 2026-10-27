@@ -9,6 +9,7 @@ from qgis.PyQt.QtWidgets import (
 from qgis.core import QgsGeometry, QgsPointXY, QgsWkbTypes
 
 from .tool_base import tool_base
+from ..core.tool_options import BOOL, OptionSpec
 from ..core.precision_input import PrecisionInputError, looks_like_precision_input
 from ..core.sketcher_feedback import create_preview_rubberband
 from ..core.sketcher_utils import align_geometry
@@ -75,6 +76,11 @@ class tool_align(tool_base):
     4. Source point 2 | 5. Destination point 2 (Enter after step 3 moves only)
     """
 
+    INLINE_OPTIONS = (
+        OptionSpec("scale", "Scale to fit", BOOL, False,
+                   tooltip="With two point pairs, also scale so the pairs match"),
+    )
+
     _STEP_SOURCE_1 = 2
     _STEP_TARGET_1 = 3
     _STEP_SOURCE_2 = 4
@@ -94,12 +100,13 @@ class tool_align(tool_base):
     def activate(self):
         super().activate()
         self._activation_cancelled = False
-        dialog = AlignDialog(self.scale, self.iface.mainWindow())
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            self._activation_cancelled = True
-            self.tool_message.emit("⤢ Align — Cancelled")
-            return
-        self.scale = dialog.params()["scale"]
+        if not self.use_inline_options():
+            dialog = AlignDialog(self.scale, self.iface.mainWindow())
+            if dialog.exec() != QDialog.DialogCode.Accepted:
+                self._activation_cancelled = True
+                self.tool_message.emit("⤢ Align — Cancelled")
+                return
+            self.scale = dialog.params()["scale"]
         self._clear_points()
         self.tool_message.emit("⤢ Align — Select the feature to align")
 

@@ -6,6 +6,8 @@ from qgis.PyQt.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QPushButton, QHBoxLayout, QComboBox
 )
 
+from ..core.tool_catalog import SECTIONS, TOOL_CATALOG
+
 
 class CommandPaletteDialog(QDialog):
     tool_selected = pyqtSignal(str)
@@ -36,7 +38,7 @@ class CommandPaletteDialog(QDialog):
 
         row = QHBoxLayout()
         self.category_combo = QComboBox(self)
-        self.category_combo.addItems(["All", "Drawing", "Editing", "Transform", "Measure", "Urban"])
+        self.category_combo.addItems(["All", *SECTIONS])
         self.category_combo.currentTextChanged.connect(self._filter)
         row.addWidget(self.category_combo)
         layout.addLayout(row)
@@ -50,17 +52,8 @@ class CommandPaletteDialog(QDialog):
         layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
     def _populate(self):
-        categories = {
-            "line": "Drawing", "polyline": "Drawing", "rectangle": "Drawing", "polygon": "Drawing", "circle": "Drawing", "arc": "Drawing",
-            "offset": "Editing", "trim": "Editing", "extend": "Editing", "fillet": "Editing", "buffer": "Editing", "vertex_edit": "Editing",
-            "hatch": "Editing", "construction_inf": "Editing", "construction_ray": "Editing", "construction_seg": "Editing",
-            "divide": "Editing", "multi_offset": "Editing", "join": "Editing",
-            "chamfer": "Editing", "break": "Editing", "lengthen": "Editing",
-            "align": "Editing", "stretch": "Editing", "explode": "Editing",
-            "move": "Transform", "copy": "Transform", "rotate": "Transform", "scale": "Transform", "mirror": "Transform", "array": "Transform",
-            "dimension": "Measure", "measure": "Measure", "measure_area": "Measure", "measure_select_line": "Measure", "measure_select_area": "Measure",
-            "road": "Urban", "junction": "Urban", "ada_kirma": "Urban",
-        }
+        # Same groups as the dock (core.tool_catalog).
+        categories = {entry.key: entry.section for entry in TOOL_CATALOG}
         display_names = {
             "line": "Line", "polyline": "Polyline", "rectangle": "Rectangle",
             "polygon": "Regular Polygon", "circle": "Circle", "arc": "Arc",
@@ -101,7 +94,7 @@ class CommandPaletteDialog(QDialog):
                 "key": key,
                 "name": display_names.get(key, key.replace("_", " ").title()),
                 "shortcut": seq,
-                "category": categories.get(key, "Urban" if key in ("road", "junction", "ada_kirma") else "Editing"),
+                "category": categories.get(key, "Modify"),
                 "aliases": aliases.get(key, []),
                 "usage": int(self._usage_counts.get(key, 0)),
             })

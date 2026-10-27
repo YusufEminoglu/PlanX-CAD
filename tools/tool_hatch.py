@@ -36,6 +36,7 @@ from qgis.core import (
 )
 
 from .tool_base import tool_base
+from ..core.tool_options import CHOICE, COLOR, FLOAT, OptionSpec
 from ..core.sketcher_layer_utils import get_or_create_layer
 from ..urban.crs_utils import local_metric_crs, transform_geometry
 
@@ -184,9 +185,21 @@ class HatchDialog(QDialog):
 
 
 class tool_hatch(tool_base):
+    INLINE_OPTIONS = (
+        OptionSpec("hatch_pattern", "Pattern", CHOICE, "parallel",
+                   choices=tuple((key, name) for name, key in HATCH_PATTERNS)),
+        OptionSpec("hatch_spacing", "Spacing (m)", FLOAT, 2.0, 0.01, 1e6, 2, " m"),
+        OptionSpec("hatch_angle", "Angle (°)", FLOAT, 45.0, -180.0, 180.0, 1, "°"),
+        OptionSpec("hatch_color", "Colour", COLOR, "#1a237e"),
+    )
+
     def __init__(self, canvas, iface):
         super().__init__(canvas, iface)
         self.require_editable = False  # we write to our own layer
+        self.hatch_pattern = "parallel"
+        self.hatch_spacing = 2.0
+        self.hatch_angle = 45.0
+        self.hatch_color = "#1a237e"
 
     def tool_name(self):
         return "Hatch"
@@ -217,13 +230,24 @@ class tool_hatch(tool_base):
                 self._reset()
                 return
 
-        dlg = HatchDialog(self.iface.mainWindow())
-        if dlg.exec() != QDialog.DialogCode.Accepted:
-            self.tool_message.emit("⧗ Hatch — cancelled")
-            self._reset()
-            return
-
-        p = dlg.params()
+        if self.use_inline_options():
+            p = {
+                "pattern": self.hatch_pattern,
+                "spacing": self.hatch_spacing,
+                "angle": self.hatch_angle,
+                "color": self.hatch_color,
+            }
+        else:
+            dlg = HatchDialog(self.iface.mainWindow())
+            if dlg.exec() != QDialog.DialogCode.Accepted:
+                self.tool_message.emit("⧗ Hatch — cancelled")
+                self._reset()
+                return
+            p = dlg.params()
+            self.hatch_pattern = p["pattern"]
+            self.hatch_spacing = p["spacing"]
+            self.hatch_angle = p["angle"]
+            self.hatch_color = p["color"]
         pattern = p["pattern"]
         spacing = p["spacing"]
         base_angle = p["angle"]

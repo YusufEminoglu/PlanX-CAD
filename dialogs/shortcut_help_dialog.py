@@ -7,6 +7,8 @@ from qgis.PyQt.QtWidgets import (
     QPushButton, QLineEdit, QHBoxLayout, QComboBox, QAbstractItemView
 )
 
+from ..core.tool_catalog import SECTIONS, TOOL_CATALOG
+
 
 class ShortcutHelpDialog(QDialog):
     def __init__(self, shortcuts, parent=None):
@@ -37,7 +39,7 @@ class ShortcutHelpDialog(QDialog):
         filter_row.addWidget(self.search_input)
 
         self.category_combo = QComboBox(self)
-        self.category_combo.addItems(["All", "Drawing", "Editing", "Transform", "Measure", "Urban", "System"])
+        self.category_combo.addItems(["All", *SECTIONS, "System"])
         self.category_combo.currentTextChanged.connect(self._apply_filter)
         filter_row.addWidget(self.category_combo)
         layout.addLayout(filter_row)
@@ -80,19 +82,8 @@ class ShortcutHelpDialog(QDialog):
             "junction": "Junction", "ada_kirma": "Block Chamfer",
         }
 
-        categories = {
-            "line": "Drawing", "polyline": "Drawing", "rectangle": "Drawing", "polygon": "Drawing", "circle": "Drawing", "arc": "Drawing",
-            "offset": "Editing", "trim": "Editing", "extend": "Editing", "fillet": "Editing", "buffer": "Editing", "vertex_edit": "Editing",
-            "hatch": "Editing", "construction_inf": "Editing", "construction_ray": "Editing", "construction_seg": "Editing",
-            "divide": "Editing", "multi_offset": "Editing", "join": "Editing",
-            "chamfer": "Editing", "break": "Editing", "lengthen": "Editing",
-            "align": "Editing", "stretch": "Editing", "explode": "Editing",
-            "move": "Transform", "copy": "Transform", "rotate": "Transform", "scale": "Transform",
-            "mirror": "Transform", "array": "Transform",
-            "dimension": "Measure", "measure": "Measure", "measure_area": "Measure",
-            "measure_select_line": "Measure", "measure_select_area": "Measure",
-            "road": "Urban", "junction": "Urban", "ada_kirma": "Urban",
-        }
+        # Same groups as the dock (core.tool_catalog).
+        categories = {entry.key: entry.section for entry in TOOL_CATALOG}
 
         self._rows = []
         for tool_key, seq in self._shortcuts:

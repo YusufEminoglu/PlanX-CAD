@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="#1a237e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Road edges tapering into a turning circle -->
+  <path d="M3 13 H12 L16 9 A8 8 0 1 1 16 23 L12 19 H3"/>
+  <path d="M3 16 H21" stroke="#ff6d00" stroke-dasharray="3 2"/>
+  <circle cx="21" cy="16" r="1.6" fill="#00bcd4" stroke="#00bcd4"/>
+</svg>

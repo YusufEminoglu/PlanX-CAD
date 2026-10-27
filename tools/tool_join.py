@@ -14,6 +14,7 @@ from qgis.core import (
     QgsGeometry, QgsPointXY, QgsWkbTypes, QgsFeature, QgsProject
 )
 from .tool_base import tool_base
+from ..core.tool_options import FLOAT, OptionSpec
 
 
 def join_polylines(geoms: list[QgsGeometry], tolerance: float = 0.01) -> list[QgsGeometry]:
@@ -83,9 +84,15 @@ def join_polylines(geoms: list[QgsGeometry], tolerance: float = 0.01) -> list[Qg
 class tool_join(tool_base):
     """Welds multiple separate line segments into a continuous line."""
 
+    INLINE_OPTIONS = (
+        OptionSpec("tolerance", "Tolerance (m)", FLOAT, 1.0, 0.0, 1000.0, 2, " m",
+                   tooltip="Endpoints closer than this are welded"),
+    )
+
     def __init__(self, canvas, iface):
         super().__init__(canvas, iface)
         self.require_editable = True
+        self.tolerance = 1.0
         self.features_to_join: list[QgsFeature] = []
 
     def tool_name(self):
@@ -188,13 +195,18 @@ class tool_join(tool_base):
             self._reset()
             return
 
-        # Prompt for tolerance
-        tolerance, ok = QInputDialog.getDouble(
-            self.iface.mainWindow(),
-            "Join",
-            "Join tolerance (m):",
-            1.0, 0.0, 1000.0, 2
-        )
+        # Prompt for tolerance unless the dock card supplies it.
+        if self.use_inline_options():
+            tolerance, ok = self.tolerance, True
+        else:
+            tolerance, ok = QInputDialog.getDouble(
+                self.iface.mainWindow(),
+                "Join",
+                "Join tolerance (m):",
+                self.tolerance, 0.0, 1000.0, 2
+            )
+        if ok:
+            self.tolerance = tolerance
         if not ok:
             self.tool_message.emit(
                 "⚠️ Join — Cancelled"

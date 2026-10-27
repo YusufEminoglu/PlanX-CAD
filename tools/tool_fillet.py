@@ -6,6 +6,7 @@ from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsFeature, QgsGeometry, QgsPointXY, QgsWkbTypes
 from qgis.PyQt.QtWidgets import QInputDialog
 from .tool_base import tool_base
+from ..core.tool_options import FLOAT, OptionSpec
 from ..core.sketcher_feedback import create_preview_rubberband, COLOR_ACCENT
 from ..core.sketcher_utils import create_fillet_and_trims, trim_line_to_point
 from ..urban.crs_utils import local_metric_crs, transform_geometry
@@ -16,6 +17,10 @@ class tool_fillet(tool_base):
 
     1. Enter radius | 2. Select first line | 3. Select second line
     """
+
+    INLINE_OPTIONS = (
+        OptionSpec("radius", "Radius (m)", FLOAT, 2.0, 0.01, 10000.0, 2, " m"),
+    )
 
     def __init__(self, canvas, iface):
         super().__init__(canvas, iface)
@@ -31,10 +36,13 @@ class tool_fillet(tool_base):
     def activate(self):
         super().activate()
         self._activation_cancelled = False
-        r, ok = QInputDialog.getDouble(
-            self.iface.mainWindow(), "Fillet", "Fillet radius (m):",
-            self.radius, 0.01, 10000.0, 2
-        )
+        if self.use_inline_options():
+            r, ok = self.radius, True
+        else:
+            r, ok = QInputDialog.getDouble(
+                self.iface.mainWindow(), "Fillet", "Fillet radius (m):",
+                self.radius, 0.01, 10000.0, 2
+            )
         if ok:
             self.radius = r
         else:

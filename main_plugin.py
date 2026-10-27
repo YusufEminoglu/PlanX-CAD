@@ -9,6 +9,9 @@ from qgis.PyQt.QtGui import QDesktopServices, QIcon, QKeySequence
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolBar, QMessageBox, QShortcut
 from qgis.core import QgsProject, QgsVectorLayer, QgsWkbTypes
 
+from .core.drafting_state import DRAFTING_STATE
+from .core.tool_options import load_options, save_options
+
 
 class PlanXCADPlugin:
     """Manage the PlanX CAD Toolset interface, tools, and lifecycle."""
@@ -160,6 +163,7 @@ class PlanXCADPlugin:
         )
 
         # ── Keyboard shortcuts ────────────────────────────────────────────
+        self._load_drafting_state()
         self._setup_shortcuts()
         try:
             self.iface.mapCanvas().mapToolSet.connect(self._on_map_tool_set)
@@ -171,6 +175,8 @@ class PlanXCADPlugin:
     def unload(self):
         """Remove plugin UI and release runtime resources."""
         self._unloading = True
+        with suppress(Exception):
+            self._save_drafting_state()
         if self._quick_start_timer is not None:
             self._quick_start_timer.stop()
             self._quick_start_timer.deleteLater()
@@ -335,7 +341,8 @@ class PlanXCADPlugin:
     # ═══════════════════════════════════════════════════════════════════════
 
     # Dialog-based tools require a fresh instance for every activation.
-    _DIALOG_TOOLS = {"buffer", "fillet", "polygon", "road", "junction", "measure_area", "ada_kirma", "array", "divide", "multi_offset", "join", "hatch", "chamfer", "lengthen", "align", "explode"}
+    _DIALOG_TOOLS = {"buffer", "fillet", "polygon", "road", "junction", "measure_area", "ada_kirma", "array", "divide", "multi_offset", "join", "hatch", "chamfer", "lengthen", "align", "explode",
+                     "envelope", "sight_triangle", "parking", "roundabout", "turning_head"}
     # Drawing tools write to the active layer. Feature-editing tools may pick
     # from any editable vector layer in the project. Output tools (Buffer,
     # Hatch, Dimension, Construction and Road) create their own layers and
@@ -357,7 +364,8 @@ class PlanXCADPlugin:
         "divide", "multi_offset", "join",
         "chamfer", "break", "lengthen", "align", "stretch", "explode",
     }
-    _READ_ONLY_PICK_TOOLS = {"buffer", "hatch", "measure_select_line", "measure_select_area"}
+    _READ_ONLY_PICK_TOOLS = {"buffer", "hatch", "measure_select_line", "measure_select_area",
+                             "envelope", "sight_triangle", "parking", "turning_head"}
 
     # Backward-compatible names used by diagnostics/tests.
     _TOOLS_REQUIRING_LAYER = set(_ACTIVE_TARGET_TOOLS)
@@ -402,6 +410,7 @@ class PlanXCADPlugin:
         "move", "copy", "rotate", "scale", "mirror",
         "measure", "measure_area", "dimension", "measure_select_line",
         "measure_select_area", "road", "junction", "ada_kirma",
+        "envelope", "sight_triangle", "parking", "roundabout", "turning_head",
     )
 
     @classmethod
@@ -515,43 +524,48 @@ class PlanXCADPlugin:
         dyn_sc.activated.connect(self._toggle_dynamic_input)
         self._shortcuts.append(dyn_sc)
 
+    # Drafting aids are session-wide (core.drafting_state): they work with or
+    # without an active tool, survive tool switches, and drive the dock chips.
+
+    def _sync_current_drafting(self):
+        drafting = getattr(self._current_tool, "drafting", None)
+        if drafting is not None and hasattr(drafting, "_sync_shared_state"):
+            drafting._sync_shared_state()
+        self._save_drafting_state()
+
     def _toggle_osnap(self):
-        tool = self._current_tool
-        drafting = getattr(tool, "drafting", None)
-        if drafting:
-            enabled = not drafting.is_osnap_enabled()
-            drafting.set_osnap_enabled(enabled)
-            self._set_status(f"Object Snap: {'ON' if enabled else 'OFF'} [F3]")
-        else:
-            self._set_status("Object Snap: toggled [F3]")
+        enabled = DRAFTING_STATE.toggle_osnap()
+        self._sync_current_drafting()
+        self._set_status(f"Object Snap: {'ON' if enabled else 'OFF'} [F3]")
 
     def _toggle_ortho(self):
-        tool = self._current_tool
-        drafting = getattr(tool, "drafting", None)
-        if drafting:
-            mode = drafting.toggle_ortho()
-            self._set_status(f"Tracking: {mode.value.upper()} [F8]")
-        else:
-            self._set_status("Ortho tracking toggled [F8]")
+        DRAFTING_STATE.toggle_ortho()
+        self._sync_current_drafting()
+        self._set_status(f"Ortho: {'ON' if DRAFTING_STATE.ortho else 'OFF'} [F8]")
 
     def _toggle_polar(self):
-        tool = self._current_tool
-        drafting = getattr(tool, "drafting", None)
-        if drafting:
-            mode = drafting.toggle_polar()
-            self._set_status(f"Tracking: {mode.value.upper()} [F10]")
-        else:
-            self._set_status("Polar tracking toggled [F10]")
+        DRAFTING_STATE.toggle_polar()
+        self._sync_current_drafting()
+        self._set_status(f"Polar tracking: {'ON' if DRAFTING_STATE.polar else 'OFF'} [F10]")
 
     def _toggle_dynamic_input(self):
-        tool = self._current_tool
-        drafting = getattr(tool, "drafting", None)
-        if drafting:
-            enabled = not drafting.is_dynamic_input_enabled()
-            drafting.set_dynamic_input_enabled(enabled)
-            self._set_status(f"Dynamic Input: {'ON' if enabled else 'OFF'} [F12]")
-        else:
-            self._set_status("Dynamic Input toggled [F12]")
+        enabled = DRAFTING_STATE.toggle_dynamic_input()
+        self._sync_current_drafting()
+        self._set_status(f"Dynamic Input: {'ON' if enabled else 'OFF'} [F12]")
+
+    def _load_drafting_state(self):
+        s = QSettings("PlanX", "PlanXCAD")
+        DRAFTING_STATE.restore({
+            "osnap": s.value("drafting/osnap", True),
+            "tracking": s.value("drafting/tracking", "off"),
+            "dynamic_input": s.value("drafting/dynamic_input", True),
+        })
+
+    def _save_drafting_state(self):
+        s = QSettings("PlanX", "PlanXCAD")
+        s.setValue("drafting/osnap", DRAFTING_STATE.osnap)
+        s.setValue("drafting/tracking", DRAFTING_STATE.tracking)
+        s.setValue("drafting/dynamic_input", DRAFTING_STATE.dynamic_input)
 
     def _repeat_last_tool(self):
         if self._last_tool_key:
@@ -580,6 +594,7 @@ class PlanXCADPlugin:
     def _cancel_active_tool(self):
         canvas = self.iface.mapCanvas()
         if self._current_tool:
+            self._remember_tool_options(self._current_tool, self._current_tool_key)
             canvas.unsetMapTool(self._current_tool)
             self._current_tool = None
             self._current_tool_key = None
@@ -707,7 +722,8 @@ class PlanXCADPlugin:
         editing = {"offset", "trim", "extend", "fillet", "chamfer", "buffer", "vertex_edit", "hatch", "construction_inf", "construction_ray", "construction_seg", "divide", "multi_offset", "join", "break", "lengthen", "align", "stretch", "explode"}
         transform = {"move", "copy", "rotate", "scale", "mirror", "array"}
         measure = {"dimension", "measure", "measure_area", "measure_select_line", "measure_select_area"}
-        urban = {"road", "junction", "ada_kirma"}
+        urban = {"road", "junction", "ada_kirma", "envelope", "sight_triangle",
+                 "parking", "roundabout", "turning_head"}
         if tool_key in drawing:
             return "drawing"
         if tool_key in editing:
@@ -997,6 +1013,13 @@ class PlanXCADPlugin:
             self._restore_dock_active_state()
             return
 
+        # The dock card shows this tool's settings, so the tool skips its
+        # modal dialog. With the dock hidden the dialog still opens.
+        tool.inline_options_enabled = bool(
+            self._dock is not None and self._dock.isVisible()
+        )
+        self._remember_tool_options(previous_tool, previous_key)
+
         try:
             # Repeating the same instance must run its activation lifecycle
             # again; switching to a different tool is handled by QGIS.
@@ -1029,6 +1052,17 @@ class PlanXCADPlugin:
         self._last_tool_key = tool_key
         if self._dock and hasattr(self._dock, "register_tool_activation"):
             self._dock.register_tool_activation(tool_key)
+        if self._dock and hasattr(self._dock, "show_tool_options"):
+            self._dock.show_tool_options(tool_key, tool)
+
+    @staticmethod
+    def _remember_tool_options(tool, tool_key):
+        """Persist settings a dialog may have changed on ``tool``."""
+        specs = getattr(tool, "INLINE_OPTIONS", ())
+        if tool is None or not tool_key or not specs:
+            return
+        with suppress(Exception):
+            save_options(tool, tool_key, specs, QSettings("PlanX", "PlanXCAD"))
 
     def _restore_dock_active_state(self):
         if not self._dock:
@@ -1077,6 +1111,7 @@ class PlanXCADPlugin:
     def _on_tool_finished(self):
         # Do not overwrite the tool's useful success/cancel message with a
         # generic "Ready" immediately after completion.
+        self._remember_tool_options(self._current_tool, self._current_tool_key)
         if self._dock and hasattr(self._dock, "refresh_layer_state"):
             self._dock.refresh_layer_state()
 
@@ -1273,6 +1308,21 @@ class PlanXCADPlugin:
             elif key == "ada_kirma":
                 from .urban.ada_kirma_sketcher import AdaKirmaSketcher
                 t = AdaKirmaSketcher(canvas, self.iface)
+            elif key == "envelope":
+                from .tools.tool_envelope import tool_envelope
+                t = tool_envelope(canvas, self.iface)
+            elif key == "sight_triangle":
+                from .tools.tool_sight_triangle import tool_sight_triangle
+                t = tool_sight_triangle(canvas, self.iface)
+            elif key == "parking":
+                from .tools.tool_parking import tool_parking
+                t = tool_parking(canvas, self.iface)
+            elif key == "roundabout":
+                from .tools.tool_roundabout import tool_roundabout
+                t = tool_roundabout(canvas, self.iface)
+            elif key == "turning_head":
+                from .tools.tool_turning_head import tool_turning_head
+                t = tool_turning_head(canvas, self.iface)
 
             else:
                 return None
@@ -1291,6 +1341,9 @@ class PlanXCADPlugin:
             if hasattr(t, 'precision_key_started'):
                 t.precision_key_started.connect(self._begin_precision_entry)
 
+            specs = getattr(t, "INLINE_OPTIONS", ())
+            if specs:
+                load_options(t, key, specs, QSettings("PlanX", "PlanXCAD"))
             return t
 
         except Exception as e:

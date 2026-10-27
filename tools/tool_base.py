@@ -46,6 +46,12 @@ class tool_base(QgsMapTool):
     # Feature-picking tolerance in pixels.
     PICK_TOLERANCE = 10
 
+    # Settings shown on the dock's active-command card (core.tool_options).
+    # While the card shows them, ``use_inline_options()`` is True and the tool
+    # skips its modal dialog. Without the dock the dialog still opens.
+    INLINE_OPTIONS = ()
+    inline_options_enabled = False
+
     def __init__(self, canvas, iface):
         super().__init__(canvas)
         self.iface = iface
@@ -101,6 +107,10 @@ class tool_base(QgsMapTool):
     def on_move(self, point):
         """Handle pointer movement."""
         pass
+
+    def use_inline_options(self):
+        """True when the dock card supplies this tool's settings."""
+        return bool(self.INLINE_OPTIONS) and bool(self.inline_options_enabled)
 
     # ── Lifecycle ───────────────────────────────────────────────────
 

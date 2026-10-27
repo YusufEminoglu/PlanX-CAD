@@ -29,6 +29,10 @@ from qgis.core import (
 from qgis.gui import QgsMapCanvas, QgsMapTool
 
 from ..main_plugin import PlanXCADPlugin
+from ..core.drafting_state import DRAFTING_STATE
+from ..core.tracking_engine import TrackingMode
+from ..dialogs.cad_dock import _load_icon
+from ..tools import tool_fillet as fillet_module
 from ..tools.tool_multi_offset import tool_multi_offset
 from ..urban.junction_dialog import JunctionDialog
 
@@ -239,6 +243,103 @@ def _modify_write_checks(iface, project):
     return checks
 
 
+def _dock_redesign_checks(plugin, app):
+    """Tabbed dock, inline settings card, shared drafting state."""
+    checks = []
+    dock = plugin._dock
+
+    # Tabs follow the catalog; a typed alias switches to the tool's tab.
+    checks.append(("dock has CAD / Measure / Urban tabs",
+                   [dock.tab_bar.tabText(i) for i in range(dock.tab_bar.count())]
+                   == ["CAD", "Measure", "Urban"]))
+    dock.search_input.setText("off")
+    app.processEvents()
+    results = [b.tool_key for b in dock._search_buttons]
+    checks.append(("typing searches every tab",
+                   dock.pages.currentWidget() is dock._search_page
+                   and results[:2] == ["offset", "multi_offset"]))
+    dock.search_input.clear()
+    app.processEvents()
+    checks.append(("clearing the search returns to the tab",
+                   dock.pages.currentWidget() is not dock._search_page))
+
+    # Drafting aids are session-wide: they work with no tool active and the
+    # next tool picks them up.
+    plugin._cancel_active_tool()
+    before = DRAFTING_STATE.snapshot()
+    DRAFTING_STATE.restore({"osnap": True, "tracking": "off", "dynamic_input": True})
+    plugin._toggle_ortho()
+    checks.append(("F8 with no tool turns ORTHO on and lights the chip",
+                   DRAFTING_STATE.ortho and dock._chips["ortho"].isChecked()
+                   and not dock._chips["polar"].isChecked()))
+    plugin._activate_tool("line")
+    drafting = plugin._current_tool.drafting
+    drafting._sync_shared_state()
+    checks.append(("the next tool inherits ORTHO",
+                   drafting.tracking_engine.mode == TrackingMode.ORTHO))
+    drafting.toggle_polar()  # F10 pressed inside the tool
+    checks.append(("a toggle inside a tool updates the dock chips",
+                   dock._chips["polar"].isChecked() and not dock._chips["ortho"].isChecked()))
+    DRAFTING_STATE.restore(before)
+
+    # Inline settings: with the dock showing, Fillet takes its radius from the
+    # card and never opens the modal dialog.
+    calls = []
+
+    class _NoDialog:
+        @staticmethod
+        def getDouble(*args, **_kwargs):
+            calls.append(args)
+            return 0.0, False
+
+    original_dialog = fillet_module.QInputDialog
+    original_visible = dock.isVisible
+    fillet_module.QInputDialog = _NoDialog
+    dock.isVisible = lambda: True
+    try:
+        plugin._activate_tool("fillet")
+        tool = plugin._current_tool
+        rows = dock._option_rows
+        checks.append(("fillet starts without its modal dialog",
+                       not calls and plugin._current_tool_key == "fillet"
+                       and not getattr(tool, "_activation_cancelled", True)))
+        checks.append(("card shows the fillet radius",
+                       len(rows) == 1 and rows[0][0].attr == "radius"
+                       and dock._card_key == "fillet"))
+        if rows:
+            rows[0][2].setValue(7.25)
+        checks.append(("editing the card changes the live tool",
+                       abs(getattr(tool, "radius", 0) - 7.25) < 1e-9))
+        plugin._activate_tool("fillet")  # dialog tools get a fresh instance
+        checks.append(("the radius is remembered by the next instance",
+                       plugin._current_tool is not tool
+                       and abs(plugin._current_tool.radius - 7.25) < 1e-9))
+    finally:
+        fillet_module.QInputDialog = original_dialog
+        dock.isVisible = original_visible
+
+    # Without the dock the dialog path still runs (and is honoured).
+    calls.clear()
+    fillet_module.QInputDialog = _NoDialog
+    try:
+        plugin._activate_tool("fillet")
+        checks.append(("hidden dock falls back to the dialog",
+                       len(calls) == 1 and plugin._current_tool is None))
+    finally:
+        fillet_module.QInputDialog = original_dialog
+
+    plugin._activate_tool("measure")
+    checks.append(("a Measure tool switches to the Measure tab",
+                   dock.current_tab() == "measure"))
+    plugin._cancel_active_tool()
+    checks.append(("cancel clears the command card",
+                   dock._card_tool is None and not dock._option_rows))
+
+    icon = _load_icon(os.path.join(plugin.icon_dir, "cad_fillet.svg"), "#c7d2fe")
+    checks.append(("dark-theme icon recolouring renders", not icon.isNull()))
+    return checks
+
+
 def run_all() -> bool:
     app = QgsApplication.instance()
     owns_app = app is None
@@ -261,7 +362,7 @@ def run_all() -> bool:
         plugin.initGui()
         plugin._toggle_dock()
         app.processEvents()
-        checks.append(("dock exposes every tool", len(plugin._dock.buttons) == 39))
+        checks.append(("dock exposes every tool", len(plugin._dock.buttons) == 44))
         checks.append((
             "dock has a button for every registered tool key",
             set(plugin._ALL_TOOL_KEYS) == set(plugin._dock.buttons),
@@ -447,6 +548,7 @@ def run_all() -> bool:
         iface.set_active_layer(line)
         plugin._toggle_active_layer_editing()
         checks.append(("edit toggle never commits directly", line.isEditable()))
+        checks.extend(_dock_redesign_checks(plugin, app))
 
         modify_keys = ("chamfer", "break", "lengthen", "align", "stretch",
                        "explode")

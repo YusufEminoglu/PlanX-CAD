@@ -10,6 +10,7 @@ from qgis.PyQt.QtWidgets import (
 from qgis.core import QgsFeature, QgsGeometry, QgsPointXY, QgsWkbTypes
 
 from .tool_base import tool_base
+from ..core.tool_options import FLOAT, OptionSpec
 from ..core.sketcher_feedback import create_preview_rubberband, COLOR_ACCENT
 from ..core.sketcher_utils import create_chamfer_and_trims, trim_line_to_point
 from ..urban.crs_utils import local_metric_crs, transform_geometry
@@ -105,6 +106,11 @@ class tool_chamfer(tool_base):
     1. Enter the distances | 2. Select the first line | 3. Select the second
     """
 
+    INLINE_OPTIONS = (
+        OptionSpec("first_distance", "First distance (m)", FLOAT, 5.0, 0.01, 100000.0, 2, " m"),
+        OptionSpec("second_distance", "Second distance (m)", FLOAT, 5.0, 0.01, 100000.0, 2, " m"),
+    )
+
     def __init__(self, canvas, iface):
         super().__init__(canvas, iface)
         self.first_distance = 5.0
@@ -119,16 +125,17 @@ class tool_chamfer(tool_base):
     def activate(self):
         super().activate()
         self._activation_cancelled = False
-        dialog = ChamferDialog(
-            self.first_distance, self.second_distance, self.iface.mainWindow()
-        )
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            self._activation_cancelled = True
-            self.tool_message.emit("⌐ Chamfer — Cancelled")
-            return
-        params = dialog.params()
-        self.first_distance = params["first"]
-        self.second_distance = params["second"]
+        if not self.use_inline_options():
+            dialog = ChamferDialog(
+                self.first_distance, self.second_distance, self.iface.mainWindow()
+            )
+            if dialog.exec() != QDialog.DialogCode.Accepted:
+                self._activation_cancelled = True
+                self.tool_message.emit("⌐ Chamfer — Cancelled")
+                return
+            params = dialog.params()
+            self.first_distance = params["first"]
+            self.second_distance = params["second"]
         self.first_layer = None
         self.first_feature = None
         self.tool_message.emit(

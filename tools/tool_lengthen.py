@@ -10,6 +10,7 @@ from qgis.PyQt.QtWidgets import (
 from qgis.core import QgsPointXY, QgsWkbTypes
 
 from .tool_base import tool_base
+from ..core.tool_options import CHOICE, FLOAT, OptionSpec
 from ..core.sketcher_utils import lengthen_line
 from ..urban.crs_utils import local_metric_crs, transform_geometry
 
@@ -105,6 +106,17 @@ class LengthenDialog(QDialog):
 class tool_lengthen(tool_base):
     """Extend or shorten a line from the end nearest the click."""
 
+    INLINE_OPTIONS = (
+        OptionSpec("lengthen_mode", "Mode", CHOICE, "delta",
+                   choices=(("delta", "Delta (add/remove)"),
+                            ("percent", "Percent of current"),
+                            ("total", "Total length"))),
+        OptionSpec("lengthen_value", "Value", FLOAT, 5.0, -1000000.0, 1000000.0, 3,
+                   tooltip="Metres for Delta and Total; percent for Percent"),
+    )
+    lengthen_mode = "delta"
+    lengthen_value = 5.0
+
     def tool_name(self):
         return "Lengthen"
 
@@ -134,13 +146,17 @@ class tool_lengthen(tool_base):
             self._reset()
             return
 
-        dialog = LengthenDialog(metric_geom.length(), self.iface.mainWindow())
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            self.tool_message.emit("⚠️ Lengthen — Cancelled")
-            self._reset()
-            return
-
-        params = dialog.params()
+        if self.use_inline_options():
+            params = {"mode": self.lengthen_mode, "value": self.lengthen_value}
+        else:
+            dialog = LengthenDialog(metric_geom.length(), self.iface.mainWindow())
+            if dialog.exec() != QDialog.DialogCode.Accepted:
+                self.tool_message.emit("⚠️ Lengthen — Cancelled")
+                self._reset()
+                return
+            params = dialog.params()
+            self.lengthen_mode = params["mode"]
+            self.lengthen_value = params["value"]
         result = lengthen_line(
             metric_geom, params["mode"], params["value"],
             from_end=self._clicked_end_is_last(geom, point),

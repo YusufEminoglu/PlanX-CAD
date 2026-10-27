@@ -9,6 +9,7 @@ from qgis.PyQt.QtWidgets import (
 )
 from qgis.PyQt.QtGui import QFont
 from .tool_base import tool_base
+from ..core.tool_options import CHOICE, FLOAT, INT, OptionSpec
 from ..core.sketcher_layer_utils import get_or_create_layer, add_feature_to_layer
 from ..urban.crs_utils import local_metric_crs, transform_geometry
 
@@ -91,6 +92,14 @@ class BufferDialog(QDialog):
 class tool_buffer(tool_base):
     """Create a metric buffer in a plugin-managed output layer."""
 
+    INLINE_OPTIONS = (
+        OptionSpec("distance", "Distance (m)", FLOAT, 5.0, 0.01, 100000.0, 2, " m"),
+        OptionSpec("join_style", "Join style", CHOICE, 1,
+                   choices=((1, "Round"), (2, "Bevel"), (3, "Miter"))),
+        OptionSpec("segments", "Segments", INT, 16, 4, 128, 0,
+                   tooltip="Segments per quarter circle on round joins"),
+    )
+
     def __init__(self, canvas, iface):
         super().__init__(canvas, iface)
         # The source only needs to be readable; output is written to the
@@ -107,13 +116,16 @@ class tool_buffer(tool_base):
     def activate(self):
         super().activate()
         self._activation_cancelled = False
-        dlg = BufferDialog(self.iface.mainWindow(), self.distance)
-        if dlg.exec() == QDialog.DialogCode.Accepted:
-            params = dlg.get_params()
-            self.distance = params["distance"]
-            self.join_style = params["join_style"]
-            self.segments = params["segments"]
-
+        accepted = self.use_inline_options()
+        if not accepted:
+            dlg = BufferDialog(self.iface.mainWindow(), self.distance)
+            accepted = dlg.exec() == QDialog.DialogCode.Accepted
+            if accepted:
+                params = dlg.get_params()
+                self.distance = params["distance"]
+                self.join_style = params["join_style"]
+                self.segments = params["segments"]
+        if accepted:
             join_names = {1: "Round", 2: "Bevel", 3: "Miter"}
             self.tool_message.emit(
                 f"◎ Buffer ({self.distance} m, {join_names.get(self.join_style, '?')}) "

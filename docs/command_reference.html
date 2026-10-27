@@ -154,7 +154,18 @@
     <strong>Urban Commands</strong>
     <ul>
       <li>Road/Junction/Block Chamfer tools should start from a clean centerline and editable target layer.</li>
-      <li>Run preflight before generating complex road platform geometry.</li>
+      <li>Run the layer check (dock <strong>⋯</strong> menu) before generating complex road platform geometry.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <strong>Street and parcel design</strong>
+    <p>These tools read any vector layer and write to their own <code>planx_*</code> polygon layers, so the source data is never changed. Their settings sit on the dock's active-command card; with the dock hidden a short form opens instead. Lengths are metres in a local metric CRS.</p>
+    <ul>
+      <li><span class="k">ENV</span> <strong>Buildable Envelope</strong>: click a parcel near its front edge. The nearest edge is the front, edges parallel to it in the far half are rear, the rest are sides. <em>Corner parcel</em> adds the neighbouring edge nearest the click as a second front. The envelope is every point that keeps each setback from its edge, so concave parcels are handled exactly. Fields: parcel and envelope area, buildable share, max footprint under <em>Max coverage</em>.</li>
+      <li><span class="k">SIGHT</span> <strong>Sight Triangle</strong>: pick the curb line on each arm of the corner. The legs start where the curbs meet, or where their extensions meet at a rounded corner, and run toward the points you clicked.</li>
+      <li><span class="k">PARK</span> <strong>Parking Layout</strong>: pick the curb line, move to the side for the stalls (a preview follows), click. Angles 90°, 60°, 45°, 30° or parallel; stalls fill each straight segment, and at a bend toward the stalls the clashing corner stalls are left out.</li>
+      <li><span class="k">RB</span> <strong>Roundabout</strong>: click the junction centre (snapping helps). Parts: circulatory carriageway, optional truck apron, central island. If the active layer is a line layer, every line crossing the outer kerb gets a triangular splitter island on its approach.</li>
+      <li><span class="k">CUL</span> <strong>Turning Head</strong>: pick a road centreline near the end; a turning circle is centred on that end and joined to the carriageway by straight tapers.</li>
     </ul>
   </div>
   <h2 id="workflow">6. Productivity Workflow</h2>
@@ -162,10 +173,10 @@
     <ul>
       <li><span class="k">Ctrl+Shift+S</span>: focus search and launch by typing command name.</li>
       <li><span class="k">Ctrl+Shift+Space</span>: repeat last tool instantly.</li>
-      <li>Use the <strong>Recent</strong> row and live <strong>Tip</strong> panel in the dock.</li>
-      <li>Use <strong>Docs</strong> and <strong>Keys</strong> buttons for in-context help.</li>
-      <li>Use <strong>Help Tool</strong> to jump directly to the most relevant command section.</li>
-      <li>Use <strong>Stats</strong> and <strong>Diag</strong> for support-readiness and operational checks.</li>
+      <li>Use the <strong>Quick</strong> strip (pinned and recent tools) and the prompt on the active-command card.</li>
+      <li>Set tool values such as fillet radius or offset distance on the active-command card instead of a dialog.</li>
+      <li>Use <strong>?</strong> on the active-command card to jump to that tool's section.</li>
+      <li>Open the dock's <strong>⋯</strong> menu for the command reference, shortcut guide, health check, diagnostics and usage statistics.</li>
     </ul>
   </div>
 

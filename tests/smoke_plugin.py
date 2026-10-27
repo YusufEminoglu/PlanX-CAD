@@ -15,6 +15,7 @@ SUITES = [
     "planX_CAD_arac_Seti.tests.smoke_precision_input",
     "planX_CAD_arac_Seti.tests.smoke_urban_workbench",
     "planX_CAD_arac_Seti.tests.smoke_osnap_tracking",
+    "planX_CAD_arac_Seti.tests.smoke_urban_tools",
 ]
 
 

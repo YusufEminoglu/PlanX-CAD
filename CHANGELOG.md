@@ -1,16 +1,44 @@
 # Changelog
 
+## [Unreleased]
+
+A redesigned dock: three tabs, labelled tools, settings inline, drafting aids always visible.
+
+### Changed
+- **Dock layout**: the tools now sit in three tabs, *CAD* (Draw, Modify, Transform as foldable sections in a two-column grid), *Measure* and *Urban*, so continuous drafting never switches tabs. Every tool shows its name and command alias. The grid drops to one column, then to icons, in a narrow dock.
+- **Regrouped tools** following AutoCAD's Home ribbon: construction lines, Divide, Hatch and Buffer moved to Draw; Align and Array moved to Transform. The old 20-tool "Editing" group is gone. The command palette and shortcut guide use the same groups (Move, Copy and the other transform tools were listed as "Editing" there).
+- **Typing in the command line searches every tab**, ranked by alias, then name.
+- **Quick strip** replaces the Recent and Favorites rows, the Pin button and the Clear button: pinned tools first, then recent ones; right-click any tool to pin or unpin it.
+- **"⋯" menu** holds the command reference, shortcut guide, quick start, layer check, health check, diagnostics, usage statistics, shortcut conflicts and workspace reset, which were 12 coloured buttons.
+- **Status bar**: the active layer (click to start or stop editing) and OSNAP / ORTHO / POLAR / DYN toggles.
+
+### Added
+- **Five street and parcel design tools** on the Urban tab, each writing to its own managed layer:
+  - **Buildable Envelope** (`ENV`): parcel minus front / side / rear setbacks, with a corner-parcel option, exact for concave parcels; records parcel and envelope area, buildable share and the max footprint under a site-coverage limit.
+  - **Sight Triangle** (`SIGHT`): corner visibility triangle from the curb intersection, or the virtual intersection at a rounded corner.
+  - **Parking Layout** (`PARK`): numbered 90° / 60° / 45° / 30° / parallel stalls along a curb line with a live side preview; no overlaps at bends.
+  - **Roundabout** (`RB`): circulatory carriageway, truck apron and central island, plus splitter islands on the active layer's approach lines.
+  - **Turning Head** (`CUL`): cul-de-sac turning circle with tapers at a road end.
+- **Inline tool settings**: Offset, Multi-Offset, Fillet, Chamfer, Buffer, Array, Divide, Explode, Hatch, Join, Lengthen and Align show their settings on the dock's active-command card and skip their modal dialog while the dock is open. Values are remembered per tool between sessions; without the dock the dialogs still open.
+- Distinct icons for Construction Ray and Construction Segment (all three construction tools shared one icon).
+- Dock icons are recoloured on dark QGIS themes, where the navy strokes were nearly invisible.
+
+### Fixed
+- **Drafting aids are now session-wide.** ORTHO, POLAR, OSNAP and DYN were stored per tool instance, so turning ORTHO on in Line was lost in Polyline, and F3 / F8 / F10 / F12 with no tool active reported a toggle but changed nothing. The state is shared, shown on the dock chips, and remembered between sessions.
+- Join remembers its tolerance instead of resetting to 1.0 m every time.
+- The Array dialog showed garbled labels ("Î”x") instead of "Δx" / "Δy".
+
 ## [1.28.0] - 2026-10-25
 
 Precision Drafting: AutoCAD-grade Object Snap (OSNAP), Ortho and Polar tracking, and Dynamic Input HUD.
 
 ### Added
-- **Precision Drafting Workbench**: Unified controller (DraftingWorkbench) coordinating Object Snap (OSNAP), Ortho and Polar tracking, guide rays, and Dynamic Input HUD across both 	ool_base and sketcher_base.
+- **Precision Drafting Workbench**: Unified controller (DraftingWorkbench) coordinating Object Snap (OSNAP), Ortho and Polar tracking, guide rays, and Dynamic Input HUD across both `tool_base` and `sketcher_base`.
 - **AutoCAD-grade Object Snap (OSNAP)** (F3, OSNAP): 11 geometric snap modes (Endpoint, Midpoint, Centre, Quadrant, Vertex, Intersection, Apparent Intersection, Perpendicular, Tangent, Nearest, Extension) with AutoCAD-standard typed glyph markers (Box, Triangle, Circle, Diamond, Cross, X, Inverted Triangle, Tangent, Hourglass) and screen-reader status announcements.
 - **Ortho & Polar Tracking Engine**: F8 / ORTHO constrains movement to 0 deg, 90 deg, 180 deg, 270 deg with live dashed guide rays. F10 / POLAR tracks configurable rays (15 deg, 30 deg, 45 deg, 90 deg). Object Snap Tracking allows acquiring points by hovering, with alignment rays taking precedence (S3 rule).
 - **Dynamic Input HUD** (F12, DYN): Floating cursor overlay rendering live distance, angle, and delta coordinates in a high-contrast translucent dark slate pill with teal accent.
 - **Shortcuts & Aliases**: Application-wide shortcuts F3, F8, F10, F12 and command-line aliases OSNAP, ORTHO, POLAR, DYN.
-- **Comprehensive Test Suite**: Added pure pytest suite 	ests/test_drafting_pure.py (17 tests) and unified QGIS test runner 	ests/smoke_plugin.py running all 8 QGIS suites on both QGIS 3 LTR and QGIS 4.
+- **Comprehensive Test Suite**: Added pure pytest suite `tests/test_drafting_pure.py` (17 tests) and unified QGIS test runner `tests/smoke_plugin.py` running all 8 QGIS suites on both QGIS 3 LTR and QGIS 4.
 
 ## [1.27.6] - 2026-09-16
 

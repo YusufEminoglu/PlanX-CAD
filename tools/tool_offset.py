@@ -5,6 +5,7 @@ from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsWkbTypes, QgsGeometry, QgsPointXY
 from qgis.PyQt.QtWidgets import QInputDialog
 from .tool_base import tool_base
+from ..core.tool_options import FLOAT, OptionSpec
 from ..core.sketcher_utils import offset_geometry
 from ..core.sketcher_feedback import create_preview_rubberband, cleanup_sketcher_rubberband
 from ..urban.crs_utils import local_metric_crs, transform_geometry, transform_point
@@ -12,6 +13,10 @@ from ..urban.crs_utils import local_metric_crs, transform_geometry, transform_po
 
 class tool_offset(tool_base):
     """Create a parallel copy at a specified metric distance."""
+
+    INLINE_OPTIONS = (
+        OptionSpec("distance", "Distance (m)", FLOAT, 5.0, 0.01, 100000.0, 2, " m"),
+    )
 
     def __init__(self, canvas, iface):
         super().__init__(canvas, iface)
@@ -21,11 +26,14 @@ class tool_offset(tool_base):
         return "Offset"
 
     def on_entity_selected(self, layer, feature, point):
-        # Ask for the offset distance.
-        d, ok = QInputDialog.getDouble(
-            self.iface.mainWindow(), "Offset", "Offset distance (m):",
-            self.distance, 0.01, 100000.0, 2
-        )
+        # Ask for the offset distance unless the dock card supplies it.
+        if self.use_inline_options():
+            d, ok = self.distance, True
+        else:
+            d, ok = QInputDialog.getDouble(
+                self.iface.mainWindow(), "Offset", "Offset distance (m):",
+                self.distance, 0.01, 100000.0, 2
+            )
         if ok:
             self.distance = d
             self.tool_message.emit(

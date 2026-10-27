@@ -208,8 +208,8 @@ def run_tool_pin_checks():
         total_tested += 1
 
     _check(
-        "all 39 registered tool classes pin-tested",
-        total_tested == 39,
+        "all 44 registered tool classes pin-tested",
+        total_tested == 44,
         f"count={total_tested}",
     )
 

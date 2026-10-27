@@ -28,6 +28,7 @@ from qgis.PyQt.QtWidgets import (
 from qgis.core import QgsGeometry, QgsPointXY, QgsWkbTypes
 
 from .tool_base import tool_base
+from ..core.tool_options import CHOICE, FLOAT, INT, OptionSpec
 from ..core.sketcher_utils import rotate_geometry
 
 
@@ -103,14 +104,14 @@ class ArrayDialog(QDialog):
         self.spn_dx.setValue(10.0)
         self.spn_dx.setSuffix(" m")
         self.spn_dx.setDecimals(2)
-        form.addRow("Î”x (column spacing):", self.spn_dx)
+        form.addRow("Δx (column spacing):", self.spn_dx)
 
         self.spn_dy = QDoubleSpinBox()
         self.spn_dy.setRange(-1e6, 1e6)
         self.spn_dy.setValue(10.0)
         self.spn_dy.setSuffix(" m")
         self.spn_dy.setDecimals(2)
-        form.addRow("Î”y (row spacing):", self.spn_dy)
+        form.addRow("Δy (row spacing):", self.spn_dy)
         return w
 
     def _polar_page(self) -> QWidget:
@@ -159,20 +160,56 @@ class tool_array(tool_base):
     Polar: select feature -> dialog -> click center -> N copies created.
     """
 
+    _RECT = ("array_mode", "rect")
+    _POLAR = ("array_mode", "polar")
+    INLINE_OPTIONS = (
+        OptionSpec("array_mode", "Type", CHOICE, "rect",
+                   choices=(("rect", "Rectangular"), ("polar", "Polar"))),
+        OptionSpec("rows", "Rows", INT, 3, 1, 500, 0, visible_when=_RECT),
+        OptionSpec("cols", "Columns", INT, 3, 1, 500, 0, visible_when=_RECT),
+        OptionSpec("dx", "Δx", FLOAT, 10.0, -1e6, 1e6, 2,
+                   visible_when=_RECT, tooltip="Column spacing in the layer's map units"),
+        OptionSpec("dy", "Δy", FLOAT, 10.0, -1e6, 1e6, 2,
+                   visible_when=_RECT, tooltip="Row spacing in the layer's map units"),
+        OptionSpec("count", "Copies", INT, 6, 2, 360, 0, visible_when=_POLAR),
+        OptionSpec("sweep", "Sweep (°)", FLOAT, 360.0, -360.0, 360.0, 1, "°",
+                   visible_when=_POLAR),
+    )
+
     def __init__(self, canvas, iface):
         super().__init__(canvas, iface)
         self.params: dict | None = None
+        self.array_mode = "rect"
+        self.rows = 3
+        self.cols = 3
+        self.dx = 10.0
+        self.dy = 10.0
+        self.count = 6
+        self.sweep = 360.0
 
     def tool_name(self):
         return "Array"
 
+    def _inline_params(self):
+        if self.array_mode == "polar":
+            return {"mode": "polar", "count": self.count, "sweep": self.sweep}
+        return {"mode": "rect", "rows": self.rows, "cols": self.cols,
+                "dx": self.dx, "dy": self.dy}
+
     def on_entity_selected(self, layer, feature, point):
-        dlg = ArrayDialog(self.iface.mainWindow())
-        if dlg.exec() != QDialog.DialogCode.Accepted:
-            self.tool_message.emit("⏹ Array — cancelled")
-            self._reset()
-            return
-        self.params = dlg.params()
+        if self.use_inline_options():
+            self.params = self._inline_params()
+        else:
+            dlg = ArrayDialog(self.iface.mainWindow())
+            if dlg.exec() != QDialog.DialogCode.Accepted:
+                self.tool_message.emit("⏹ Array — cancelled")
+                self._reset()
+                return
+            self.params = dlg.params()
+            self.array_mode = self.params["mode"]
+            for key in ("rows", "cols", "dx", "dy", "count", "sweep"):
+                if key in self.params:
+                    setattr(self, key, self.params[key])
         if self.params["mode"] == "rect":
             self._do_rectangular(layer, feature)
             self._reset()

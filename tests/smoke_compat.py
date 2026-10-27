@@ -239,19 +239,97 @@ def check_qgis_pyside_import_guard() -> bool:
                f"{len(hits)} direct Qt imports" if hits else "all imports through qgis.PyQt")
 
 
-def check_dock_quick_actions_grid() -> bool:
-    """Quick actions in cad_dock.py must use QGridLayout, not a single QHBoxLayout."""
+def check_dock_layout() -> bool:
+    """The dock uses the tabbed layout: catalog-driven tabs, a Quick strip,
+    always-visible drafting chips, the inline settings card and the "⋯" menu
+    (which replaced the old 12-button quick-action grid)."""
     dock_path = PLUGIN_DIR / "dialogs" / "cad_dock.py"
     if not dock_path.exists():
-        return _ok("dock quick actions grid", False, "cad_dock.py missing")
+        return _ok("dock layout", False, "cad_dock.py missing")
     src = dock_path.read_text(encoding="utf-8")
-    has_grid = "qa_grid = QGridLayout()" in src
-    no_overflow_hbox = "quick_row = QHBoxLayout()" not in src
-    ok = has_grid and no_overflow_hbox
-    detail = "grid layout in use" if ok else (
-        "qa_grid missing" if not has_grid else "old overflow QHBoxLayout still present"
-    )
-    return _ok("dock quick actions: compact QGridLayout", ok, detail)
+    required = {
+        "QTabBar": "QTabBar(" in src,
+        "catalog tabs": "for tab_id, title, sections in TABS" in src,
+        "Quick strip": "_refresh_quick_buttons" in src,
+        "drafting chips": all(f'"{k}"' in src for k in ("osnap", "ortho", "polar", "dyn")),
+        "drafting state listener": "DRAFTING_STATE.add_listener" in src
+        and "DRAFTING_STATE.remove_listener" in src,
+        "inline settings card": "def show_tool_options" in src,
+        "more menu": "_build_more_button" in src,
+        "no quick-action grid": "qa_grid" not in src,
+    }
+    missing = [name for name, ok in required.items() if not ok]
+    return _ok("dock layout: tabs + Quick + chips + card", not missing,
+               "present" if not missing else f"missing: {', '.join(missing)}")
+
+
+def _load_pure_module(relative: str, name: str):
+    """Import a dependency-free plugin module straight from its file."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(name, PLUGIN_DIR / relative)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module  # dataclasses resolve annotations via sys.modules
+    spec.loader.exec_module(module)
+    return module
+
+
+def check_tool_catalog() -> bool:
+    """The tool catalog lists every tool exactly once, each alias badge is a
+    real command alias for that tool, and every icon file exists."""
+    try:
+        catalog = _load_pure_module("core/tool_catalog.py", "_planx_tool_catalog")
+    except Exception as exc:  # noqa: BLE001 - report any import failure
+        return _ok("tool catalog", False, f"cannot load: {exc}")
+    tool_keys = _class_attribute_literal(PLUGIN_DIR / "main_plugin.py", "_ALL_TOOL_KEYS")
+    aliases = _class_attribute_literal(PLUGIN_DIR / "dialogs" / "cad_dock.py", "_COMMAND_ALIASES")
+    if not tool_keys or not aliases:
+        return _ok("tool catalog", False, "could not read _ALL_TOOL_KEYS or _COMMAND_ALIASES")
+    keys = [entry.key for entry in catalog.TOOL_CATALOG]
+    problems: list[str] = []
+    duplicates = sorted({k for k in keys if keys.count(k) > 1})
+    if duplicates:
+        problems.append(f"duplicates: {', '.join(duplicates)}")
+    if set(keys) != set(tool_keys):
+        diff = sorted(set(keys) ^ set(tool_keys))
+        problems.append(f"catalog vs _ALL_TOOL_KEYS differ: {', '.join(diff)}")
+    for entry in catalog.TOOL_CATALOG:
+        if aliases.get(entry.alias.lower()) != entry.key:
+            problems.append(f"badge {entry.alias} does not run {entry.key}")
+        if not (PLUGIN_DIR / "icons" / entry.icon).exists():
+            problems.append(f"missing icon {entry.icon}")
+        if entry.section not in catalog.SECTIONS:
+            problems.append(f"{entry.key}: unknown section {entry.section}")
+        if not entry.hint:
+            problems.append(f"{entry.key}: no hint")
+    tabbed = {s for _id, _title, sections in catalog.TABS for s in sections}
+    if tabbed != set(catalog.SECTIONS):
+        problems.append("a section is not on any dock tab")
+    return _ok("tool catalog complete and consistent", not problems,
+               f"{len(keys)} tools in {len(catalog.TABS)} tabs" if not problems
+               else "; ".join(problems[:5]))
+
+
+def check_inline_option_specs() -> bool:
+    """Every INLINE_OPTIONS attr is a real attribute the tool sets, so the
+    dock never binds a setting to a name the tool does not read."""
+    problems: list[str] = []
+    checked = 0
+    for path in sorted((PLUGIN_DIR / "tools").glob("tool_*.py")):
+        src = path.read_text(encoding="utf-8")
+        if path.name == "tool_base.py" or "INLINE_OPTIONS = (" not in src:
+            continue
+        checked += 1
+        attrs = re.findall(r'OptionSpec\(\s*"([a-z_]+)"', src)
+        if not attrs:
+            problems.append(f"{path.name}: INLINE_OPTIONS without OptionSpec")
+        for attr in attrs:
+            if not re.search(rf"self\.{attr} = |^\s+{attr} = ", src, re.MULTILINE):
+                problems.append(f"{path.name}: {attr} is never set on the tool")
+        # Urban output tools skip their dialog in urban_tool_base._ask_options().
+        if "use_inline_options()" not in src and "self._start(" not in src:
+            problems.append(f"{path.name}: dialog is never skipped")
+    return _ok("inline tool settings bind to real attributes", not problems and checked >= 17,
+               f"{checked} tools" if not problems else "; ".join(problems[:5]))
 
 
 def check_dock_accessibility() -> bool:
@@ -422,7 +500,9 @@ def run_all() -> bool:
         check_icon_exists(),
         check_class_factory(),
         check_qgis_pyside_import_guard(),
-        check_dock_quick_actions_grid(),
+        check_dock_layout(),
+        check_tool_catalog(),
+        check_inline_option_specs(),
         check_dock_accessibility(),
         check_command_line(),
         check_command_aliases_resolve(),

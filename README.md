@@ -14,7 +14,7 @@
 [![Part of PlanX](https://img.shields.io/badge/suite-PlanX-ff8a3d)](https://gitlab.com/geophilo1/planX_CAD_arac_Seti)
 
 Type `L` ↵, draw a line. Type `F` ↵, fillet a corner. Type `BR` ↵, break it.
-**39 CAD tools, an AutoCAD-style command line, and road-platform design — without ever leaving QGIS.**
+**44 CAD tools, an AutoCAD-style command line, and street and parcel design — without ever leaving QGIS.**
 
 [Install](#-installation) · [Tools](#-tool-catalog) · [Command line](#-autocad-style-command-line) · [Urban tools](#-urban-planning-tools) · [Shortcuts](#-keyboard-shortcuts)
 
@@ -34,7 +34,7 @@ Type `L` ↵, draw a line. Type `F` ↵, fillet a corner. Type `BR` ↵, break i
 | 🎯 **Precision Drafting** | AutoCAD-grade Object Snap (OSNAP) with typed glyphs (Box, Triangle, Circle, Diamond, Cross, X), Ortho (F8) and Polar (F10) tracking with dashed rays, and a live Dynamic Input HUD (F12). |
 | ⚡ **Muscle-memory friendly** | AutoCAD-style command aliases (`L`, `PL`, `TR`, `F`, `CO`…), empty-Enter repeats the last command, Up/Down recalls history — a real command loop. |
 | 📐 **Drafting-grade picking** | A true 10-px pickbox with snap markers, hover highlighting, and self-pick protection in two-step tools (Fillet/Chamfer/Trim/Extend). |
-| 🏙️ **Built for planners** | Interactive road platform generator, junction topology fixer, and block-corner chamfering — tools you won't find in generic CAD plugins. |
+| 🏙️ **Built for planners** | Road platforms, junctions, block corners, buildable envelopes, sight triangles, parking layouts, roundabouts and turning heads — tools you won't find in generic CAD plugins. |
 | 🌍 **Global by design** | A concise English-only workbench, documentation set, command palette, and output schema built for international teams. |
 | 🧩 **Zero friction** | Pure QGIS API — no external dependencies, no build step. One dockable panel, native snapping, works on **QGIS 3.28 LTR through QGIS 4**. |
 
@@ -102,6 +102,21 @@ CircularString/CompoundCurve geometry, elevations, and measures survive.
 
 ---
 
+## 🧭 The dock
+
+One panel, top to bottom:
+
+- **Prompt and command line.** The prompt shows what the active tool expects next; typing a name lists matching tools from every tab.
+- **Quick strip.** Pinned tools first, then recent ones. Right-click any tool to pin or unpin it.
+- **Tabs: CAD · Measure · Urban.** CAD holds Draw, Modify and Transform as foldable sections in a two-column grid, so continuous drafting never switches tabs. Every tool shows its name and command alias.
+- **Active-command card.** The tool's prompt and its settings (fillet radius, offset distance, array rows, hatch pattern…) sit inline. While the dock is open, those tools no longer open a dialog; values are remembered between sessions.
+- **Status bar.** The active layer (click to start or stop editing), OSNAP / ORTHO / POLAR / DYN toggles that stay in sync with F3 / F8 / F10 / F12, and live coordinates.
+- **"⋯" menu.** Command reference, shortcut guide, quick start, layer check, health check, diagnostics, usage statistics and workspace reset.
+
+In a narrow dock the grid drops to one column, then to icons. Icons are recoloured on dark QGIS themes.
+
+---
+
 ## ⌨ AutoCAD-style Command Line
 
 The dock's search box **is** a command line:
@@ -130,6 +145,11 @@ While a drawing or transform tool is active, type a number, `-`, or `@` directly
 | 🛣 **Road Platform Generator** | Interactive road cross-section design: draw an axis, configure carriageway and lane widths, and generate ready road-platform linework. |
 | ➕ **Junction Topology Fixer** | Solves X/T/skew road corners with a selectable metric Chamfer or tangent Fillet, exact curb trims, and gap-free connections. |
 | 🔲 **Block Chamfering** (`BLOCK`) | EasyFillet-powered corner rounding for urban blocks — one click per corner. For a plain two-line corner cut, use the general `CHA` Chamfer tool instead. |
+| 🏗 **Buildable Envelope** (`ENV`) | Click a parcel near its front edge: front, side and rear setbacks (two fronts for a corner parcel) give the buildable area, exact for concave parcels too, with parcel area, buildable share and the max footprint under a site-coverage limit. Output: `planx_envelope`. |
+| 👁 **Sight Triangle** (`SIGHT`) | Pick the curb line on each arm of a corner; the triangle starts at the curb intersection, or where the curbs would meet if the corner is rounded. Output: `planx_sight_triangle`. |
+| 🅿 **Parking Layout** (`PARK`) | Pick a curb line and click the side: 90°, 60°, 45°, 30° or parallel stalls, numbered, segment by segment, with a live preview. Output: `planx_parking`. |
+| ⭕ **Roundabout** (`RB`) | Click the junction centre: circulatory carriageway, truck apron and central island, plus a splitter island on every active-layer line that crosses the outer kerb. Output: `planx_roundabout`. |
+| ↩ **Turning Head** (`CUL`) | Pick a road centreline near its end for a cul-de-sac turning circle with tapers back to the carriageway. Output: `planx_turning_head`. |
 
 ---
 

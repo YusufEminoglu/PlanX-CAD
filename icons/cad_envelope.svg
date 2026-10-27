@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="#1a237e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Parcel boundary with the buildable envelope set back inside it (deeper at the front) -->
+  <path d="M4 4 H28 V28 H4 Z"/>
+  <path d="M9 8 H23 V20 H9 Z" stroke="#ff6d00" stroke-dasharray="3 2" fill="#ff6d00" fill-opacity="0.15"/>
+  <path d="M16 28 V21" stroke="#00bcd4" stroke-width="1.5"/>
+  <path d="M14 23 L16 21 L18 23" stroke="#00bcd4" stroke-width="1.5"/>
+</svg>

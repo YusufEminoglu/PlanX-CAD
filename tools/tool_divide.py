@@ -16,6 +16,7 @@ from qgis.core import (
     QgsGeometry, QgsPointXY, QgsWkbTypes, QgsFeature, QgsProject
 )
 from .tool_base import tool_base
+from ..core.tool_options import CHOICE, INT, OptionSpec
 from ..core.sketcher_layer_utils import get_or_create_layer
 
 
@@ -84,9 +85,17 @@ class DivideDialog(QDialog):
 class tool_divide(tool_base):
     """Split lines into equal segments or create division points."""
 
+    INLINE_OPTIONS = (
+        OptionSpec("segments", "Segments", INT, 3, 2, 10000, 0),
+        OptionSpec("method", "Method", CHOICE, 0,
+                   choices=((0, "Split line"), (1, "Create points"))),
+    )
+
     def __init__(self, canvas, iface):
         super().__init__(canvas, iface)
         self.require_editable = True
+        self.segments = 3
+        self.method = 0
 
     def tool_name(self):
         return "Divide"
@@ -107,16 +116,18 @@ class tool_divide(tool_base):
             self._reset()
             return
 
-        # Open dialog
-        dlg = DivideDialog(self.iface.mainWindow())
-        if dlg.exec() != QDialog.DialogCode.Accepted:
-            self.tool_message.emit("⚠️ Divide — Cancelled")
-            self._reset()
-            return
-
-        params = dlg.params()
-        segments_count = params["segments"]
-        method = params["method"]
+        # Open the dialog unless the dock card supplies the settings.
+        if not self.use_inline_options():
+            dlg = DivideDialog(self.iface.mainWindow())
+            if dlg.exec() != QDialog.DialogCode.Accepted:
+                self.tool_message.emit("⚠️ Divide — Cancelled")
+                self._reset()
+                return
+            params = dlg.params()
+            self.segments = params["segments"]
+            self.method = params["method"]
+        segments_count = self.segments
+        method = self.method
 
         # Treat every multipart component independently. The previous code
         # silently kept only part 0, so dividing a multipart feature deleted
