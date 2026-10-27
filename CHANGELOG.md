@@ -507,7 +507,7 @@ UI overhaul + correctness pass.
 
 ## [1.1.1] - 2026
 
-- Standardized Plugin Hub metadata, aligned icon metadata, added DEU educational context, and refreshed the stable release package.
+- Standardized Plugin Hub metadata, aligned icon metadata, added educational context, and refreshed the stable release package.
 
 ## [1.1.0]
 

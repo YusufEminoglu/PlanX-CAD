@@ -57,7 +57,7 @@ _TURKISH_ASCII_RE = re.compile(
 _ENGLISH_SCAN_SUFFIXES = {
     ".py", ".md", ".html", ".txt", ".cff", ".svg",
 }
-_ALLOWED_PROPER_NAMES = ("Yusuf Eminoğlu", "Eminoğlu", "Dokuz Eylül")
+_ALLOWED_PROPER_NAMES = ("Yusuf Eminoğlu", "Eminoğlu")
 _ALLOWED_LEGACY_LITERALS = {"kavsak"}
 
 # Unscoped Qt enum members that exist in PyQt5 but were removed in PyQt6/QGIS 4.

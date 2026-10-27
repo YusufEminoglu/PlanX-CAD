@@ -1,13 +1,13 @@
 [general]
-name=PlanX CAD Toolset
+name=CAD Drafting Toolset
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=AutoCAD-style drafting inside QGIS: 39 tools with OSNAP glyphs, Ortho and Polar tracking, Dynamic Input HUD, precision drawing, editing, dimensions, hatching, and urban road design.
 version=1.28.0
-author=Yusuf Eminoglu
+author=Geophilo
 email=yusuf.eminoglu@deu.edu.tr
 
-about=PlanX CAD Toolset brings a keyboard-first, AutoCAD-style drafting workflow to QGIS 3.28 LTR through QGIS 4. Its 39 tools cover line and polygon drawing, offset, trim, extend, tangent fillet, straight chamfer, break, lengthen, align, stretch, explode, transform, array, vertex editing, hatch, construction geometry, measurement, dimensions, and urban road-platform design. The dock includes command aliases, history, favorites, live coordinates, layer-readiness guidance, and native QGIS snapping. It has no external dependencies and is developed with feedback from urban-planning education at Dokuz Eylül University. Online User Manual & Documentation: https://geophilo.com/planX_CAD_arac_Seti/ | If you find this plugin helpful, please consider starring the repository on GitLab (https://gitlab.com/geophilo1/planX_CAD_arac_Seti)!
+about=PlanX CAD Toolset brings a keyboard-first, AutoCAD-style drafting workflow to QGIS 3.28 LTR through QGIS 4. Its 39 tools cover line and polygon drawing, offset, trim, extend, tangent fillet, straight chamfer, break, lengthen, align, stretch, explode, transform, array, vertex editing, hatch, construction geometry, measurement, dimensions, and urban road-platform design. The dock includes command aliases, history, favorites, live coordinates, layer-readiness guidance, and native QGIS snapping. It has no external dependencies. Online User Manual & Documentation: https://geophilo.com/planX_CAD_arac_Seti/ | If you find this plugin helpful, please consider starring the repository on GitLab (https://gitlab.com/geophilo1/planX_CAD_arac_Seti)!
 
 tracker=https://gitlab.com/geophilo1/planX_CAD_arac_Seti/-/issues
 repository=https://gitlab.com/geophilo1/planX_CAD_arac_Seti

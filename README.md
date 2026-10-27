@@ -38,7 +38,7 @@ Type `L` ↵, draw a line. Type `F` ↵, fillet a corner. Type `BR` ↵, break i
 | 🌍 **Global by design** | A concise English-only workbench, documentation set, command palette, and output schema built for international teams. |
 | 🧩 **Zero friction** | Pure QGIS API — no external dependencies, no build step. One dockable panel, native snapping, works on **QGIS 3.28 LTR through QGIS 4**. |
 
-Developed with feedback from educational workflows at **Dokuz Eylül University, Department of City and Regional Planning**.
+
 
 ---
 
@@ -222,7 +222,7 @@ This plugin belongs to a growing open-source QGIS ecosystem for urban planning b
 
 ## 👤 Author
 
-**Yusuf Eminoglu** — urban planner & developer
+**Geophilo**
 [GitHub](https://github.com/YusufEminoglu) · yusuf.eminoglu@deu.edu.tr
 
 <div align="center">

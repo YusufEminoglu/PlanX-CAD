@@ -1,6 +1,6 @@
 # PlanX CAD Toolset — v1.28.0 Release Report
 **Theme:** Precision Drafting: OSNAP, Tracking & Dynamic Input  
-**Author:** Yusuf Eminoğlu  
+**Author:** Geophilo  
 **Date:** 2026-10-25  
 
 ---
